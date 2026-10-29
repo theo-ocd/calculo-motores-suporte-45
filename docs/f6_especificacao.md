@@ -84,3 +84,12 @@ calibradas, a menos que a calibração das folgas mude.
   de L, comprimento e largura), e_apoio/calço.
 - Confirmar dx_L = 358.44 da CH-180 (derivado da calibração).
 - Critério de recomendação da cota (máxima folga mínima) — validar com o usuário.
+
+## 7. Protótipo (branch feature/prototipo-180)
+
+- `projeto.py`: núcleo puro (referencial pelo tubo, faixa admissível, cota recomendada).
+- `planilha_projeto.py`: planilha do projeto (PROJETO + uma aba por caso + _entradas oculta).
+- `tensorcad caso|validar|lote` (CLI typer; base do executável PyInstaller).
+- Resultado de referência (CH-180, R 2086/2161): inviável; melhor cota 1673.99 com
+  déficit de 12.74 mm em cada extremo. Com R_max = 2110 (exemplo): faixa 1632.07–1661.96,
+  recomendada 1647.09 (folga mínima 15.67).
