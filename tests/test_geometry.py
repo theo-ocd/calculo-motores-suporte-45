@@ -101,3 +101,8 @@ def test_derivadas_vs_diferencas_finitas(dy: float, h: float, th: float, R: floa
     fd_h = (s(dy, h + eps) - s(dy, h - eps)) / (2 * eps)
     assert ds_ddy == pytest.approx(fd_dy, rel=1e-4, abs=1e-6)
     assert ds_dh == pytest.approx(fd_h, rel=1e-4, abs=1e-6)
+
+
+def test_calcular_h_override_tem_prioridade() -> None:
+    assert g.calcular_h(160, 20, h_override=150) == 150
+    assert g.calcular_h(160, 20, 30, h_override=150) == 150

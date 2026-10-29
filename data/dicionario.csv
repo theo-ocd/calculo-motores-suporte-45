@@ -1,0 +1,70 @@
+tabela;campo;tipo;unidade;obrigatorio;descricao
+motores;motor_id;texto;-;sim;Chave única do motor
+motores;fabricante;texto;-;nao;Fabricante
+motores;modelo;texto;-;nao;Linha/modelo do fabricante
+motores;carcaca;texto;-;sim;Carcaça IEC (ex.: 160L)
+motores;potencia_kw;num;kW;nao;Potência nominal
+motores;polos;int;-;nao;Número de polos
+motores;H;num;mm;sim;Altura de eixo (plano dos pés → centro do eixo); entra em h
+motores;A;num;mm;sim;Distância entre furos dos pés transversal ao eixo (fica ao longo da guia)
+motores;B;num;mm;sim;Distância entre furos dos pés ao longo do eixo
+motores;C;num;mm;nao;Ressalto do eixo até o 1º furo do pé
+motores;K;num;mm;sim;Diâmetro do furo do pé; largura mínima da ranhura
+motores;D_eixo;num;mm;nao;Diâmetro da ponta de eixo
+motores;E_eixo;num;mm;nao;Comprimento da ponta de eixo
+motores;AC;num;mm;nao;Diâmetro externo da carcaça (desenho/interferência)
+motores;HD;num;mm;nao;Altura total do motor
+motores;L;num;mm;nao;Comprimento total do motor
+motores;massa_kg;num;kg;nao;Massa
+motores;fonte;texto;-;sim;Catálogo/revisão ou IEC-REF-VALIDAR
+chapas;chapa_id;texto;-;sim;Chave única da chapa
+chapas;theta_deg;num;graus;sim;Inclinação da guia
+chapas;e_apoio;num;mm;sim;Reta da guia → plano de apoio dos pés (h = H + e_apoio)
+chapas;espessura;num;mm;nao;Espessura da chapa
+chapas;comprimento;num;mm;nao;Comprimento ao longo da guia
+chapas;largura;num;mm;nao;Largura (direção do eixo do motor)
+chapas;carcacas_compat;lista;-;sim;Carcaças aceitas separadas por |
+chapas;origem;texto;-;sim;MEDIDO|CALCULADO|HIPOTESE|TODO
+ranhuras;chapa_id;texto;-;sim;FK chapas
+ranhuras;carcaca;texto;-;sim;Carcaça a que o par de ranhuras se destina
+ranhuras;ranhura_n;int;-;sim;1 = lado do centro do arco (u negativo); 2 = lado oposto
+ranhuras;u_ini;num;mm;cond;Início da ranhura na coordenada local u (origem P)
+ranhuras;u_fim;num;mm;cond;Fim da ranhura na coordenada local u
+ranhuras;largura;num;mm;sim;Largura da ranhura (≥ K)
+ranhuras;origem;texto;-;sim;MEDIDO|CALCULADO|HIPOTESE|TODO
+transmissoes;transmissao_id;texto;-;sim;Chave da transmissão
+transmissoes;R_min;num;mm;sim;Entre-centros mínimo
+transmissoes;R_nom;num;mm;nao;Entre-centros nominal
+transmissoes;R_max;num;mm;sim;Entre-centros máximo
+transmissoes;descricao;texto;-;nao;Correia/polias
+montagens;montagem_id;texto;-;sim;Chave da montagem
+montagens;chapa_id;texto;-;sim;FK chapas
+montagens;a_ref;num;mm;sim;x de P relativo a O com Δy=0 (x+ esquerda)
+montagens;b_ref;num;mm;sim;y de P relativo a O com Δy=0 (y+ baixo)
+montagens;X_O_cad;num;mm;nao;X do centro do arco no CAD
+montagens;Y_O_cad;num;mm;nao;Y do centro do arco no CAD
+montagens;origem;texto;-;sim;MEDIDO|CALCULADO|HIPOTESE|TODO
+casos;caso_id;texto;-;sim;Chave do caso
+casos;montagem_id;texto;-;sim;FK montagens
+casos;motor_id;texto;-;sim;FK motores
+casos;transmissao_id;texto;-;sim;FK transmissoes
+casos;R_alvo;texto/num;mm;sim;min|nom|max ou valor numérico
+casos;delta_y;num;mm;sim;Variação da cota verde (+ = conjunto desce)
+casos;theta_override;num;graus;nao;Substitui theta_deg da chapa
+casos;e_apoio_override;num;mm;nao;Substitui e_apoio da chapa
+casos;h_override;num;mm;nao;Substitui h (prioridade sobre H+e_apoio)
+casos;descricao;texto;-;nao;Comentário
+resultados;h;num;mm;-;h efetivo usado
+resultados;l_proj;num;mm;-;a·cosθ + (b+Δy)·sinθ
+resultados;d_perp;num;mm;-;a·sinθ − (b+Δy)·cosθ + h
+resultados;s;num;mm;-;−l_proj + √(R² − d_perp²)
+resultados;Cx;num;mm;-;Centro do motor x (relativo a O)
+resultados;Cy;num;mm;-;Centro do motor y (relativo a O)
+resultados;X_cad;num;mm;-;X_O_cad − Cx
+resultados;Y_cad;num;mm;-;Y_O_cad − Cy
+resultados;ds_ddy;num;mm/mm;-;Sensibilidade de s a Δy
+resultados;ds_dh;num;mm/mm;-;Sensibilidade de s a h
+resultados;folga_neg;num;mm;-;(s − A/2 − K/2) − u_ini(ranhura 1)
+resultados;folga_pos;num;mm;-;u_fim(ranhura 2) − (s + A/2 + K/2)
+resultados;status;texto;-;-;OK|SEM_SOLUCAO|FORA_RANHURA|INCOMPATIVEL
+resultados;mensagem;texto;-;-;Detalhe do status

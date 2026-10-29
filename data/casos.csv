@@ -1,6 +1,11 @@
-caso_id;montagem_id;motor_id;transmissao_id;R_alvo;delta_y;theta_override;e_apoio_override
-REF-1;M-REF;IEC-160M-4P;TR-REF;2086;0;;
-REF-2;M-REF;IEC-160M-4P;TR-REF;2161;0;;
-REF-3;M-REF;IEC-160M-4P;TR-REF;2086;100;;
-REF-4;M-REF;IEC-132S-4P;TR-REF;2086;0;;18
-REF-5;M-REF;IEC-160M-4P;TR-REF;2086;0;40;
+caso_id;montagem_id;motor_id;transmissao_id;R_alvo;delta_y;theta_override;e_apoio_override;h_override;descricao
+REF-1;M-REF;IEC-160L-4P;TR-REF;min;0;;;;Referência R2086
+REF-2;M-REF;IEC-160L-4P;TR-REF;max;0;;;;Referência R2161
+REF-3;M-REF;IEC-160L-4P;TR-REF;min;100;;;;Conjunto desce 100 mm
+REF-4;M-REF;IEC-160L-4P;TR-REF;min;0;;;150;Motor menor (h=150)
+REF-5;M-REF;IEC-160L-4P;TR-REF;min;0;40;;;Guia a 40°
+VAR-BASE;M-REF;IEC-160L-4P;TR-REF;min;0;;;;Base da varredura Δy
+VAR-DY-M100;M-REF;IEC-160L-4P;TR-REF;min;-100;;;;Varredura Δy
+VAR-DY-M50;M-REF;IEC-160L-4P;TR-REF;min;-50;;;;Varredura Δy
+VAR-DY-P50;M-REF;IEC-160L-4P;TR-REF;min;50;;;;Varredura Δy
+VAR-DY-P100;M-REF;IEC-160L-4P;TR-REF;min;100;;;;Varredura Δy

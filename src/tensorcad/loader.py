@@ -10,7 +10,7 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
-from tensorcad.models import Caso, Chapa, Montagem, Motor, Ranhura, Transmissao
+from tensorcad.models import Caso, Chapa, Montagem, Motor, Origem, Ranhura, Transmissao
 
 M = TypeVar("M", bound=BaseModel)
 
@@ -24,15 +24,26 @@ TABELAS: dict[str, type[BaseModel]] = {
 }
 
 
+ORIGENS_COM_AVISO = (Origem.TODO, Origem.HIPOTESE)
+
+
 @dataclass(frozen=True)
 class ErroValidacao:
     tabela: str
     linha: int  # linha no arquivo (cabeçalho = 1); 0 = arquivo inteiro
     campo: str
     mensagem: str
+    nivel: str = "ERRO"  # ERRO | AVISO
 
     def __str__(self) -> str:
-        return f"{self.tabela}.csv linha {self.linha} campo '{self.campo}': {self.mensagem}"
+        prefixo = "AVISO: " if self.nivel == "AVISO" else ""
+        return (
+            f"{prefixo}{self.tabela}.csv linha {self.linha} campo '{self.campo}': {self.mensagem}"
+        )
+
+
+def aviso(tabela: str, linha: int, campo: str, mensagem: str) -> ErroValidacao:
+    return ErroValidacao(tabela, linha, campo, mensagem, nivel="AVISO")
 
 
 class ErroCarga(Exception):
@@ -58,6 +69,7 @@ class BaseDados:
     transmissoes: dict[str, Transmissao] = field(default_factory=dict)
     montagens: dict[str, Montagem] = field(default_factory=dict)
     casos: dict[str, Caso] = field(default_factory=dict)
+    avisos: list[ErroValidacao] = field(default_factory=list)
 
     def ranhuras_de(self, chapa_id: str, carcaca: str) -> dict[int, Ranhura]:
         return {
@@ -82,17 +94,32 @@ def _limpar(registro: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def validar_registros(
-    tabela: str, registros: Iterable[Mapping[str, Any]], erros: list[ErroValidacao]
+    tabela: str,
+    registros: Iterable[Mapping[str, Any]],
+    erros: list[ErroValidacao],
+    avisos: list[ErroValidacao] | None = None,
 ) -> list[tuple[int, BaseModel]]:
+    """Valida cada registro. Registros com origem TODO/HIPOTESE geram aviso listando
+    as células vazias (válidas, mas a confirmar)."""
     modelo = TABELAS[tabela]
     ok: list[tuple[int, BaseModel]] = []
     for i, reg in enumerate(registros, start=2):
+        limpo = _limpar(reg)
         try:
-            ok.append((i, modelo.model_validate(_limpar(reg))))
+            obj = modelo.model_validate(limpo)
         except ValidationError as exc:
             for e in exc.errors():
                 campo = ".".join(str(p) for p in e["loc"]) or "(registro)"
                 erros.append(ErroValidacao(tabela, i, campo, e["msg"]))
+            continue
+        ok.append((i, obj))
+        origem = getattr(obj, "origem", None)
+        if avisos is not None and origem in ORIGENS_COM_AVISO:
+            vazios = [k for k in reg if k and k.strip() not in limpo]
+            msg = f"dado com origem={origem}"
+            if vazios:
+                msg += f"; células vazias: {', '.join(vazios)}"
+            avisos.append(aviso(tabela, i, "origem", msg))
     return ok
 
 
@@ -106,7 +133,7 @@ def montar_base(
 ) -> BaseDados:
     """Valida registros de todas as tabelas, chaves duplicadas e FKs."""
     base = BaseDados()
-    validados = {t: validar_registros(t, brutos.get(t, []), erros) for t in TABELAS}
+    validados = {t: validar_registros(t, brutos.get(t, []), erros, base.avisos) for t in TABELAS}
 
     def indexar(tabela: str, chave: str) -> dict[str, Any]:
         idx: dict[str, Any] = {}
@@ -138,6 +165,27 @@ def montar_base(
     fk("casos", "motor_id", base.motores, "motores")
     fk("casos", "transmissao_id", base.transmissoes, "transmissoes")
 
+    for linha, c in validados["casos"]:
+        tr = base.transmissoes.get(c.transmissao_id)  # type: ignore[attr-defined]
+        if tr is not None and c.R_efetivo(tr) is None:  # type: ignore[attr-defined]
+            erros.append(
+                ErroValidacao(
+                    "casos", linha, "R_alvo", f"R_alvo='nom' mas {tr.transmissao_id}.R_nom vazio"
+                )
+            )
+
+    a_validar = [m.motor_id for m in base.motores.values() if m.fonte == Origem.IEC_REF_VALIDAR]
+    if a_validar:
+        base.avisos.append(
+            aviso(
+                "motores",
+                0,
+                "fonte",
+                f"{len(a_validar)} motor(es) com fonte={Origem.IEC_REF_VALIDAR}"
+                " (dimensões a validar com catálogo)",
+            )
+        )
+
     vistos: dict[tuple[str, str, int], int] = {}
     for linha, r in validados["ranhuras"]:
         k = (r.chapa_id, r.carcaca, r.ranhura_n)  # type: ignore[attr-defined]
@@ -149,6 +197,15 @@ def montar_base(
 
 def carregar_diretorio(diretorio: Path | str) -> BaseDados:
     """Carrega todas as tabelas de `diretorio`. Levanta ErroCarga se houver erros."""
+    base, erros = analisar_diretorio(diretorio)
+    if erros:
+        raise ErroCarga(erros)
+    return base
+
+
+def analisar_diretorio(diretorio: Path | str) -> tuple[BaseDados, list[ErroValidacao]]:
+    """Como carregar_diretorio, mas devolve (base parcial, erros) sem levantar exceção.
+    Avisos ficam em base.avisos."""
     diretorio = Path(diretorio)
     erros: list[ErroValidacao] = []
     brutos: dict[str, list[dict[str, str]]] = {}
@@ -158,16 +215,8 @@ def carregar_diretorio(diretorio: Path | str) -> BaseDados:
             erros.append(ErroValidacao(tabela, 0, "(arquivo)", f"arquivo ausente: {caminho}"))
             continue
         brutos[tabela] = ler_csv(caminho)
-    base = montar_base(brutos, erros)
-    if erros:
-        raise ErroCarga(erros)
-    return base
+    return montar_base(brutos, erros), erros
 
 
 def validar_diretorio(diretorio: Path | str) -> list[ErroValidacao]:
-    erros: list[ErroValidacao] = []
-    try:
-        carregar_diretorio(diretorio)
-    except ErroCarga as exc:
-        erros = exc.erros
-    return erros
+    return analisar_diretorio(diretorio)[1]
