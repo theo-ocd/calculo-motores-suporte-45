@@ -118,7 +118,7 @@ def test_main_saida_tolerante(monkeypatch) -> None:
 
     from tensorcad import __main__ as entrada
 
-    buf = io.TextIOWrapper(io.BytesIO(), encoding="cp1252")
+    buf = io.TextIOWrapper(io.BytesIO(), encoding="cp1252", newline="\n")
     monkeypatch.setattr(sys, "stdout", buf)
     monkeypatch.setattr(sys, "stderr", object())  # sem reconfigure: ignorado
     entrada._saida_tolerante()
