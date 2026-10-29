@@ -64,6 +64,6 @@ Substitui S2, S3, S4 e S5 acima:
   ranhura é opcional; sem ele as pontas internas ficam vazias (TODO, pendência P3).
 - **S11 — Seleção de chapas**: usa o ponto P (`a_ref`, `b_ref`) da montagem para todas
   as chapas avaliadas e `e_apoio`/`theta` de cada chapa.
-- **S12 — Precedência de status**: SEM_SOLUCAO (geometria) prevalece sobre o status das
+- **S12 — Precedência de status** (confirmada pelo usuário): SEM_SOLUCAO (geometria) prevalece sobre o status das
   ranhuras; nos demais casos vale o status das ranhuras (INCOMPATIVEL → FORA_RANHURA →
   OK). Mensagens das ranhuras são somadas à mensagem do resultado.

@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -57,8 +58,12 @@ def test_calculadora_tem_formulas_reais(xlsx: Path) -> None:
     assert ws["B1"].value == 2086
 
 
-@pytest.mark.skipif(shutil.which("soffice") is None, reason="LibreOffice indisponível")
 def test_calculadora_reproduz_ref1(xlsx: Path, tmp_path: Path) -> None:
+    if shutil.which("soffice") is None:
+        # No CI Linux o LibreOffice é instalado e o teste é obrigatório.
+        if os.environ.get("TENSORCAD_EXIGIR_SOFFICE"):
+            pytest.fail("LibreOffice (soffice) exigido mas não encontrado")
+        pytest.skip("LibreOffice indisponível")
     subprocess.run(
         [
             "soffice",
