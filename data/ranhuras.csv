@@ -1,1 +1,5 @@
-chapa_id;carcaca;ranhura_n;u_ini;u_fim;largura
+chapa_id;carcaca;ranhura_n;u_ini;u_fim;largura;origem
+CH-REF;160M;1;-143.5;;17;HIPOTESE
+CH-REF;160M;2;;183.5;17;HIPOTESE
+CH-REF;160L;1;-143.5;;17;HIPOTESE
+CH-REF;160L;2;;183.5;17;HIPOTESE

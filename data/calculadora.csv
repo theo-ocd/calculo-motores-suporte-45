@@ -1,0 +1,35 @@
+celula;rotulo;conteudo
+A1;R (mm);
+B1;;2086
+A2;Cx0 centro motor desenho (mm);
+B2;;676
+A3;Cy0 centro motor desenho (mm);
+B3;;1966
+A4;h0 motor desenho (mm);
+B4;;180
+A5;theta0 guia desenho (graus);
+B5;;45
+A6;h a testar (mm);
+B6;;180
+A7;theta a testar (graus);
+B7;;45
+A8;delta_y (mm);
+B8;;0
+A10;a;
+B10;;=B2-B4*SIN(RADIANS(B5))
+A11;b;
+B11;;=B3+B4*COS(RADIANS(B5))
+A12;l_proj;
+B12;;=B10*COS(RADIANS(B7))+(B11+B8)*SIN(RADIANS(B7))
+A13;d_perp;
+B13;;=B10*SIN(RADIANS(B7))-(B11+B8)*COS(RADIANS(B7))+B6
+A14;s;
+B14;;=IF(B1^2<B13^2,"SEM_SOLUCAO",-B12+SQRT(B1^2-B13^2))
+A15;Cx;
+B15;;=B10+B14*COS(RADIANS(B7))+B6*SIN(RADIANS(B7))
+A16;Cy;
+B16;;=B11+B8+B14*SIN(RADIANS(B7))-B6*COS(RADIANS(B7))
+A17;ds/dΔy;
+B17;;=-SIN(RADIANS(B7))+B13*COS(RADIANS(B7))/SQRT(B1^2-B13^2)
+A18;ds/dh;
+B18;;=-B13/SQRT(B1^2-B13^2)

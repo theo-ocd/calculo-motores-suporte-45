@@ -1,2 +1,2 @@
-chapa_id;theta_deg;e_apoio;espessura;comprimento;largura;carcacas_compat
-CH-REF;45;20;;;;160M,160L
+chapa_id;theta_deg;e_apoio;espessura;comprimento;largura;carcacas_compat;origem
+CH-REF;45;20;;;;160M|160L;HIPOTESE

@@ -32,8 +32,16 @@ class Solucao:
     ds_dh: float | None = None
 
 
-def calcular_h(H: float, e_apoio: float, e_apoio_override: float | None = None) -> float:
-    """h = H + e_apoio (o override, se informado, substitui e_apoio da chapa)."""
+def calcular_h(
+    H: float,
+    e_apoio: float,
+    e_apoio_override: float | None = None,
+    h_override: float | None = None,
+) -> float:
+    """h = H + e_apoio (e_apoio_override substitui e_apoio da chapa); h_override, se
+    informado, tem prioridade sobre tudo."""
+    if h_override is not None:
+        return h_override
     return H + (e_apoio if e_apoio_override is None else e_apoio_override)
 
 

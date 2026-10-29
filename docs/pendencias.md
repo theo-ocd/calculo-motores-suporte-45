@@ -29,3 +29,19 @@ aviso em tempo de execução quando afetam um cálculo.
 - **S7 — `potencia_kw`** vazio na semente IEC (não fornecido).
 - **S8 — `X_O_cad/Y_O_cad`** vazios em M-REF (pendência 4); a exportação CAD usa 0,0
   com aviso.
+
+## Atualização — dados semente revisados (branch feature/dados-semente-planilha)
+
+Substitui S2, S3, S4 e S5 acima:
+- `casos.csv` ganhou `h_override` (prioridade sobre H + e_apoio) e `descricao`;
+  REF-4 agora é `IEC-160L-4P` com `h_override=150` (S3 obsoleta).
+- `R_alvo` aceita `min|nom|max` (da transmissão) ou número. `nom` com `R_nom` vazio
+  é ERRO de validação (caso não calculável).
+- `carcacas_compat` usa `|` como separador (S1 mantida quanto ao prefixo numérico).
+- Ranhuras: `u_ini` obrigatório só na ranhura 1 e `u_fim` só na ranhura 2 (as pontas
+  internas podem ficar vazias). Valores de CH-REF calibrados com hipótese P2.
+- Coluna `origem` (MEDIDO|CALCULADO|HIPOTESE|TODO|IEC-REF-VALIDAR) em chapas, ranhuras
+  e montagens. Registro com origem TODO/HIPOTESE gera AVISO listando células vazias.
+  Campos obrigatórios continuam obrigatórios mesmo com origem=TODO (a confirmar).
+- Pendências P1–P7 do usuário: ver `data/pendencias.csv` (serão consolidadas aqui no
+  passo 5).
