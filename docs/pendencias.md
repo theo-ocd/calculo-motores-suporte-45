@@ -42,6 +42,16 @@ Substitui S2, S3, S4 e S5 acima:
   internas podem ficar vazias). Valores de CH-REF calibrados com hipótese P2.
 - Coluna `origem` (MEDIDO|CALCULADO|HIPOTESE|TODO|IEC-REF-VALIDAR) em chapas, ranhuras
   e montagens. Registro com origem TODO/HIPOTESE gera AVISO listando células vazias.
-  Campos obrigatórios continuam obrigatórios mesmo com origem=TODO (a confirmar).
+  Campos obrigatórios continuam obrigatórios mesmo com origem=TODO (confirmado pelo usuário).
 - Pendências P1–P7 do usuário: ver `data/pendencias.csv` (serão consolidadas aqui no
   passo 5).
+
+## Suposições adotadas (F3 — ranhuras)
+
+- **S9 — Sem ranhuras cadastradas** para (chapa, carcaça): status OK com AVISO e folgas
+  vazias (não há como verificar). Ordem de verificação: carcaça → largura < K → folgas.
+- **S10 — Calibração**: as folgas medidas determinam apenas `u_ini` da ranhura 1 e
+  `u_fim` da ranhura 2 (únicas pontas usadas no cálculo). O comprimento de cada
+  ranhura é opcional; sem ele as pontas internas ficam vazias (TODO, pendência P3).
+- **S11 — Seleção de chapas**: usa o ponto P (`a_ref`, `b_ref`) da montagem para todas
+  as chapas avaliadas e `e_apoio`/`theta` de cada chapa.
