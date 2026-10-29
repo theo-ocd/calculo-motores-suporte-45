@@ -95,7 +95,7 @@ class Ranhura(_Base):
     ranhura_n: Annotated[int, Field(ge=1, le=2)]
     u_ini: float | None = None
     u_fim: float | None = None
-    largura: NaoNegativo
+    largura: NaoNegativo | None  # obrigatório no CSV; None só para chapas sem largura medida
     origem: Origem
 
     @model_validator(mode="after")
@@ -231,7 +231,7 @@ class RanhuraPadrao(_Base):
     ranhura_n: Annotated[int, Field(ge=1, le=2)]
     d_ini: float | None = None
     d_fim: float | None = None
-    largura: NaoNegativo
+    largura: NaoNegativo | None = None
     origem: Origem
 
     @model_validator(mode="after")
@@ -255,3 +255,101 @@ class RanhuraPadrao(_Base):
             largura=self.largura,
             origem=self.origem,
         )
+
+
+TOL_CADEIA = 0.5  # mm: tolerância da soma das cotas da chapa
+
+
+class ChapaCarcaca(_Base):
+    """Linha de chapas_carcaca.csv: medidas da chapa padrão de uma carcaça, como nos
+    prints (todas ao longo da chapa, a partir da ponta baixa L, exceto dx/dy)."""
+
+    carcaca: Id
+    theta_deg: Annotated[float, Field(gt=0, lt=90)]
+    e_apoio: NaoNegativo
+    comprimento_chapa: Positivo
+    dx_L_tubo: float
+    dy_L_tubo: float
+    dist_L_ranhura: NaoNegativo
+    comprimento_ranhura: Positivo | None = None
+    dist_entre_ranhuras: NaoNegativo | None = None
+    dist_ranhura_topo: NaoNegativo
+    largura_ranhura: Positivo | None = None
+    origem: Origem
+    observacao: str = ""
+
+    @model_validator(mode="after")
+    def _cadeia(self) -> ChapaCarcaca:
+        livre = self.comprimento_chapa - self.dist_L_ranhura - self.dist_ranhura_topo
+        if livre <= 0:
+            raise ValueError(
+                f"dist_L_ranhura + dist_ranhura_topo ({self.comprimento_chapa - livre:g}) "
+                f"≥ comprimento_chapa ({self.comprimento_chapa:g})"
+            )
+        tam, entre = self.comprimento_ranhura, self.dist_entre_ranhuras
+        if tam is not None and entre is not None:
+            soma = 2 * tam + entre
+            if abs(soma - livre) > TOL_CADEIA:
+                raise ValueError(
+                    "cotas não fecham: dist_L_ranhura + 2·comprimento_ranhura + "
+                    "dist_entre_ranhuras + dist_ranhura_topo = "
+                    f"{self.comprimento_chapa - livre + soma:g} ≠ comprimento_chapa "
+                    f"{self.comprimento_chapa:g}"
+                )
+        elif tam is not None and 2 * tam > livre + TOL_CADEIA:
+            raise ValueError("2·comprimento_ranhura maior que o trecho entre as pontas")
+        elif entre is not None and entre > livre + TOL_CADEIA:
+            raise ValueError("dist_entre_ranhuras maior que o trecho entre as pontas")
+        return self
+
+    @property
+    def chapa_id(self) -> str:
+        return f"CH-{self.carcaca}"
+
+    def ranhuras_d(self) -> tuple[tuple[float | None, float], tuple[float, float | None]]:
+        """((d_ini, d_fim) da ranhura 1, (d_ini, d_fim) da ranhura 2), d a partir de L.
+        Ranhura 2 = mais perto de L; ranhura 1 = lado do centro dos raios. Se só um entre
+        comprimento_ranhura e dist_entre_ranhuras for dado, o outro é deduzido."""
+        livre = self.comprimento_chapa - self.dist_L_ranhura - self.dist_ranhura_topo
+        tam = self.comprimento_ranhura
+        if tam is None and self.dist_entre_ranhuras is not None:
+            tam = (livre - self.dist_entre_ranhuras) / 2
+        d_ini2 = self.dist_L_ranhura
+        d_fim1 = self.comprimento_chapa - self.dist_ranhura_topo
+        if tam is None:
+            return (None, d_fim1), (d_ini2, None)
+        return (d_fim1 - tam, d_fim1), (d_ini2, d_ini2 + tam)
+
+    def como_padrao(self) -> tuple[ChapaPadrao, list[RanhuraPadrao]]:
+        chapa = ChapaPadrao(
+            chapa_id=self.chapa_id,
+            carcacas_compat=self.carcaca,
+            theta_deg=self.theta_deg,
+            e_apoio=self.e_apoio,
+            comprimento=self.comprimento_chapa,
+            dx_L=self.dx_L_tubo,
+            cota_L_tubo=self.dy_L_tubo,
+            origem=self.origem,
+        )
+        (i1, f1), (i2, f2) = self.ranhuras_d()
+        ranhuras = [
+            RanhuraPadrao(
+                chapa_id=self.chapa_id,
+                ranhura_n=n,
+                d_ini=ini,
+                d_fim=fim,
+                largura=self.largura_ranhura,
+                origem=self.origem,
+            )
+            for n, ini, fim in ((1, i1, f1), (2, i2, f2))
+        ]
+        return chapa, ranhuras
+
+
+CAMPOS_MEDIDAS_CHAPA = (
+    "comprimento_chapa",
+    "dx_L_tubo",
+    "dy_L_tubo",
+    "dist_L_ranhura",
+    "dist_ranhura_topo",
+)

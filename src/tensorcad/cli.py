@@ -42,7 +42,7 @@ Dados = Annotated[
 ]
 PadroesOpt = Annotated[
     Path | None,
-    typer.Option(help="Diretório com chapas_padrao/ranhuras_padrao. Padrão: <dados>/padrao."),
+    typer.Option(help="Diretório com chapas_carcaca.csv. Padrão: <dados>/padrao."),
 ]
 
 

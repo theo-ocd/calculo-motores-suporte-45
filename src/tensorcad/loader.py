@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import itertools
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -11,8 +12,10 @@ from typing import Any, TypeVar
 from pydantic import BaseModel, ValidationError
 
 from tensorcad.models import (
+    CAMPOS_MEDIDAS_CHAPA,
     Caso,
     Chapa,
+    ChapaCarcaca,
     ChapaPadrao,
     Montagem,
     Motor,
@@ -109,12 +112,14 @@ def validar_registros(
     erros: list[ErroValidacao],
     avisos: list[ErroValidacao] | None = None,
     modelo: type[BaseModel] | None = None,
+    numeros: Iterable[int] | None = None,
 ) -> list[tuple[int, BaseModel]]:
     """Valida cada registro. Registros com origem TODO/HIPOTESE geram aviso listando
     as células vazias (válidas, mas a confirmar)."""
     modelo = modelo or TABELAS[tabela]
     ok: list[tuple[int, BaseModel]] = []
-    for i, reg in enumerate(registros, start=2):
+    numeros = itertools.count(2) if numeros is None else numeros
+    for i, reg in zip(numeros, registros, strict=False):
         limpo = _limpar(reg)
         try:
             obj = modelo.model_validate(limpo)
@@ -325,35 +330,42 @@ class Padroes:
         }
 
 
+ARQ_CHAPAS_CARCACA = "chapas_carcaca.csv"
+
+
 def carregar_padroes(diretorio: Path | str) -> Padroes:
-    """Lê chapas_padrao.csv e ranhuras_padrao.csv. Levanta ErroCarga se houver erros."""
-    diretorio = Path(diretorio)
-    erros: list[ErroValidacao] = []
+    """Lê chapas_carcaca.csv (uma linha por carcaça). Linhas sem nenhuma medida são
+    modelos a preencher: geram aviso e são ignoradas. Levanta ErroCarga se houver erros."""
+    caminho = Path(diretorio) / ARQ_CHAPAS_CARCACA
+    tabela = caminho.stem
     pad = Padroes()
-    tabelas = {"chapas_padrao": ChapaPadrao, "ranhuras_padrao": RanhuraPadrao}
-    validados: dict[str, list[tuple[int, BaseModel]]] = {}
-    for nome, modelo in tabelas.items():
-        caminho = diretorio / f"{nome}.csv"
-        if not caminho.exists():
-            erros.append(ErroValidacao(nome, 0, "(arquivo)", f"arquivo ausente: {caminho}"))
-            validados[nome] = []
-            continue
-        validados[nome] = validar_registros(nome, ler_csv(caminho), erros, pad.avisos, modelo)
-    for linha, ch in validados["chapas_padrao"]:
-        if ch.chapa_id in pad.chapas:  # type: ignore[attr-defined]
-            erros.append(ErroValidacao("chapas_padrao", linha, "chapa_id", "id duplicado"))
-        pad.chapas[ch.chapa_id] = ch  # type: ignore[attr-defined]
-    for linha, r in validados["ranhuras_padrao"]:
-        if r.chapa_id not in pad.chapas:  # type: ignore[attr-defined]
-            erros.append(
-                ErroValidacao(
-                    "ranhuras_padrao",
-                    linha,
-                    "chapa_id",
-                    f"'{r.chapa_id}' não existe em chapas_padrao.csv",  # type: ignore[attr-defined]
-                )
+    if not caminho.exists():
+        raise ErroCarga([ErroValidacao(tabela, 0, "(arquivo)", f"arquivo ausente: {caminho}")])
+    erros: list[ErroValidacao] = []
+    a_validar: list[dict[str, str]] = []
+    linhas_reais: list[int] = []
+    for i, reg in enumerate(ler_csv(caminho), start=2):
+        if all(not (reg.get(c) or "").strip() for c in CAMPOS_MEDIDAS_CHAPA):
+            carc = (reg.get("carcaca") or "?").strip()
+            pad.avisos.append(
+                aviso(tabela, i, "carcaca", f"carcaça {carc} sem medidas (a preencher)")
             )
-        pad.ranhuras.append(r)  # type: ignore[arg-type]
+            continue
+        a_validar.append(reg)
+        linhas_reais.append(i)
+    validados = validar_registros(tabela, a_validar, erros, pad.avisos, ChapaCarcaca, linhas_reais)
+    for n, linha in validados:
+        cc: ChapaCarcaca = linha  # type: ignore[assignment]
+        if cc.chapa_id in pad.chapas:
+            erros.append(ErroValidacao(tabela, n, "carcaca", "carcaça duplicada"))
+            continue
+        chapa, ranhuras = cc.como_padrao()
+        pad.chapas[chapa.chapa_id] = chapa
+        pad.ranhuras.extend(ranhuras)
+        if cc.largura_ranhura is None:
+            pad.avisos.append(
+                aviso(tabela, n, "largura_ranhura", "não informada: K não verificado")
+            )
     if erros:
         raise ErroCarga(erros)
     return pad

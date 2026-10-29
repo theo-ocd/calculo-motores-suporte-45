@@ -72,7 +72,7 @@ calibradas, a menos que a calibração das folgas mude.
 - H1 confirmada: motor do desenho é carcaça 180; h medido do topo da chapa (e_apoio = 0).
 - H2 confirmada: L está 45 mm acima do centro do tubo.
 - H3: dx_L e cota 45 **variam por carcaça/chapa** → passam a ser colunas da chapa padrão
-  (`data/padrao/chapas_padrao.csv`); valores da CH-180 a confirmar nos PDFs.
+  (`data/padrao/chapas_carcaca.csv`); valores da CH-180 a confirmar nos PDFs.
 - H4: a cota 1646 é resultado do projeto (definida por R/correia), sem limite de ±50 mm.
   Protótipo: recomenda a cota que **maximiza a menor folga** entre 0 % e 3 % e mostra
   a faixa admissível inteira.
@@ -93,3 +93,17 @@ calibradas, a menos que a calibração das folgas mude.
 - Resultado de referência (CH-180, R 2086/2161): inviável; melhor cota 1673.99 com
   déficit de 12.74 mm em cada extremo. Com R_max = 2110 (exemplo): faixa 1632.07–1661.96,
   recomendada 1647.09 (folga mínima 15.67).
+
+## 8. Tabela de chapas por carcaça
+
+As medidas de cada chapa vêm de prints e entram em `data/padrao/chapas_carcaca.csv`, uma
+linha por carcaça. Formato e esquema das cotas: `data/padrao/LEIAME.md`.
+
+Colunas ao longo da chapa, a partir da ponta baixa L:
+- L → ranhura;
+- comprimento das ranhuras;
+- vão entre ranhuras;
+- ranhura → ponta alta.
+
+Somadas, elas devem fechar com o comprimento total (tolerância de 0,5 mm). Linhas sem
+medidas (160, 200, 225, 250) são modelos a preencher.
