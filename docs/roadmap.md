@@ -26,5 +26,7 @@ no núcleo (`geometry.para_cad`) e os campos `X_cad/Y_cad` seguem em `resultados
 - Cada caso é **uma aba**; é possível adicionar casos individualmente, formando uma
   única planilha completa por projeto.
 
+Especificação detalhada e hipóteses: [f6_especificacao.md](f6_especificacao.md).
+
 Pontos em aberto antes de implementar: identificação de cada cota verde do desenho
 de referência e as regras de inferência (padrão de chapa por carcaça).
