@@ -1,0 +1,79 @@
+# F6 — especificação (rascunho para aprovação)
+
+Fonte: definições do usuário em 2026-10-29 (prints do desenho de referência).
+Nada aqui foi implementado ainda; as hipóteses marcadas **H** precisam de confirmação.
+
+## 1. Cotas do desenho de referência
+
+| Cota | Significado | Natureza |
+|------|-------------|----------|
+| 767 | Altura do centro dos raios (O) em relação ao piso do banco de cilindros | Fixa |
+| 465 | Distância em x do centro do tubo de apoio (T) até O | Fixa |
+| 1646 | Centro do tubo de apoio → piso do banco de cilindros (instalação) | **Variável do projeto** (oblongos: ±50 mm); hoje definida por tentativa e erro |
+| 45° | Inclinação do conjunto (θ) | Fixa no padrão atual |
+| 45 | Distância vertical entre o ponto mais baixo do topo da chapa inclinada (L) e o centro do tubo | Estrutura |
+| 635 | Comprimento total da chapa de apoio do motor do desenho | Por carcaça (tabela da empresa) |
+| 180 | Altura do centro do motor em relação à chapa → carcaça 180 (WEG) | Por carcaça |
+| R_min = 2086 | Entre-centros com tensionamento 0 % | Entrada do caso |
+| R_max = 2161 | Entre-centros com tensionamento 3 % | Entrada do caso |
+
+## 2. Referencial (convenções de docs/geometria.md: O na origem, x+ esquerda, y+ baixo)
+
+- Piso do banco de cilindros: y = 767.
+- Tubo de apoio: T = (465, 767 + cota_1646) → no desenho T = (465, 2413).
+- Guia = **topo da chapa** (h medido da chapa) → para a chapa do desenho, h = 180 = H(180)
+  e e_apoio = 0 (**H1**: corrige a hipótese anterior "carcaça 160 + e_apoio 20").
+- Δy (cota verde do núcleo) = cota_1646 − 1646 (aumentar 1646 = conjunto desce).
+
+## 3. Verificação de consistência com a calibração atual (a = 548.72, b = 2093.28)
+
+A reta da guia calibrada cruza a altura de L em:
+
+| Hipótese para a cota 45 | y de L | x de L | x(L) − x(T) | chapa (635) em u, origem P |
+|---|---|---|---|---|
+| **H2: L 45 mm acima do tubo** | 2368 | 823.4 | 358.4 | [−246.5, 388.5] |
+| L 45 mm abaixo do tubo | 2458 | 913.4 | 448.4 | [−119.2, 515.8] |
+
+Com o motor 180 (A = 279, K = 15) e as folgas 9/49 em s = 0, as ranhuras ficam em
+u_ini(1) = −156 e u_fim(2) = 196. Só a hipótese **H2** mantém as ranhuras dentro da
+chapa (na outra, u = −156 cai fora de [−119.2, 515.8]). Adota-se H2 como provável.
+
+Consequência: o ponto P pode ser substituído pela ponta baixa da chapa L, com
+coordenadas derivadas da estrutura:
+
+```
+a_L = 465 + dx_L          (dx_L = 358.4 calibrado; H3: fixo da estrutura)
+b_L = 767 + cota_1646 − 45
+u medido a partir de L, ao longo da chapa (cotas dos desenhos de chapa)
+```
+
+## 4. Algoritmo proposto para o executável
+
+Entradas por caso: carcaça (160…250), R_min, R_max; projeto: cota_1646 nominal (±50).
+
+1. Carregar a chapa padrão da carcaça (tabela da empresa, a partir dos PDFs): comprimento,
+   h (= H + espessura/calço, se houver), posição e largura das ranhuras em relação a L.
+2. Para R_min e R_max, calcular a faixa de Δy em que o motor fica dentro das ranhuras
+   (`faixa_dy`, já existente).
+3. Interseção das duas faixas, limitada a ±50 mm → **faixa admissível da cota 1646**.
+4. Recomendar a cota 1646 (**H4**: centro da faixa admissível; alternativa: mais próxima
+   do nominal) e mostrar folgas a 0 % e 3 %.
+5. Sem interseção → status FORA_RANHURA com o déficit em mm (substitui a tentativa e erro).
+
+Saída: planilha do projeto, **uma aba por caso**, com possibilidade de adicionar casos
+individualmente ao mesmo arquivo.
+
+Observação (P4): no desenho de referência, s(R_max) − s(R_min) = 83 mm e o curso das
+ranhuras é 58 mm. Nenhuma cota 1646 atende 0 % e 3 % simultaneamente com as ranhuras
+calibradas, a menos que a calibração das folgas mude.
+
+## 5. Pendências para fechar a especificação
+
+- H1: motor do desenho é carcaça 180 e h é medido do topo da chapa (e_apoio = 0)?
+- H2: L está 45 mm **acima** do centro do tubo?
+- H3: a distância horizontal tubo → L (358.4) e a cota 45 são fixas da estrutura para
+  todas as carcaças (só a chapa muda)?
+- H4: critério de escolha da cota 1646 dentro da faixa admissível.
+- PDFs das chapas padrão (160–250): comprimento, ranhuras (posição a partir de L,
+  comprimento, largura), espessura/calço.
+- 3 %: R_max é dado de entrada ou deve ser calculado a partir de R_min e da correia?
