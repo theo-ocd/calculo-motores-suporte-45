@@ -3,13 +3,23 @@
 Toda suposição adotada no código fica registrada aqui. Itens marcados TODO geram
 aviso em tempo de execução quando afetam um cálculo.
 
-| # | Pendência | Situação / hipótese adotada |
-|---|-----------|-----------------------------|
-| 1 | Confirmar `e_apoio` (h=180 = H160 + 20?) | Hipótese: CH-REF `e_apoio=20`, motor de referência carcaça 160. TODO confirmar. |
-| 2 | Lado das folgas 9 e 49 mm (qual é ranhura 1 / 2) e coordenadas `u_ini/u_fim` reais | TODO. Função de calibração disponível (F3). |
-| 3 | Catálogo real de motores (AC, HD, L, massa) e de chapas | Semente IEC com `fonte=IEC-REF-VALIDAR`; AC/HD/L/massa vazios. |
-| 4 | Coordenadas `X_O_cad/Y_O_cad` do centro do arco no desenho | TODO. |
-| 5 | Licença do repositório | TODO (LICENSE provisório). |
+Fonte das pendências: `data/pendencias.csv` (também na aba `pendencias` da planilha).
+Os IDs P1–P7 abaixo devem ficar sincronizados com o CSV (verificado em teste).
+
+| id | Item | Impacto | Status |
+|----|------|---------|--------|
+| P1 | Confirmar carcaça do motor do desenho (160?) e e_apoio=20 mm | h de todos os casos | ABERTO |
+| P2 | Confirmar lado das folgas 9 e 49 (ranhura 1 = lado do centro do arco?) | u_ini/u_fim e status | ABERTO |
+| P3 | Medir u_fim da ranhura 1, u_ini da ranhura 2 e largura real das ranhuras | Desenho CAD | ABERTO |
+| P4 | Curso da ranhura (~49 mm) menor que o necessário R2086→R2161 (~83 mm) | Projeto da chapa | ALERTA |
+| P5 | Catálogo de motores (AC, HD, L, massa) — fabricante a definir | Desenho e interferência | ABERTO |
+| P6 | Coordenadas X_O_cad/Y_O_cad do centro do arco | Exportação CAD | ABERTO |
+| P7 | Dimensões da chapa (espessura, comprimento, largura) | Desenho CAD | ABERTO |
+
+Pendência do repositório (fora do CSV): licença (LICENSE provisório, TODO).
+
+Correspondência com as pendências iniciais da especificação: 1 → P1; 2 → P2/P3;
+3 → P5/P7; 4 → P6.
 
 ## Suposições adotadas (F1 — modelo de dados)
 
@@ -43,8 +53,7 @@ Substitui S2, S3, S4 e S5 acima:
 - Coluna `origem` (MEDIDO|CALCULADO|HIPOTESE|TODO|IEC-REF-VALIDAR) em chapas, ranhuras
   e montagens. Registro com origem TODO/HIPOTESE gera AVISO listando células vazias.
   Campos obrigatórios continuam obrigatórios mesmo com origem=TODO (confirmado pelo usuário).
-- Pendências P1–P7 do usuário: ver `data/pendencias.csv` (serão consolidadas aqui no
-  passo 5).
+- Pendências P1–P7 do usuário consolidadas na tabela do topo deste arquivo.
 
 ## Suposições adotadas (F3 — ranhuras)
 
