@@ -10,7 +10,17 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
-from tensorcad.models import Caso, Chapa, Montagem, Motor, Origem, Ranhura, Transmissao
+from tensorcad.models import (
+    Caso,
+    Chapa,
+    ChapaPadrao,
+    Montagem,
+    Motor,
+    Origem,
+    Ranhura,
+    RanhuraPadrao,
+    Transmissao,
+)
 
 M = TypeVar("M", bound=BaseModel)
 
@@ -98,10 +108,11 @@ def validar_registros(
     registros: Iterable[Mapping[str, Any]],
     erros: list[ErroValidacao],
     avisos: list[ErroValidacao] | None = None,
+    modelo: type[BaseModel] | None = None,
 ) -> list[tuple[int, BaseModel]]:
     """Valida cada registro. Registros com origem TODO/HIPOTESE geram aviso listando
     as células vazias (válidas, mas a confirmar)."""
-    modelo = TABELAS[tabela]
+    modelo = modelo or TABELAS[tabela]
     ok: list[tuple[int, BaseModel]] = []
     for i, reg in enumerate(registros, start=2):
         limpo = _limpar(reg)
@@ -291,3 +302,58 @@ def analisar_diretorio(diretorio: Path | str) -> tuple[BaseDados, list[ErroValid
 
 def validar_diretorio(diretorio: Path | str) -> list[ErroValidacao]:
     return analisar_diretorio(diretorio)[1]
+
+
+@dataclass
+class Padroes:
+    """Chapas padrão por carcaça (protótipo F6)."""
+
+    chapas: dict[str, ChapaPadrao] = field(default_factory=dict)
+    ranhuras: list[RanhuraPadrao] = field(default_factory=list)
+    avisos: list[ErroValidacao] = field(default_factory=list)
+
+    def chapa_para(self, carcaca: str) -> ChapaPadrao | None:
+        """Primeira chapa padrão compatível com a carcaça."""
+        for ch in self.chapas.values():
+            if ch.como_chapa().aceita_carcaca(carcaca):
+                return ch
+        return None
+
+    def ranhuras_de(self, chapa_id: str, carcaca: str) -> dict[int, Ranhura]:
+        return {
+            r.ranhura_n: r.como_ranhura(carcaca) for r in self.ranhuras if r.chapa_id == chapa_id
+        }
+
+
+def carregar_padroes(diretorio: Path | str) -> Padroes:
+    """Lê chapas_padrao.csv e ranhuras_padrao.csv. Levanta ErroCarga se houver erros."""
+    diretorio = Path(diretorio)
+    erros: list[ErroValidacao] = []
+    pad = Padroes()
+    tabelas = {"chapas_padrao": ChapaPadrao, "ranhuras_padrao": RanhuraPadrao}
+    validados: dict[str, list[tuple[int, BaseModel]]] = {}
+    for nome, modelo in tabelas.items():
+        caminho = diretorio / f"{nome}.csv"
+        if not caminho.exists():
+            erros.append(ErroValidacao(nome, 0, "(arquivo)", f"arquivo ausente: {caminho}"))
+            validados[nome] = []
+            continue
+        validados[nome] = validar_registros(nome, ler_csv(caminho), erros, pad.avisos, modelo)
+    for linha, ch in validados["chapas_padrao"]:
+        if ch.chapa_id in pad.chapas:  # type: ignore[attr-defined]
+            erros.append(ErroValidacao("chapas_padrao", linha, "chapa_id", "id duplicado"))
+        pad.chapas[ch.chapa_id] = ch  # type: ignore[attr-defined]
+    for linha, r in validados["ranhuras_padrao"]:
+        if r.chapa_id not in pad.chapas:  # type: ignore[attr-defined]
+            erros.append(
+                ErroValidacao(
+                    "ranhuras_padrao",
+                    linha,
+                    "chapa_id",
+                    f"'{r.chapa_id}' não existe em chapas_padrao.csv",  # type: ignore[attr-defined]
+                )
+            )
+        pad.ranhuras.append(r)  # type: ignore[arg-type]
+    if erros:
+        raise ErroCarga(erros)
+    return pad

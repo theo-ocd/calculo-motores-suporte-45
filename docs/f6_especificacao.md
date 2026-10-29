@@ -1,4 +1,4 @@
-# F6 — especificação (rascunho para aprovação)
+# F6 — especificação
 
 Fonte: definições do usuário em 2026-10-29 (prints do desenho de referência).
 Nada aqui foi implementado ainda; as hipóteses marcadas **H** precisam de confirmação.
@@ -9,13 +9,13 @@ Nada aqui foi implementado ainda; as hipóteses marcadas **H** precisam de confi
 |------|-------------|----------|
 | 767 | Altura do centro dos raios (O) em relação ao piso do banco de cilindros | Fixa |
 | 465 | Distância em x do centro do tubo de apoio (T) até O | Fixa |
-| 1646 | Centro do tubo de apoio → piso do banco de cilindros (instalação) | **Variável do projeto** (oblongos: ±50 mm); hoje definida por tentativa e erro |
+| 1646 | Centro do tubo de apoio → piso do banco de cilindros (instalação) | **Saída do projeto**: definida pelos raios/correia (pode ser ~1250 ou outra); oblongos dão ±50 mm de ajuste na obra |
 | 45° | Inclinação do conjunto (θ) | Fixa no padrão atual |
 | 45 | Distância vertical entre o ponto mais baixo do topo da chapa inclinada (L) e o centro do tubo | Estrutura |
 | 635 | Comprimento total da chapa de apoio do motor do desenho | Por carcaça (tabela da empresa) |
 | 180 | Altura do centro do motor em relação à chapa → carcaça 180 (WEG) | Por carcaça |
 | R_min = 2086 | Entre-centros com tensionamento 0 % | Entrada do caso |
-| R_max = 2161 | Entre-centros com tensionamento 3 % | Entrada do caso |
+| R_max = 2161 | Entre-centros com tensionamento 3 % | Entrada do caso (não calculado) |
 
 ## 2. Referencial (convenções de docs/geometria.md: O na origem, x+ esquerda, y+ baixo)
 
@@ -67,13 +67,20 @@ Observação (P4): no desenho de referência, s(R_max) − s(R_min) = 83 mm e o 
 ranhuras é 58 mm. Nenhuma cota 1646 atende 0 % e 3 % simultaneamente com as ranhuras
 calibradas, a menos que a calibração das folgas mude.
 
-## 5. Pendências para fechar a especificação
+## 5. Respostas do usuário (2026-10-29)
 
-- H1: motor do desenho é carcaça 180 e h é medido do topo da chapa (e_apoio = 0)?
-- H2: L está 45 mm **acima** do centro do tubo?
-- H3: a distância horizontal tubo → L (358.4) e a cota 45 são fixas da estrutura para
-  todas as carcaças (só a chapa muda)?
-- H4: critério de escolha da cota 1646 dentro da faixa admissível.
-- PDFs das chapas padrão (160–250): comprimento, ranhuras (posição a partir de L,
-  comprimento, largura), espessura/calço.
-- 3 %: R_max é dado de entrada ou deve ser calculado a partir de R_min e da correia?
+- H1 confirmada: motor do desenho é carcaça 180; h medido do topo da chapa (e_apoio = 0).
+- H2 confirmada: L está 45 mm acima do centro do tubo.
+- H3: dx_L e cota 45 **variam por carcaça/chapa** → passam a ser colunas da chapa padrão
+  (`data/padrao/chapas_padrao.csv`); valores da CH-180 a confirmar nos PDFs.
+- H4: a cota 1646 é resultado do projeto (definida por R/correia), sem limite de ±50 mm.
+  Protótipo: recomenda a cota que **maximiza a menor folga** entre 0 % e 3 % e mostra
+  a faixa admissível inteira.
+- R_max é dado de entrada.
+
+## 6. Pendências
+
+- PDFs das chapas padrão 160–250: comprimento, dx_L, cota_L_tubo, ranhuras (d a partir
+  de L, comprimento e largura), e_apoio/calço.
+- Confirmar dx_L = 358.44 da CH-180 (derivado da calibração).
+- Critério de recomendação da cota (máxima folga mínima) — validar com o usuário.
