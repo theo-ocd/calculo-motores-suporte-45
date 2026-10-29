@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,13 @@ from tensorcad.cli import app
 
 RAIZ = Path(__file__).resolve().parents[1]
 DADOS = ["--dados", str(RAIZ / "data"), "--padroes", str(RAIZ / "data" / "padrao")]
-runner = CliRunner()
+runner = CliRunner(env={"COLUMNS": "200", "NO_COLOR": "1", "TERM": "dumb"})
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _texto(saida: str) -> str:
+    """Saída sem códigos de cor (o rich pode colorir mesmo em CI, ex. FORCE_COLOR)."""
+    return ANSI.sub("", saida)
 
 
 def _caso(projeto: Path, *extra: str):
@@ -20,9 +27,9 @@ def test_help_documentado() -> None:
     r = runner.invoke(app, ["--help"])
     assert r.exit_code == 0
     for cmd in ("validar", "caso", "lote"):
-        assert cmd in r.output
-    r = runner.invoke(app, ["caso", "--help"])
-    assert "--rmin" in r.output and "--carcaca" in r.output and "--cota" in r.output
+        assert cmd in _texto(r.output)
+    saida = _texto(runner.invoke(app, ["caso", "--help"]).output)
+    assert "--rmin" in saida and "--carcaca" in saida and "--cota" in saida
 
 
 def test_caso_cria_e_adiciona_abas(tmp_path: Path) -> None:
