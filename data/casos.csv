@@ -1,0 +1,6 @@
+caso_id;montagem_id;motor_id;transmissao_id;R_alvo;delta_y;theta_override;e_apoio_override
+REF-1;M-REF;IEC-160M-4P;TR-REF;2086;0;;
+REF-2;M-REF;IEC-160M-4P;TR-REF;2161;0;;
+REF-3;M-REF;IEC-160M-4P;TR-REF;2086;100;;
+REF-4;M-REF;IEC-132S-4P;TR-REF;2086;0;;18
+REF-5;M-REF;IEC-160M-4P;TR-REF;2086;0;40;
