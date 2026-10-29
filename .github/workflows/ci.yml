@@ -28,3 +28,5 @@ jobs:
           ruff format --check .
       - name: Pytest
         run: pytest
+      - name: Cobertura do núcleo geométrico (>= 95%)
+        run: pytest tests/test_geometry.py -q --cov=tensorcad.geometry --cov-report=term-missing --cov-fail-under=95
