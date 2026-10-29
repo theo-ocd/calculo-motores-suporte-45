@@ -41,7 +41,7 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "N", "SIM"]
-ignore = ["N802", "N803", "N806", "N815"]  # nomes técnicos (H, A, K, R, Cx...) são intencionais
+ignore = ["N802", "N803", "N806", "N815", "N818"]  # nomes técnicos (H, A, K, R, Cx...) são intencionais
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
