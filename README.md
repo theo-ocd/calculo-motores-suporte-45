@@ -21,7 +21,23 @@ ruff check . && ruff format --check .
 pytest
 ```
 
-## Uso (até a CLI definitiva)
+## Protótipo F6 — planilha do projeto (motor 180)
+
+Cada caso vira uma aba na planilha do projeto; rode o comando de novo para adicionar casos.
+
+```bash
+pip install -e .
+tensorcad caso --projeto output/obra.xlsx --id REF-180 --carcaca 180M --rmin 2086 --rmax 2161 --cota 1646 --nome-projeto OBRA
+tensorcad caso --projeto output/obra.xlsx --id ALT --carcaca 180M --rmin 2086 --rmax 2110 --abrir
+tensorcad validar
+tensorcad --help
+```
+
+A aba do caso mostra a faixa admissível da cota 1646 (0 % e 3 % dentro das ranhuras), a
+cota recomendada (máxima folga mínima), as posições do motor, o gráfico folga × cota e um
+esboço da geometria. Chapas padrão: `data/padrao/` (só CH-180 por enquanto).
+
+## Uso (módulos da F4)
 
 ```bash
 # planilha consolidada com todas as abas (cadastros, resultados, varredura, calculadora...)

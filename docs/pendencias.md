@@ -67,3 +67,12 @@ Substitui S2, S3, S4 e S5 acima:
 - **S12 — Precedência de status** (confirmada pelo usuário): SEM_SOLUCAO (geometria) prevalece sobre o status das
   ranhuras; nos demais casos vale o status das ranhuras (INCOMPATIVEL → FORA_RANHURA →
   OK). Mensagens das ranhuras são somadas à mensagem do resultado.
+
+## Protótipo F6 (motor 180)
+
+- P1 resolvida: motor do desenho é carcaça 180, h = 180 medido do topo da chapa (e_apoio = 0).
+  Os dados da M-REF/CH-REF (160L + e_apoio 20) dão o mesmo h e foram mantidos para os
+  testes de referência; o protótipo usa `data/padrao/` (CH-180).
+- **S13 — Cota recomendada**: a que maximiza a menor folga entre R_min e R_max (varredura
+  de 1 mm + seção áurea). Quando inviável, a mesma cota dá o menor déficit.
+- **S14 — dx_L = 358.44 (CH-180)**: derivado da calibração; confirmar no desenho da chapa.

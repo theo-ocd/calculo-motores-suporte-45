@@ -197,3 +197,61 @@ class Resultado(_Base):
 
 
 COLUNAS_RESULTADO: tuple[str, ...] = tuple(Resultado.model_fields)
+
+
+class ChapaPadrao(_Base):
+    """Chapa de apoio padronizada, referenciada ao tubo de apoio da estrutura."""
+
+    chapa_id: Id
+    carcacas_compat: tuple[str, ...] = ()
+    theta_deg: Annotated[float, Field(gt=0, lt=90)]
+    e_apoio: NaoNegativo
+    comprimento: Positivo
+    dx_L: float
+    cota_L_tubo: float
+    origem: Origem
+
+    _split = field_validator("carcacas_compat", mode="before")(Chapa._split.__func__)
+
+    def como_chapa(self) -> Chapa:
+        return Chapa(
+            chapa_id=self.chapa_id,
+            theta_deg=self.theta_deg,
+            e_apoio=self.e_apoio,
+            comprimento=self.comprimento,
+            carcacas_compat=self.carcacas_compat,
+            origem=self.origem,
+        )
+
+
+class RanhuraPadrao(_Base):
+    """Ranhura em coordenada d (a partir de L, subindo a chapa)."""
+
+    chapa_id: Id
+    ranhura_n: Annotated[int, Field(ge=1, le=2)]
+    d_ini: float | None = None
+    d_fim: float | None = None
+    largura: NaoNegativo
+    origem: Origem
+
+    @model_validator(mode="after")
+    def _coordenadas(self) -> RanhuraPadrao:
+        if self.ranhura_n == 1 and self.d_fim is None:
+            raise ValueError("ranhura 1 (lado do arco) exige d_fim")
+        if self.ranhura_n == 2 and self.d_ini is None:
+            raise ValueError("ranhura 2 exige d_ini")
+        if self.d_ini is not None and self.d_fim is not None and not self.d_ini < self.d_fim:
+            raise ValueError(f"d_ini ({self.d_ini}) deve ser menor que d_fim ({self.d_fim})")
+        return self
+
+    def como_ranhura(self, carcaca: str) -> Ranhura:
+        """Converte para u (direção de s, origem L): u = −d."""
+        return Ranhura(
+            chapa_id=self.chapa_id,
+            carcaca=carcaca,
+            ranhura_n=self.ranhura_n,
+            u_ini=None if self.d_fim is None else -self.d_fim,
+            u_fim=None if self.d_ini is None else -self.d_ini,
+            largura=self.largura,
+            origem=self.origem,
+        )
