@@ -10,18 +10,57 @@ from typing import Annotated
 
 import typer
 
-from tensorcad.loader import ErroCarga, analisar, carregar, carregar_padroes, relatorio
-from tensorcad.planilha_projeto import EntradaPlanilha, adicionar_caso, status_do_caso
+from tensorcad import __version__, recursos
+from tensorcad.loader import (
+    BaseDados,
+    ErroCarga,
+    Padroes,
+    analisar,
+    carregar,
+    carregar_padroes,
+    relatorio,
+)
+from tensorcad.planilha_projeto import (
+    EntradaPlanilha,
+    adicionar_caso,
+    ler_entradas,
+    status_do_caso,
+)
 from tensorcad.projeto import X_TUBO_PADRAO, Y_PISO_PADRAO, ConfigProjeto
 
 app = typer.Typer(
-    help="Posição do motor sobre a chapa inclinada (base tensora) e planilha do projeto.",
-    no_args_is_help=True,
+    help=(
+        "Posição do motor sobre a chapa inclinada (base tensora) e planilha do projeto. "
+        "Sem comando, abre o modo interativo."
+    ),
     add_completion=False,
 )
 
-Dados = Annotated[Path, typer.Option(help="Diretório de CSVs (ou .xlsx) com os cadastros.")]
-PadroesOpt = Annotated[Path, typer.Option(help="Diretório com chapas_padrao/ranhuras_padrao.")]
+Dados = Annotated[
+    Path | None,
+    typer.Option(help="Diretório de CSVs (ou .xlsx) com os cadastros. Padrão: dados embutidos."),
+]
+PadroesOpt = Annotated[
+    Path | None,
+    typer.Option(help="Diretório com chapas_padrao/ranhuras_padrao. Padrão: <dados>/padrao."),
+]
+
+
+def _resolver(dados: Path | None, padroes: Path | None) -> tuple[Path, Path]:
+    try:
+        d = dados or recursos.dir_dados()
+    except FileNotFoundError as exc:
+        typer.echo(f"Erro: {exc}", err=True)
+        raise typer.Exit(1) from None
+    return d, padroes or recursos.dir_padroes(d)
+
+
+def _carregar(dados: Path, padroes: Path) -> tuple[BaseDados, Padroes]:
+    try:
+        return carregar(dados), carregar_padroes(padroes)
+    except ErroCarga as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from None
 
 
 def _abrir(caminho: Path) -> None:
@@ -39,9 +78,24 @@ def _motor_por_carcaca(base, carcaca: str) -> str:
     raise typer.BadParameter(f"nenhum motor cadastrado com carcaça {carcaca}")
 
 
+@app.callback(invoke_without_command=True)
+def principal(
+    ctx: typer.Context,
+    versao: Annotated[bool, typer.Option("--versao", help="Mostra a versão.")] = False,
+) -> None:
+    """Sem comando: modo interativo (uso com duplo clique no executável)."""
+    if versao:
+        typer.echo(f"tensorcad {__version__}")
+        raise typer.Exit()
+    if ctx.invoked_subcommand is None:
+        interativo(None, None)
+
+
 @app.command()
-def validar(dados: Dados = Path("data"), padroes: PadroesOpt = Path("data/padrao")) -> None:
+def validar(dados: Dados = None, padroes: PadroesOpt = None) -> None:
     """Valida os cadastros e as chapas padrão e mostra erros/avisos."""
+    dados, padroes = _resolver(dados, padroes)
+    typer.echo(f"Dados: {dados}")
     base, erros = analisar(dados)
     typer.echo(relatorio(erros))
     for a in base.avisos:
@@ -73,18 +127,13 @@ def caso(
     x_tubo: Annotated[float, typer.Option(help="Centro dos raios → tubo (x).")] = X_TUBO_PADRAO,
     substituir: Annotated[bool, typer.Option(help="Substitui caso de mesmo nome.")] = False,
     abrir: Annotated[bool, typer.Option(help="Abre a planilha ao final.")] = False,
-    dados: Dados = Path("data"),
-    padroes: PadroesOpt = Path("data/padrao"),
+    dados: Dados = None,
+    padroes: PadroesOpt = None,
 ) -> None:
     """Calcula um caso e o adiciona (uma aba) à planilha do projeto."""
     if (motor is None) == (carcaca is None):
         raise typer.BadParameter("informe exatamente um entre --motor e --carcaca")
-    try:
-        base = carregar(dados)
-        pad = carregar_padroes(padroes)
-    except ErroCarga as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(1) from None
+    base, pad = _carregar(*_resolver(dados, padroes))
     motor_id = motor or _motor_por_carcaca(base, carcaca or "")
     entrada = EntradaPlanilha(caso_id, motor_id, r_min, r_max, cota, chapa)
     try:
@@ -106,7 +155,7 @@ def caso(
 
 @app.command()
 def lote(
-    dados: Dados = Path("data"),
+    dados: Dados = None,
     saida: Annotated[Path, typer.Option(help="Diretório de saída.")] = Path("output"),
     casos: Annotated[Path | None, typer.Option(help="CSV/xlsx de casos.")] = None,
     caso_varredura: Annotated[str | None, typer.Option(help="Caso da varredura Δy.")] = None,
@@ -117,10 +166,89 @@ def lote(
     """Processa os casos da base (F4): resultados.csv e resultados.xlsx."""
     from tensorcad.lote import executar_lote
 
+    dados = dados or _resolver(None, None)[0]
     out = executar_lote(
         dados, saida, casos=casos, caso_varredura=caso_varredura, varredura=(dy_ini, dy_fim, passo)
     )
     typer.echo(f"{len(out.resultados)} caso(s) → {out.csv} e {out.xlsx}")
+
+
+SIM = {"s", "sim", "y", "yes"}
+NAO = {"n", "nao", "não", "no"}
+
+
+def _sim_nao(pergunta: str, padrao: bool) -> bool:
+    dica = "[S/n]" if padrao else "[s/N]"
+    while True:
+        resp = typer.prompt(f"{pergunta} {dica}", default="", show_default=False).strip().lower()
+        if not resp:
+            return padrao
+        if resp in SIM:
+            return True
+        if resp in NAO:
+            return False
+        typer.echo("  responda s ou n")
+
+
+def _num(texto: str) -> float:
+    return float(texto.strip().replace(",", "."))
+
+
+def _perguntar_num(
+    rotulo: str, padrao: float | None = None, opcional: bool = False
+) -> float | None:
+    while True:
+        dica = "" if padrao is None else f" [{padrao:g}]"
+        resp = typer.prompt(f"{rotulo}{dica}", default="", show_default=False).strip()
+        if not resp:
+            if padrao is not None:
+                return padrao
+            if opcional:
+                return None
+            typer.echo("  valor obrigatório")
+            continue
+        try:
+            return _num(resp)
+        except ValueError:
+            typer.echo("  número inválido (use ponto ou vírgula decimal)")
+
+
+@app.command()
+def interativo(dados: Dados = None, padroes: PadroesOpt = None) -> None:
+    """Pergunta os dados de cada caso e monta a planilha do projeto (uma aba por caso)."""
+    typer.echo(f"tensorcad {__version__} — planilha do projeto (uma aba por caso)\n")
+    base, pad = _carregar(*_resolver(dados, padroes))
+    carcacas = sorted(
+        {m.carcaca for m in base.motores.values() if pad.chapa_para(m.carcaca) is not None}
+    )
+    typer.echo(f"Carcaças com chapa padrão: {', '.join(carcacas) or 'nenhuma'}")
+    arq = Path(typer.prompt("Arquivo da planilha do projeto", default="projeto_tensorcad.xlsx"))
+    if arq.suffix.lower() != ".xlsx":
+        arq = arq.with_suffix(".xlsx")
+    cfg = ConfigProjeto()
+    if arq.exists():
+        cfg, ents = ler_entradas(arq)
+        typer.echo(f"Projeto existente '{cfg.nome}' com {len(ents)} caso(s).")
+    else:
+        cfg = ConfigProjeto(nome=typer.prompt("Nome do projeto", default="PROJETO"))
+    while True:
+        caso_id = typer.prompt("Nome do caso (aba)")
+        carc = typer.prompt("Carcaça", default=carcacas[0] if carcacas else "")
+        r_min = _perguntar_num("R_min (0 %) mm")
+        r_max = _perguntar_num("R_max (3 %) mm")
+        cota = _perguntar_num("Cota 1646 a verificar (Enter = só calcular)", opcional=True)
+        try:
+            motor_id = _motor_por_carcaca(base, carc)
+            adicionar_caso(
+                arq, EntradaPlanilha(caso_id, motor_id, r_min, r_max, cota), base, pad, cfg=cfg
+            )
+            typer.echo(f"Caso {caso_id}: {status_do_caso(arq, caso_id)} → {arq.resolve()}")
+        except (ValueError, typer.BadParameter) as exc:
+            typer.echo(f"Erro: {exc}")
+        if not _sim_nao("Adicionar outro caso?", False):
+            break
+    if arq.exists() and _sim_nao("Abrir a planilha?", True):
+        _abrir(arq)
 
 
 if __name__ == "__main__":  # pragma: no cover
