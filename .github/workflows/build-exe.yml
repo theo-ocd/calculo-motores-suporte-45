@@ -48,9 +48,13 @@ jobs:
             if (-not (Test-Path $f)) { throw "faltou $f" }
           }
       - uses: actions/upload-artifact@v4
+        # Em PRs, falta de cota de armazenamento da conta não reprova o build já testado;
+        # em execução manual e tags o artefato é obrigatório.
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
         with:
           name: tensorcad-exe
           path: |
             dist/tensorcad.exe
             docs/executavel.md
           if-no-files-found: error
+          retention-days: 14
