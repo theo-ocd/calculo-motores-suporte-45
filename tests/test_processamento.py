@@ -57,7 +57,30 @@ def test_sem_solucao_e_tangencia(base) -> None:
     assert r.status == "SEM_SOLUCAO" and r.s is None and "R²<d_perp²" in r.mensagem
     _, d = g.projecoes(p.a, p.b, p.delta_y, p.h, p.theta_deg)
     r = proc.calcular(replace(p, R=abs(d)))
-    assert r.status == "OK" and "tangência" in r.mensagem
+    assert "tangência" in r.mensagem
+    assert r.status == "FORA_RANHURA"  # s na tangência fica longe das ranhuras de CH-REF
+
+
+def test_status_ranhuras_integrado(base) -> None:
+    rs = {r.caso_id: r for r in proc.calcular_todos(base)}
+    assert rs["REF-1"].status == "OK"
+    assert rs["REF-1"].folga_neg == pytest.approx(16.81, abs=0.1)
+    assert rs["REF-2"].status == "FORA_RANHURA" and "ranhura 2" in rs["REF-2"].mensagem
+
+
+def test_sem_solucao_prevalece_sobre_ranhuras(base) -> None:
+    from dataclasses import replace
+
+    r = proc.calcular(replace(proc.parametros(base.casos["REF-1"], base), R=100))
+    assert r.status == "SEM_SOLUCAO" and r.folga_neg is None
+
+
+def test_limites_e_faixa_dy(base) -> None:
+    caso = base.casos["VAR-BASE"]
+    s_min, s_max = proc.limites_s(caso, base)
+    assert (s_min, s_max) == pytest.approx((-9.0, 49.0))
+    (lo, hi), *_ = proc.faixa_dy_caso(caso, base)
+    assert lo == pytest.approx(-39.0, abs=1.0) and hi == pytest.approx(15.9, abs=1.0)
 
 
 def test_faixa_e_varredura(base) -> None:

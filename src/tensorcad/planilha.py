@@ -24,6 +24,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 import tensorcad
 from tensorcad import processamento as proc
+from tensorcad import ranhuras as rn
 from tensorcad.loader import BaseDados, carregar_diretorio
 from tensorcad.models import COLUNAS_RESULTADO, Resultado
 
@@ -259,6 +260,7 @@ def _aba_varredura(
     pontos: Sequence[tuple[float, Resultado]],
     caso_id: str,
     limites_s: tuple[float, float] | None,
+    faixas_dy: list[tuple[float, float]] | None,
 ) -> None:
     colunas = ["delta_y", "s", "folga_neg", "folga_pos", "status"]
     if limites_s:
@@ -295,7 +297,19 @@ def _aba_varredura(
             serie.graphicalProperties.line.dashStyle = "dash"
         graf.series.append(serie)
     graf.height, graf.width = 10, 18
-    ws.add_chart(graf, f"{get_column_letter(len(colunas) + 2)}2")
+    col_graf = get_column_letter(len(colunas) + 2)
+    ws.add_chart(graf, f"{col_graf}2")
+    if limites_s:
+        nota = f"s admissível pelas ranhuras: [{limites_s[0]:.2f}, {limites_s[1]:.2f}] mm"
+        if faixas_dy:
+            nota += "; Δy admissível: " + ", ".join(f"[{a:.2f}, {b:.2f}]" for a, b in faixas_dy)
+            nota += " mm"
+        else:
+            nota += "; nenhum Δy admissível para este caso"
+    else:
+        nota = "Ranhuras não cadastradas: limites de s não disponíveis."
+    ws[f"{col_graf}24"] = nota
+    ws[f"{col_graf}24"].font = Font(bold=True)
 
 
 def _aba_calculadora(ws: Worksheet, linhas: Iterable[dict[str, str]]) -> None:
@@ -338,6 +352,21 @@ def _verificar_referencia(
             aprovado = "SIM" if str(calc) == str(esperado) else "NAO"
         out.append([d["caso_id"], d["campo"], esperado, tol, d["depende_hipotese"], calc, aprovado])
     return out
+
+
+def _testes_funcao(base: BaseDados) -> dict[str, Any]:
+    """Linhas de testes_referencia que testam funções (não casos de casos.csv).
+    FUNC-FOLGA-S0: folgas com s=0, motor IEC-160L-4P e ranhuras de CH-REF."""
+    m = base.motores.get("IEC-160L-4P")
+    rs = base.ranhuras_de("CH-REF", m.carcaca) if m else {}
+    if not m or 1 not in rs or 2 not in rs:
+        return {}
+    fn, fp = rn.folgas(0.0, m.A, m.K, rs[1].u_ini, rs[2].u_fim)
+    return {
+        "FUNC-FOLGA-S0": Resultado(
+            caso_id="FUNC-FOLGA-S0", h=0, theta_deg=0, R=0, folga_neg=fn, folga_pos=fp, status=""
+        )
+    }
 
 
 # --------------------------------------------------------------------------- API
@@ -383,7 +412,13 @@ def gerar_planilha(
     pontos = list(
         zip(proc.faixa(*varredura), proc.varredura_dy(caso, base, *varredura), strict=True)
     )
-    _aba_varredura(abas["varredura_dy"], pontos, caso_varredura, None)
+    _aba_varredura(
+        abas["varredura_dy"],
+        pontos,
+        caso_varredura,
+        proc.limites_s(caso, base),
+        proc.faixa_dy_caso(caso, base),
+    )
 
     _, calc = ler_csv(dir_dados / "calculadora.csv")
     _aba_calculadora(abas["calculadora"], calc)
@@ -402,7 +437,7 @@ def gerar_planilha(
         abas["testes_referencia"],
         "testes_referencia",
         cols_ref,
-        _verificar_referencia(refs, por_caso),
+        _verificar_referencia(refs, {**por_caso, **_testes_funcao(base)}),
         {},
     )
     ws = abas["testes_referencia"]

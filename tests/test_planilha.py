@@ -46,7 +46,8 @@ def test_casos_tem_validacao_de_dados(xlsx: Path) -> None:
 
 def test_varredura_tem_grafico(xlsx: Path) -> None:
     ws = load_workbook(xlsx)["varredura_dy"]
-    assert ws.max_row == 22  # cabeçalho + 21 pontos (-100..100 passo 10)
+    assert ws.tables["varredura_dy"].ref == "A1:G22"  # cabeçalho + 21 pontos (-100..100/10)
+    assert len(ws._charts) == 1
     assert ws["A2"].value == -100 and ws["A22"].value == 100
 
 
@@ -77,3 +78,18 @@ def test_calculadora_reproduz_ref1(xlsx: Path, tmp_path: Path) -> None:
     assert ws["B14"].value == pytest.approx(7.81, abs=0.1)
     assert ws["B17"].value == pytest.approx(-1.051, abs=0.005)
     assert ws["B18"].value == pytest.approx(0.486, abs=0.005)
+
+
+def test_testes_referencia_todos_aprovados(xlsx: Path) -> None:
+    ws = load_workbook(xlsx)["testes_referencia"]
+    aprovados = [r[6] for r in ws.iter_rows(min_row=2, values_only=True)]
+    assert len(aprovados) == 27
+    assert set(aprovados) == {"SIM"}
+
+
+def test_varredura_com_limites_das_ranhuras(xlsx: Path) -> None:
+    ws = load_workbook(xlsx)["varredura_dy"]
+    cab = [c.value for c in ws[1] if c.value]
+    assert cab == ["delta_y", "s", "folga_neg", "folga_pos", "status", "s_min", "s_max"]
+    assert ws["F2"].value == pytest.approx(-9.0) and ws["G2"].value == pytest.approx(49.0)
+    assert "Δy admissível" in ws["I24"].value
