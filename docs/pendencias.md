@@ -29,3 +29,13 @@ aviso em tempo de execução quando afetam um cálculo.
 - **S7 — `potencia_kw`** vazio na semente IEC (não fornecido).
 - **S8 — `X_O_cad/Y_O_cad`** vazios em M-REF (pendência 4); a exportação CAD usa 0,0
   com aviso.
+
+## Suposições adotadas (F3 — ranhuras)
+
+- **S9 — Sem ranhuras cadastradas** para (chapa, carcaça): status OK com AVISO e folgas
+  vazias (não há como verificar). Ordem de verificação: carcaça → largura < K → folgas.
+- **S10 — Calibração**: as folgas medidas determinam apenas `u_ini` da ranhura 1 e
+  `u_fim` da ranhura 2. Para montar as ranhuras completas é preciso informar o
+  comprimento (ao longo de u) de cada ranhura — dado a confirmar (TODO).
+- **S11 — Seleção de chapas**: usa o ponto P (`a_ref`, `b_ref`) da montagem para todas
+  as chapas avaliadas e `e_apoio`/`theta` de cada chapa.
