@@ -195,6 +195,77 @@ def montar_base(
     return base
 
 
+def _texto_celula(v: Any) -> str | None:
+    """Célula do Excel → texto equivalente ao do CSV (inteiros sem '.0')."""
+    if v is None:
+        return None
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
+    return str(v)
+
+
+def ler_aba_xlsx(caminho: Path, aba: str) -> list[dict[str, str | None]] | None:
+    """Linhas de uma aba (cabeçalho na linha 1) ou None se a aba não existir.
+    Linhas totalmente vazias são ignoradas; numeração de linha preservada."""
+    from openpyxl import load_workbook
+
+    wb = load_workbook(caminho, read_only=True, data_only=True)
+    try:
+        if aba not in wb.sheetnames:
+            return None
+        linhas = wb[aba].iter_rows(values_only=True)
+        cab = [str(c).strip() if c is not None else "" for c in next(linhas, ())]
+        out: list[dict[str, str | None]] = []
+        for valores in linhas:
+            reg = {c: _texto_celula(v) for c, v in zip(cab, valores, strict=False) if c}
+            out.append(reg)
+        while out and all(v in (None, "") for v in out[-1].values()):
+            out.pop()
+        return out
+    finally:
+        wb.close()
+
+
+def _ler_tabela(fonte: Path, tabela: str) -> list[dict[str, Any]] | None:
+    if fonte.is_dir():
+        caminho = fonte / f"{tabela}.csv"
+        return ler_csv(caminho) if caminho.exists() else None
+    if fonte.suffix.lower() == ".csv":
+        return ler_csv(fonte)
+    return ler_aba_xlsx(fonte, tabela)
+
+
+def analisar(
+    fonte: Path | str, casos: Path | str | None = None
+) -> tuple[BaseDados, list[ErroValidacao]]:
+    """Carrega de um diretório de CSVs ou de um .xlsx (abas com os nomes das tabelas).
+    `casos` (opcional): CSV ou .xlsx (aba 'casos') que substitui a tabela de casos."""
+    fonte = Path(fonte)
+    erros: list[ErroValidacao] = []
+    if not fonte.exists():
+        erros.append(ErroValidacao("(fonte)", 0, "(arquivo)", f"fonte ausente: {fonte}"))
+        return BaseDados(), erros
+    brutos: dict[str, list[dict[str, Any]]] = {}
+    for tabela in TABELAS:
+        origem = Path(casos) if (tabela == "casos" and casos is not None) else fonte
+        linhas = _ler_tabela(origem, tabela)
+        if linhas is None:
+            erros.append(
+                ErroValidacao(tabela, 0, "(arquivo)", f"tabela '{tabela}' ausente em {origem}")
+            )
+            continue
+        brutos[tabela] = linhas
+    return montar_base(brutos, erros), erros
+
+
+def carregar(fonte: Path | str, casos: Path | str | None = None) -> BaseDados:
+    """Como `analisar`, mas levanta ErroCarga se houver erros."""
+    base, erros = analisar(fonte, casos)
+    if erros:
+        raise ErroCarga(erros)
+    return base
+
+
 def carregar_diretorio(diretorio: Path | str) -> BaseDados:
     """Carrega todas as tabelas de `diretorio`. Levanta ErroCarga se houver erros."""
     base, erros = analisar_diretorio(diretorio)
