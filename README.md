@@ -21,6 +21,11 @@ ruff check . && ruff format --check .
 pytest
 ```
 
+## Executável Windows
+
+`tensorcad.exe` (artefato do workflow "Executável Windows"): duplo clique abre o modo
+interativo; também aceita os comandos abaixo. Detalhes: [docs/executavel.md](docs/executavel.md).
+
 ## Protótipo F6 — planilha do projeto (motor 180)
 
 Cada caso vira uma aba na planilha do projeto; rode o comando de novo para adicionar casos.

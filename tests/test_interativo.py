@@ -101,11 +101,27 @@ def test_interativo_sem_argumentos_cria_projeto(tmp_path: Path, monkeypatch, sem
 
 def test_interativo_projeto_existente_e_erro(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
-    r1 = runner.invoke(app, ["interativo"], input="p\nP1\nA\n180M\n2086\n2110\n\nn\nn\n")
+    entrada = "p\nP1\nA\n180M\n2086\n2110\n\ntalvez\nn\nn\n"
+    r1 = runner.invoke(app, ["interativo"], input=entrada)
     assert r1.exit_code == 0 and (tmp_path / "p.xlsx").exists()
+    assert "responda s ou n" in r1.output
     r2 = runner.invoke(
         app, ["interativo"], input="p.xlsx\nA\n180M\n2086\n2110\n\ns\nB\n999\n2086\n2110\n\nn\nn\n"
     )
     saida = ANSI.sub("", r2.output)
     assert "Projeto existente 'P1' com 1 caso(s)" in saida
     assert "já existe" in saida and "999" in saida
+
+
+def test_main_saida_tolerante(monkeypatch) -> None:
+    import io
+
+    from tensorcad import __main__ as entrada
+
+    buf = io.TextIOWrapper(io.BytesIO(), encoding="cp1252")
+    monkeypatch.setattr(sys, "stdout", buf)
+    monkeypatch.setattr(sys, "stderr", object())  # sem reconfigure: ignorado
+    entrada._saida_tolerante()
+    print("Caso X: OK → arquivo")  # '→' não existe em cp1252
+    buf.flush()
+    assert buf.buffer.getvalue().decode("cp1252") == "Caso X: OK ? arquivo\n"

@@ -1,0 +1,56 @@
+name: Executável Windows
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - "src/**"
+      - "data/**"
+      - "scripts/build_exe.py"
+      - "pyproject.toml"
+      - ".github/workflows/build-exe.yml"
+
+jobs:
+  exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[build]"
+      - name: Gerar tensorcad.exe
+        run: python scripts/build_exe.py
+      - name: Testar o executável sem Python no PATH
+        shell: pwsh
+        run: |
+          $exe = Join-Path $PWD "dist\tensorcad.exe"
+          $dir = New-Item -ItemType Directory -Path (Join-Path $env:RUNNER_TEMP "exe-teste")
+          Set-Location $dir
+          $env:PATH = "C:\Windows\System32;C:\Windows"
+          if (Get-Command python -ErrorAction SilentlyContinue) { throw "python ainda no PATH" }
+          function Rodar { param([string[]]$a) $s = & $exe @a 2>&1 | Out-String; Write-Host $s; if ($LASTEXITCODE) { throw "falhou: $a" }; return $s }
+          Rodar @("--versao") | Out-Null
+          Rodar @("--help") | Out-Null
+          Rodar @("validar") | Out-Null
+          $r = Rodar @("caso","--projeto","ref.xlsx","--id","REF-180","--carcaca","180M","--rmin","2086","--rmax","2161","--cota","1646")
+          if ($r -notmatch "FORA_RANHURA") { throw "REF-180 deveria ser FORA_RANHURA" }
+          $r = Rodar @("caso","--projeto","ref.xlsx","--id","ALT","--carcaca","180M","--rmin","2086","--rmax","2110")
+          if ($r -notmatch "ALT: OK") { throw "ALT deveria ser OK" }
+          Rodar @("lote","--saida","out","--passo","50") | Out-Null
+          "p2`nP`nX`n180M`n2086`n2110`n`nn`nn`n" | & $exe | Out-Host
+          foreach ($f in "ref.xlsx","p2.xlsx","out\resultados.csv","out\resultados.xlsx") {
+            if (-not (Test-Path $f)) { throw "faltou $f" }
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tensorcad-exe
+          path: |
+            dist/tensorcad.exe
+            docs/executavel.md
+          if-no-files-found: error
