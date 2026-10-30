@@ -31,5 +31,7 @@ programa é executado, defina a variável `TENSORCAD_DADOS`, ou use `--dados` e 
 ## Build
 
 `python scripts/build_exe.py` (requer `pip install ".[build]"`). No GitHub: workflow
-"Executável Windows" (manual, em PRs que mexem no código e em tags `v*`). O artefato
-`tensorcad-exe` contém o .exe.
+"Executável Windows" (manual, em PRs que mexem no código, em pushes na develop e em tags
+`v*`). O .exe testado é publicado na pré-release **exe-dev**, substituído a cada build, em
+Releases do repositório. Também fica como artefato `tensorcad-exe`, se houver cota de
+armazenamento.
