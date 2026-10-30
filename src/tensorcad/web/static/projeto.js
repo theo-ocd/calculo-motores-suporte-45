@@ -18,10 +18,11 @@ const Projeto = (() => {
 
   function casoVazio(nome) {
     return { caso_id: nome, carcaca: primeiraCarcaca(), motor_id: null, R_min: "", R_max: "",
-      ajustes: { chapa: {}, motor: {} }, _status: "" };
+      R2_min: "", R2_max: "", ajustes: { chapa: {}, motor: {} }, _status: "" };
   }
   function novoProjeto() {
-    return { formato: FORMATO, versao: VERSAO, nome: "PROJETO", cota: "", ativo: 0, casos: [casoVazio("caso-1")] };
+    return { formato: FORMATO, versao: VERSAO, nome: "PROJETO", cota: "", banco_duplo: false, ativo: 0,
+      casos: [casoVazio("caso-1")] };
   }
   const ativo = () => p.casos[p.ativo];
 
@@ -56,12 +57,15 @@ const Projeto = (() => {
     if (!p || carregando) return;
     p.nome = $("nome-projeto").value;
     p.cota = $("cota").value.trim();
+    p.banco_duplo = $("banco-duplo").checked;
     const c = ativo();
     c.caso_id = $("caso_id").value.trim();
     c.carcaca = $("carcaca").value;
     c.motor_id = $("motor_id").value || null;
     c.R_min = $("R_min").value.trim();
     c.R_max = $("R_max").value.trim();
+    c.R2_min = $("R2_min").value.trim();
+    c.R2_max = $("R2_max").value.trim();
     c.ajustes = copia(estado.ajustes);
     renderLista();
     agendarRascunho();
@@ -71,10 +75,14 @@ const Projeto = (() => {
     carregando = true;
     $("nome-projeto").value = p.nome;
     $("cota").value = texto(p.cota);
+    $("banco-duplo").checked = Boolean(p.banco_duplo);
+    mostrarBancoDuplo();
     const c = ativo();
     $("caso_id").value = c.caso_id;
     $("R_min").value = texto(c.R_min);
     $("R_max").value = texto(c.R_max);
+    $("R2_min").value = texto(c.R2_min);
+    $("R2_max").value = texto(c.R2_max);
     const info = estado.carcacas.find((x) => x.carcaca === c.carcaca && x.calculavel);
     $("carcaca").value = info ? c.carcaca : primeiraCarcaca();
     estado.ajustes = info ? copia(c.ajustes || { chapa: {}, motor: {} }) : { chapa: {}, motor: {} };
@@ -171,12 +179,15 @@ const Projeto = (() => {
       versao: VERSAO,
       nome: p.nome,
       cota: num(p.cota),
+      banco_duplo: Boolean(p.banco_duplo),
       casos: p.casos.map((c) => ({
         caso_id: c.caso_id,
         carcaca: c.carcaca,
         motor_id: c.motor_id,
         R_min: num(c.R_min),
         R_max: num(c.R_max),
+        R2_min: num(c.R2_min),
+        R2_max: num(c.R2_max),
         ajustes: { chapa: grupo(c.ajustes?.chapa), motor: grupo(c.ajustes?.motor) },
       })),
     };
@@ -191,6 +202,7 @@ const Projeto = (() => {
       versao: VERSAO,
       nome: texto(obj.nome) || "PROJETO",
       cota: texto(obj.cota),
+      banco_duplo: Boolean(obj.banco_duplo),
       ativo: Math.min(Math.max(0, Number(obj.ativo) || 0), obj.casos.length - 1),
       casos: obj.casos.map((c, i) => ({
         caso_id: texto(c.caso_id) || `caso-${i + 1}`,
@@ -198,6 +210,8 @@ const Projeto = (() => {
         motor_id: c.motor_id || null,
         R_min: texto(c.R_min),
         R_max: texto(c.R_max),
+        R2_min: texto(c.R2_min),
+        R2_max: texto(c.R2_max),
         ajustes: { chapa: grupo(c.ajustes?.chapa), motor: grupo(c.ajustes?.motor) },
         _status: "",
       })),

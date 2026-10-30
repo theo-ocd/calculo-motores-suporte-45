@@ -63,6 +63,7 @@ LARANJA = PatternFill("solid", fgColor="F8CBAD")
 CORES_STATUS = {
     "OK": VERDE,
     "FORA_RANHURA": AMARELO,
+    "FORA_TENSIONAMENTO": AMARELO,
     "SEM_SOLUCAO": VERMELHO,
     "INCOMPATIVEL": VERMELHO,
 }
@@ -213,7 +214,8 @@ def _aba_leiame(ws: Worksheet, versao_dados: str) -> None:
         ("Abas", True),
         (", ".join(ABAS), False),
         ("resultados e varredura_dy são calculadas pelo núcleo (não digitar).", False),
-        ("Cores: OK verde, FORA_RANHURA amarelo, SEM_SOLUCAO/INCOMPATIVEL vermelho;", False),
+        ("Cores: OK verde, FORA_RANHURA/FORA_TENSIONAMENTO amarelo,", False),
+        ("SEM_SOLUCAO/INCOMPATIVEL vermelho;", False),
         ("origem HIPOTESE/TODO em laranja.", False),
     ]
     for texto, negrito in linhas:

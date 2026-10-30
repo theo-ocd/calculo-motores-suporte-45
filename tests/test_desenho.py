@@ -28,7 +28,7 @@ def test_elementos_e_camadas() -> None:
     d = desenho.gerar(_resultado(), CFG)
     ids = _por_id(d)
     esperados = {
-        "O",
+        "O1",
         "arco-R_min",
         "arco-R_max",
         "raio-0",
@@ -53,7 +53,7 @@ def test_elementos_e_camadas() -> None:
         "cota-h",
     }
     assert esperados <= set(ids)
-    assert {p["camada"] for p in d["primitivas"]} == set(desenho.CAMADAS)
+    assert {p["camada"] for p in d["primitivas"]} == set(desenho.CAMADAS) - {"banco2"}
     assert d["H"] == 1646
 
 
@@ -66,7 +66,7 @@ def test_posicoes_na_vista_do_cad() -> None:
     assert ids["tubo"]["c"] == pytest.approx([-465, -(767 + 1646)])
     # centro do apoio: quadrado a 45° (losango); O: octógono; linha de centro do apoio
     assert len(ids["tubo"]["pts"]) == 4 and ids["tubo"]["pts"][0][1] == ids["tubo"]["c"][1]
-    assert len(ids["O"]["pts"]) == 8 and ids["O"]["c"] == [0.0, 0.0]
+    assert len(ids["O1"]["pts"]) == 8 and ids["O1"]["c"] == [0.0, 0.0]
     # cota do x do tubo no alto do desenho (acima da altura de O)
     cx = ids["cota-x-tubo"]
     assert cx["p0"][1] == cx["p1"][1] > 0 and (cx["p0"][0], cx["p1"][0]) == (0, -465)

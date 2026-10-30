@@ -10,9 +10,10 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from tensorcad.banco_duplo import AvaliacaoBancoDuplo, centro_em
 from tensorcad.projeto import ConfigProjeto, ResultadoProjeto, posicao
 
-CAMADAS = ("construcao", "estrutura", "cotas", "chapa", "motor")  # ordem de pintura
+CAMADAS = ("construcao", "banco2", "estrutura", "cotas", "chapa", "motor")  # ordem de pintura
 ESPESSURA_CHAPA = 10.0  # apenas visual (espessura real não cadastrada)
 RAIO_SIMBOLO_O = 70.0  # octógono do centro dos raios (visual)
 MEIA_DIAGONAL_APOIO = 60.0  # quadrado a 45° do centro do apoio (visual)
@@ -31,8 +32,15 @@ def altura_desenho(r: ResultadoProjeto) -> float | None:
     return r.cota_recomendada
 
 
-def gerar(r: ResultadoProjeto, cfg: ConfigProjeto) -> dict[str, Any] | None:
-    """Primitivas do desenho na altura H de exibição (None se não há H)."""
+def gerar(
+    r: ResultadoProjeto, cfg: ConfigProjeto, banco2: AvaliacaoBancoDuplo | None = None
+) -> dict[str, Any] | None:
+    """Primitivas do desenho na altura H de exibição (None se não há H).
+
+    Com `banco2` (modo banco duplo), acrescenta na camada "banco2" o centro O2, os arcos
+    R2_min/R2_max, os raios de O2 ao motor e o trecho admissível da trajetória do centro
+    (entre o arco R1 e o arco R2) em cada tensão.
+    """
     H = altura_desenho(r)
     if H is None:
         return None
@@ -74,8 +82,8 @@ def gerar(r: ResultadoProjeto, cfg: ConfigProjeto) -> dict[str, Any] | None:
     add(
         "poligono",
         "construcao",
-        "O",
-        "O — centro dos raios",
+        "O1",
+        "O1 — centro dos raios",
         {"X": 0, "Y": 0},
         pts=octogono,
         c=[0.0, 0.0],
@@ -105,6 +113,71 @@ def gerar(r: ResultadoProjeto, cfg: ConfigProjeto) -> dict[str, Any] | None:
                 p0=[0.0, 0.0],
                 p1=_cad(p.Cx, p.Cy),
             )
+
+    # ---------------------------------------------------------------- banco duplo (O2)
+    if banco2 is not None:
+        o2x, o2y = banco2.config.centro
+        c2 = _cad(o2x, o2y)
+        add(
+            "poligono",
+            "banco2",
+            "O2",
+            "O2 — centro dos raios (tensionamento para banco duplo)",
+            {"deslocamento_y": banco2.config.deslocamento_y},
+            pts=[[c2[0] + q[0], c2[1] + q[1]] for q in octogono],
+            c=c2,
+        )
+        add(
+            "cota",
+            "banco2",
+            "cota-O2",
+            f"{banco2.config.deslocamento_y:g}",
+            {"deslocamento_y": banco2.config.deslocamento_y},
+            p0=_cad(-RAIO_SIMBOLO_O * 2, 0),
+            p1=_cad(-RAIO_SIMBOLO_O * 2, o2y),
+        )
+        angulos2 = [
+            math.degrees(math.atan2(-(p.Cy - o2y), -(p.Cx - o2x)))
+            for p in pos.values()
+            if p.Cx is not None and p.Cy is not None
+        ]
+        a2 = sum(angulos2) / len(angulos2) if angulos2 else a_med
+        for nome, R in (("R2_min", banco2.config.R2_min), ("R2_max", banco2.config.R2_max)):
+            add(
+                "arco",
+                "banco2",
+                f"arco-{nome}",
+                f"{nome} = {R:g}",
+                {"R": R},
+                c=c2,
+                r=R,
+                a0=a2 - ABERTURA_ARCO_GRAUS,
+                a1=a2 + ABERTURA_ARCO_GRAUS,
+            )
+        for q in banco2.posicoes:
+            p = pos[q.rotulo]
+            assert p.Cx is not None and p.Cy is not None
+            add(
+                "linha",
+                "banco2",
+                f"raio2-{q.rotulo}",
+                f"O2 → motor {q.rotulo} % (sobre o arco R1)",
+                {"dist_O2": q.dist_O2, "R2": q.R2, "folga_R2": q.folga_R2},
+                p0=c2,
+                p1=_cad(p.Cx, p.Cy),
+                status="OK" if q.dentro else "AVISO",
+            )
+            if q.s_R2 is not None and q.dentro:
+                add(
+                    "linha",
+                    "banco2",
+                    f"trecho-{q.rotulo}",
+                    f"trecho admissível do centro a {q.rotulo} % (entre R1 e R2)",
+                    {"curso": q.curso, "d_R1": -q.s_R1, "d_R2": -q.s_R2},
+                    p0=_cad(*centro_em(e, cfg, H, q.s_R1)),
+                    p1=_cad(*centro_em(e, cfg, H, q.s_R2)),
+                    status="OK",
+                )
 
     # ---------------------------------------------------------------- estrutura
     x_piso = [-300.0, max(1300.0, r.a0 + e.chapa.comprimento + 200)]

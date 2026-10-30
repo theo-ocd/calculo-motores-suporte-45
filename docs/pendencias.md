@@ -15,6 +15,9 @@ Os IDs P1–P7 abaixo devem ficar sincronizados com o CSV (verificado em teste).
 | P5 | Catálogo de motores (AC, HD, L, massa) — fabricante a definir | Desenho e interferência | ABERTO |
 | P6 | Coordenadas X_O_cad/Y_O_cad do centro do arco | Exportação CAD | ABERTO |
 | P7 | Dimensões da chapa (espessura, comprimento, largura) | Desenho CAD | ABERTO |
+| P8 | Banco duplo: O2 fica 500 mm acima de O | Banco duplo — posição de O2 | RESOLVIDO (acima) |
+| P9 | Banco duplo: raios R2_min/R2_max do banco 2 | Banco duplo — R2_min/R2_max | RESOLVIDO (independentes do banco 1, por caso) |
+| P10 | Banco duplo: critério de posição do motor único | Banco duplo — status e H recomendada | RESOLVIDO (≥ R1 de O1 e ≤ R2 de O2 a 0 % e 3 %, obrigatório: FORA_TENSIONAMENTO) |
 
 Pendência do repositório (fora do CSV): licença (LICENSE provisório, TODO).
 
@@ -89,3 +92,17 @@ Substitui S2, S3, S4 e S5 acima:
   (deslizar para baixo). O cálculo exige todas as folgas ≥ 0, incluindo as das pontas
   internas, quando conhecidas.
 - Pendente: largura das ranhuras (por isso a carcaça 180 aparece como PARCIAL).
+
+## Banco duplo — esboço (branch feature/banco-duplo)
+
+Atrás do switch: desligado, nada muda. Detalhes em docs/banco_duplo.md.
+
+- O2 fica 500 mm **acima** de O (P8, confirmado).
+- R2_min e R2_max são entradas por caso, **independentes** do banco 1 (P9, confirmado).
+- Motor único: a 0 % e a 3 %, o centro deve ficar a ≥ R1 de O e ≤ R2 de O2 (P10,
+  confirmado). Sem trecho entre os arcos, gera **aviso**.
+- Obrigatório (confirmado): sem trecho entre os arcos, o caso fica FORA_TENSIONAMENTO. O curso
+  entra como folga na H recomendada.
+- Suposição: o curso (mm ao longo da chapa) é tratado como mais uma folga na maximização da
+  folga mínima.
+- O centro dos raios O passa a se chamar O1 no desenho e na interface.

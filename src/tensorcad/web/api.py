@@ -10,7 +10,7 @@ from typing import Any
 
 import tensorcad
 from tensorcad import ajustes as ajustes_mod
-from tensorcad import desenho
+from tensorcad import banco_duplo, desenho
 from tensorcad.loader import BaseDados, Padroes
 from tensorcad.models import Origem
 from tensorcad.projeto import (
@@ -51,6 +51,7 @@ class Contexto:
     faixa: tuple[int, int] = FAIXA_CARCACAS
     y_piso: float = Y_PISO_PADRAO
     x_tubo: float = X_TUBO_PADRAO
+    dy_banco2: float = banco_duplo.DESLOCAMENTO_Y_PADRAO  # O2 acima de O (banco duplo)
 
 
 def _numero(carcaca: str) -> int | None:
@@ -67,7 +68,7 @@ def saude(ctx: Contexto) -> dict[str, Any]:
         "avisos": len(ctx.base.avisos) + len(ctx.padroes.avisos),
         "erros_chapas": len(ctx.padroes.erros),
         "faixa": list(ctx.faixa),
-        "fixos": {"y_piso": ctx.y_piso, "x_tubo": ctx.x_tubo},
+        "fixos": {"y_piso": ctx.y_piso, "x_tubo": ctx.x_tubo, "dy_banco2": ctx.dy_banco2},
     }
 
 
@@ -233,8 +234,56 @@ def serializar(r: ResultadoProjeto) -> dict[str, Any]:
     }
 
 
+def _ler_banco_duplo(
+    ctx: Contexto, bruto: Any, erros: dict[str, str]
+) -> banco_duplo.ConfigBancoDuplo | None:
+    """{"ativo": bool, "R2_min", "R2_max"} (raios do banco 2); None se desligado."""
+    if bruto is None:
+        return None
+    if not isinstance(bruto, dict):
+        erros["banco_duplo"] = "esperado um objeto"
+        return None
+    if not bruto.get("ativo"):
+        return None
+    sub: dict[str, str] = {}
+    r2_min = _num(bruto, "R2_min", sub, obrigatorio=True, positivo=True)
+    r2_max = _num(bruto, "R2_max", sub, obrigatorio=True, positivo=True)
+    if r2_min is not None and r2_max is not None and r2_min > r2_max:
+        sub["R2_max"] = "R2_max deve ser maior ou igual a R2_min"
+    erros.update({f"banco_duplo.{k}": v for k, v in sub.items()})
+    if sub or r2_min is None or r2_max is None:
+        return None
+    return banco_duplo.ConfigBancoDuplo(r2_min, r2_max, ctx.dy_banco2)
+
+
+def _banco_duplo(av: banco_duplo.AvaliacaoBancoDuplo) -> dict[str, Any]:
+    return {
+        "deslocamento_y": av.config.deslocamento_y,
+        "R2_min": av.config.R2_min,
+        "R2_max": av.config.R2_max,
+        "H": av.H,
+        "ok": av.ok,
+        "avisos": list(av.avisos),
+        "posicoes": [
+            {
+                "rotulo": q.rotulo,
+                "R1": q.R1,
+                "R2": q.R2,
+                "dist_O2": q.dist_O2,
+                "folga_R2": q.folga_R2,
+                "d_R1": -q.s_R1,
+                "d_R2": None if q.s_R2 is None else -q.s_R2,
+                "curso": q.curso,
+                "dentro": q.dentro,
+            }
+            for q in av.posicoes
+        ],
+    }
+
+
 def calcular(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
-    """Entradas: carcaca, motor_id (opcional), R_min, R_max, cota (opcional), caso_id."""
+    """Entradas: carcaca, motor_id (opcional), R_min, R_max, cota (opcional), caso_id,
+    banco_duplo (opcional: ativo, R2_min, R2_max)."""
     if not isinstance(corpo, dict):
         raise ErroEntrada({"(corpo)": "esperado um objeto JSON"})
     erros: dict[str, str] = {}
@@ -252,6 +301,7 @@ def calcular(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
     if r_min is not None and r_max is not None and r_min > r_max:
         erros["R_max"] = "R_max deve ser maior ou igual a R_min"
     aj_chapa, aj_motor = ajustes_mod.ler(corpo.get("ajustes"), erros)
+    bd = _ler_banco_duplo(ctx, corpo.get("banco_duplo"), erros)
     motor = None
     if info is not None and info["calculavel"]:
         ids = [m["motor_id"] for m in info["motores"]]
@@ -278,10 +328,14 @@ def calcular(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
         cota,
     )
     cfg = ConfigProjeto(y_piso=ctx.y_piso, x_tubo=ctx.x_tubo)
-    r = resolver_caso(entrada, cfg)
+    if bd is None:
+        r, av = resolver_caso(entrada, cfg), None
+    else:
+        r, av = banco_duplo.resolver(bd, entrada, cfg)
     return {
         **serializar(r),
-        "desenho": desenho.gerar(r, cfg),
+        "banco_duplo": None if av is None else _banco_duplo(av),
+        "desenho": desenho.gerar(r, cfg, av),
         "ajustes_aplicados": {"chapa": aj_chapa, "motor": aj_motor},
         "dimensoes_chapa": {c: getattr(linha, c) for c, _, _ in CAMPOS_CHAPA},
     }
@@ -327,7 +381,15 @@ def exportar(ctx: Contexto, corpo: Any) -> tuple[bytes, str]:
     erros: dict[str, str] = {}
     entradas = []
     for i, caso in enumerate(projeto["casos"]):
-        dados = {**caso, "cota": projeto.get("cota")}
+        dados = {
+            **caso,
+            "cota": projeto.get("cota"),
+            "banco_duplo": {
+                "ativo": bool(projeto.get("banco_duplo")),
+                "R2_min": caso.get("R2_min"),
+                "R2_max": caso.get("R2_max"),
+            },
+        }
         try:
             r = calcular(ctx, dados)
         except ErroEntrada as exc:
@@ -342,6 +404,13 @@ def exportar(ctx: Contexto, corpo: Any) -> tuple[bytes, str]:
                 R_max=r["R_max"],
                 cota_informada=r["cota_informada"],
                 ajustes={k: v for k, v in aj.items() if v} or None,
+                banco_duplo=None
+                if r["banco_duplo"] is None
+                else {
+                    "R2_min": r["banco_duplo"]["R2_min"],
+                    "R2_max": r["banco_duplo"]["R2_max"],
+                    "deslocamento_y": r["banco_duplo"]["deslocamento_y"],
+                },
             )
         )
     if erros:

@@ -15,6 +15,7 @@ class Status(StrEnum):
     OK = "OK"
     SEM_SOLUCAO = "SEM_SOLUCAO"
     FORA_RANHURA = "FORA_RANHURA"
+    FORA_TENSIONAMENTO = "FORA_TENSIONAMENTO"  # banco duplo: sem trecho entre R1 e R2
     INCOMPATIVEL = "INCOMPATIVEL"
 
 

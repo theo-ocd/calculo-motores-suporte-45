@@ -14,7 +14,7 @@ Como b(L) = y_piso + cota − cota_L_tubo, usa-se o ponto com cota = 0 como P do
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 from tensorcad import geometry as g
@@ -24,6 +24,10 @@ from tensorcad.models import ChapaPadrao, Motor, Ranhura
 
 Y_PISO_PADRAO = 767.0
 X_TUBO_PADRAO = 465.0
+
+# Restrição extra sobre a cota (ex.: banco duplo): folga em mm ao longo da chapa,
+# ≥ 0 atende. Entra na "folga mínima" que a cota recomendada maximiza.
+Restricao = Callable[[float], float]
 
 
 @dataclass(frozen=True)
@@ -121,21 +125,30 @@ def _dominio(e: EntradaCaso, cfg: ConfigProjeto) -> tuple[float, float] | None:
     return centro - raio, centro + raio
 
 
-def _margem_conjunta(e: EntradaCaso, cfg: ConfigProjeto, cota: float) -> float:
+def _margem_conjunta(
+    e: EntradaCaso, cfg: ConfigProjeto, cota: float, restricao: Restricao | None = None
+) -> float:
     ms = []
     for R in (e.R_min, e.R_max):
         p = posicao(e, cfg, R, cota)
         if p.s is None or p.margem is None:
             return -math.inf
         ms.append(p.margem)
+    if restricao is not None:
+        ms.append(restricao(cota))
     return min(ms)
 
 
 def cota_max_margem(
-    e: EntradaCaso, cfg: ConfigProjeto, passo: float = 1.0, tol: float = 1e-6
+    e: EntradaCaso,
+    cfg: ConfigProjeto,
+    passo: float = 1.0,
+    tol: float = 1e-6,
+    restricao: Restricao | None = None,
 ) -> tuple[float, float] | None:
-    """Cota que maximiza a menor folga entre R_min e R_max (varredura + refinamento por
-    seção áurea). Retorna (cota, margem) ou None se não há ranhuras/solução."""
+    """Cota que maximiza a menor folga entre R_min e R_max (e a da `restricao`, se houver)
+    — varredura + refinamento por seção áurea. Retorna (cota, margem) ou None se não há
+    ranhuras/solução."""
     dom = _dominio(e, cfg)
     if dom is None:
         return None
@@ -143,20 +156,20 @@ def cota_max_margem(
     n = max(2, int((hi - lo) / passo))
     melhor = max(
         (lo + (hi - lo) * i / n for i in range(n + 1)),
-        key=lambda c: _margem_conjunta(e, cfg, c),
+        key=lambda c: _margem_conjunta(e, cfg, c, restricao),
     )
-    if _margem_conjunta(e, cfg, melhor) == -math.inf:
+    if _margem_conjunta(e, cfg, melhor, restricao) == -math.inf:
         return None
     a, b = max(lo, melhor - passo), min(hi, melhor + passo)
     r = (math.sqrt(5) - 1) / 2
     while b - a > tol:
         c1, c2 = b - r * (b - a), a + r * (b - a)
-        if _margem_conjunta(e, cfg, c1) < _margem_conjunta(e, cfg, c2):
+        if _margem_conjunta(e, cfg, c1, restricao) < _margem_conjunta(e, cfg, c2, restricao):
             a = c1
         else:
             b = c2
     cota = (a + b) / 2
-    return cota, _margem_conjunta(e, cfg, cota)
+    return cota, _margem_conjunta(e, cfg, cota, restricao)
 
 
 def _intersecao(
@@ -171,8 +184,51 @@ def _intersecao(
     return sorted(out)
 
 
-def resolver_caso(e: EntradaCaso, cfg: ConfigProjeto) -> ResultadoProjeto:
-    """Faixa admissível da cota, cota recomendada (máxima folga mínima) e verificações."""
+def faixas_restricao(
+    e: EntradaCaso, cfg: ConfigProjeto, restricao: Restricao, passo: float = 1.0, tol: float = 1e-6
+) -> list[tuple[float, float]]:
+    """Intervalos de cota (no domínio de solução) em que restricao(cota) ≥ 0."""
+    dom = _dominio(e, cfg)
+    if dom is None:
+        return []
+    lo, hi = dom
+    n = max(2, int((hi - lo) / passo))
+    xs = [lo + (hi - lo) * i / n for i in range(n + 1)]
+    ok = [restricao(x) >= 0 for x in xs]
+
+    def borda(a: float, b: float) -> float:
+        """Bissecção da troca de sinal em [a, b] (restricao(a) e restricao(b) diferem)."""
+        va = restricao(a) >= 0
+        while b - a > tol:
+            m = (a + b) / 2
+            if (restricao(m) >= 0) == va:
+                a = m
+            else:
+                b = m
+        return (a + b) / 2
+
+    faixas: list[tuple[float, float]] = []
+    inicio = xs[0] if ok[0] else None
+    for i in range(1, len(xs)):
+        if ok[i] and not ok[i - 1]:
+            inicio = borda(xs[i - 1], xs[i])
+        elif ok[i - 1] and not ok[i]:
+            assert inicio is not None
+            faixas.append((inicio, borda(xs[i - 1], xs[i])))
+            inicio = None
+    if inicio is not None:
+        faixas.append((inicio, xs[-1]))
+    return faixas
+
+
+def resolver_caso(
+    e: EntradaCaso, cfg: ConfigProjeto, restricao: Restricao | None = None
+) -> ResultadoProjeto:
+    """Faixa admissível da cota, cota recomendada (máxima folga mínima) e verificações.
+
+    `restricao` (opcional, ex.: banco duplo) restringe a faixa e entra na folga mínima;
+    sem cota que a atenda (e com as ranhuras atendidas), o status é FORA_TENSIONAMENTO.
+    """
     a0, b0 = ponto_base(cfg, e.chapa)
     h = g.calcular_h(e.motor.H, e.chapa.e_apoio)
     th = e.chapa.theta_deg
@@ -216,7 +272,10 @@ def resolver_caso(e: EntradaCaso, cfg: ConfigProjeto) -> ResultadoProjeto:
     faixas = _intersecao(
         rn.faixa_dy(a0, b0, h, th, e.R_min, *lim), rn.faixa_dy(a0, b0, h, th, e.R_max, *lim)
     )
-    otimo = cota_max_margem(e, cfg)
+    faixas_ranhuras = faixas
+    if restricao is not None:
+        faixas = _intersecao(faixas, faixas_restricao(e, cfg, restricao))
+    otimo = cota_max_margem(e, cfg, restricao=restricao)
     if otimo is None:
         return ResultadoProjeto(
             e,
@@ -234,6 +293,14 @@ def resolver_caso(e: EntradaCaso, cfg: ConfigProjeto) -> ResultadoProjeto:
     cota, margem = otimo
     if faixas:
         status, msg = Status.OK, f"altura H admissível em {len(faixas)} faixa(s)"
+    elif faixas_ranhuras:
+        assert restricao is not None
+        status = Status.FORA_TENSIONAMENTO
+        msg = (
+            "nenhuma altura H atende o tensionamento para banco duplo: na H recomendada, "
+            f"curso entre os arcos R1 e R2 = {restricao(cota):.2f} mm "
+            f"(folga mínima {margem:.2f} mm)"
+        )
     else:
         status = Status.FORA_RANHURA
         msg = (

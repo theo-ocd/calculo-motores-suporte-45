@@ -110,7 +110,7 @@ const Desenho = (() => {
       case "ponto": {
         const [x, y] = P(p.p);
         e = el("circle", { ...comum, class: "ponto", cx: x, cy: y, r: 1 }, g);
-        if (p.id === "O" || p.id === "L") texto(g, p.id, [x, y], 10, -10, "rotulo rotulo-ponto", "start");
+        if (p.id === "L") texto(g, p.id, [x, y], 10, -10, "rotulo rotulo-ponto", "start");
         break;
       }
       case "linha": {
@@ -123,7 +123,7 @@ const Desenho = (() => {
       case "poligono": {
         const pts = p.pts.map(P).map((q) => q.join(",")).join(" ");
         e = el(p.tipo === "poligono" ? "polygon" : "polyline", { ...comum, points: pts }, g);
-        if (p.id === "O" && p.c) texto(g, "O", P(p.c), 16, -16, "rotulo rotulo-ponto", "start");
+        if ((p.id === "O1" || p.id === "O2") && p.c) texto(g, p.id, P(p.c), 16, -16, "rotulo rotulo-ponto", "start");
         break;
       }
       case "circulo": {
@@ -133,11 +133,13 @@ const Desenho = (() => {
       }
       case "arco": {
         const rad = (a) => (a * Math.PI) / 180;
-        const [x0, y0] = P([p.r * Math.cos(rad(p.a0)), p.r * Math.sin(rad(p.a0))]);
-        const [x1, y1] = P([p.r * Math.cos(rad(p.a1)), p.r * Math.sin(rad(p.a1))]);
+        const [ox, oy] = p.c || [0, 0];
+        const [x0, y0] = P([ox + p.r * Math.cos(rad(p.a0)), oy + p.r * Math.sin(rad(p.a0))]);
+        const [x1, y1] = P([ox + p.r * Math.cos(rad(p.a1)), oy + p.r * Math.sin(rad(p.a1))]);
         const grande = Math.abs(p.a1 - p.a0) > 180 ? 1 : 0;
         e = el("path", { ...comum, d: `M ${x0} ${y0} A ${p.r} ${p.r} 0 ${grande} 0 ${x1} ${y1}` }, g);
-        texto(g, p.rotulo, [x1, y1], 0, -12);
+        // banco 2: rótulo na outra ponta para não sobrepor o do banco 1
+        texto(g, p.rotulo, p.camada === "banco2" ? [x0, y0] : [x1, y1], 0, -12);
         break;
       }
       case "cota": {
@@ -213,7 +215,7 @@ const Desenho = (() => {
     });
     svg.addEventListener("pointermove", (ev) => {
       const [X, Y] = paraDesenho(ev);
-      xy.textContent = `X ${fmt(X, 1)}   Y ${fmt(Y, 1)} mm  (a partir de O; X→, Y↑)`;
+      xy.textContent = `X ${fmt(X, 1)}   Y ${fmt(Y, 1)} mm  (a partir de O1; X→, Y↑)`;
       if (arrasto) {
         const u = mmPorPx();
         vb.x = arrasto.vx - (ev.clientX - arrasto.x) * u;

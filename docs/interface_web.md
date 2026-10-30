@@ -111,7 +111,7 @@ O rascunho fica no navegador (`localStorage`).
 - **Aceite:** salvar → abrir reproduz o mesmo estado; o .xlsx exportado é igual ao gerado
   pela CLI.
 
-### W5 — Fonte de dados por caminho pré-estabelecido
+### W5 — Fonte de dados por caminho pré-estabelecido (FUTURO — adiada, não será trabalhada agora)
 - **Arquivo de dados padrão:** `tensorcad_dados.xlsx`, com abas `motores` e
   `chapas_carcaca`. Ele é procurado nesta ordem:
   1. ao lado do .exe;
@@ -124,7 +124,7 @@ O rascunho fica no navegador (`localStorage`).
 - **Aceite:** editar o .xlsx e clicar em recarregar atualiza o seletor de carcaças e os
   resultados.
 
-### W6 — Gráficos e análise
+### W6 — Gráficos e análise (FUTURO — adiada, não será trabalhada agora)
 - Gráfico interativo folga mínima × cota 1646 (0 % e 3 %), com faixa admissível sombreada e
   a cota recomendada marcada. Clicar no gráfico aplica a cota.
 - Comparação entre casos do projeto: tabela-resumo com status e cota de cada caso.
