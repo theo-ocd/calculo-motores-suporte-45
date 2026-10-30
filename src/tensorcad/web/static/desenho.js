@@ -123,6 +123,7 @@ const Desenho = (() => {
       case "poligono": {
         const pts = p.pts.map(P).map((q) => q.join(",")).join(" ");
         e = el(p.tipo === "poligono" ? "polygon" : "polyline", { ...comum, points: pts }, g);
+        if (p.id === "O" && p.c) texto(g, "O", P(p.c), 16, -16, "rotulo rotulo-ponto", "start");
         break;
       }
       case "circulo": {

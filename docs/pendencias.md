@@ -9,9 +9,9 @@ Os IDs P1–P7 abaixo devem ficar sincronizados com o CSV (verificado em teste).
 | id | Item | Impacto | Status |
 |----|------|---------|--------|
 | P1 | Confirmar carcaça do motor do desenho (160?) e e_apoio=20 mm | h de todos os casos | ABERTO |
-| P2 | Confirmar lado das folgas 9 e 49 (ranhura 1 = lado do centro do arco?) | u_ini/u_fim e status | ABERTO |
-| P3 | Medir u_fim da ranhura 1, u_ini da ranhura 2 e largura real das ranhuras | Desenho CAD | ABERTO |
-| P4 | Curso da ranhura (~49 mm) menor que o necessário R2086→R2161 (~83 mm) | Projeto da chapa | ALERTA |
+| P2 | Confirmar lado das folgas 9 e 49 (ranhura 1 = lado do centro do arco?) | u_ini/u_fim e status | RESOLVIDO |
+| P3 | Medir u_fim da ranhura 1, u_ini da ranhura 2 e largura real das ranhuras | Desenho CAD | PARCIAL (falta largura) |
+| P4 | Curso da ranhura (~49 mm) menor que o necessário R2086→R2161 (~83 mm) | Projeto da chapa | RESOLVIDO (chapa real: 155 mm) |
 | P5 | Catálogo de motores (AC, HD, L, massa) — fabricante a definir | Desenho e interferência | ABERTO |
 | P6 | Coordenadas X_O_cad/Y_O_cad do centro do arco | Exportação CAD | ABERTO |
 | P7 | Dimensões da chapa (espessura, comprimento, largura) | Desenho CAD | ABERTO |
@@ -76,3 +76,16 @@ Substitui S2, S3, S4 e S5 acima:
 - **S13 — Cota recomendada**: a que maximiza a menor folga entre R_min e R_max (varredura
   de 1 mm + seção áurea). Quando inviável, a mesma cota dá o menor déficit.
 - **S14 — dx_L = 358.44 (CH-180)**: derivado da calibração; confirmar no desenho da chapa.
+
+## Chapa CH-180 real (desenho do usuário)
+
+- Ao longo da chapa, a partir da ponta baixa: 110 | ranhura 155 | 124 | ranhura 155 | 91
+  (= 635). 155 é o comprimento total da ranhura. As folgas são medidas da borda externa do
+  furo do motor ao fim da ranhura.
+- Validação: em H = 1646, a folga de cima a 0 % é 16,30 (desenho: 16) e a de baixo a 3 %
+  é 40,64 (desenho: 41); centro do motor a 216,53 do tubo (desenho: 217). Confirma
+  dx 358,44 e dy 45.
+- Critério: a 0 % a folga de cima é bloqueante (inserção das correias); a 3 %, a de baixo
+  (deslizar para baixo). O cálculo exige todas as folgas ≥ 0, incluindo as das pontas
+  internas, quando conhecidas.
+- Pendente: largura das ranhuras (por isso a carcaça 180 aparece como PARCIAL).

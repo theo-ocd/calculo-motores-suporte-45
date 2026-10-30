@@ -64,6 +64,11 @@ def test_posicoes_na_vista_do_cad() -> None:
     assert ids["centro-0"]["p"] == pytest.approx([-p0.Cx, -p0.Cy])
     assert ids["centro-0"]["p"] == pytest.approx([-681.53, -1971.53], abs=0.01)
     assert ids["tubo"]["c"] == pytest.approx([-465, -(767 + 1646)])
+    # centro do apoio: quadrado a 45° (losango); O: octógono; linha de centro do apoio
+    assert len(ids["tubo"]["pts"]) == 4 and ids["tubo"]["pts"][0][1] == ids["tubo"]["c"][1]
+    assert len(ids["O"]["pts"]) == 8 and ids["O"]["c"] == [0.0, 0.0]
+    eixo = ids["eixo-apoio"]
+    assert eixo["p0"] == ids["tubo"]["c"] and eixo["p1"][0] == -465 and eixo["p1"][1] > 0
     assert ids["L"]["p"] == pytest.approx([-(465 + 358.44), -(767 + 1646 - 45)])
     assert ids["piso"]["p0"][1] == -767
     assert ids["arco-R_max"]["r"] == 2161
@@ -77,7 +82,8 @@ def test_posicoes_na_vista_do_cad() -> None:
     # a chapa tem o comprimento cadastrado
     pts = ids["chapa"]["pts"]
     assert math.dist(pts[0], pts[1]) == pytest.approx(635)
-    assert ids["motor-3"]["status"] == "FORA_RANHURA"
+    assert ids["motor-3"]["status"] == "OK"
+    assert ids["ranhura-2"]["rotulo"] == "ranhura 2"  # pontas conhecidas: trecho completo
 
 
 def test_sem_cota_usa_recomendada_e_limites() -> None:

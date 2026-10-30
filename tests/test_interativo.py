@@ -91,7 +91,7 @@ def test_interativo_cria_projeto(tmp_path: Path, monkeypatch, sem_abrir) -> None
     saida = ANSI.sub("", r.output)
     assert r.exit_code == 0, saida
     assert "Carcaças com chapa padrão: 180L, 180M" in saida
-    assert "Caso REF: FORA_RANHURA" in saida and "Caso ALT: OK" in saida
+    assert "Caso REF: OK" in saida and "Caso ALT: OK" in saida
     assert "número inválido" in saida
     wb = load_workbook(tmp_path / "obra.xlsx")
     assert wb.sheetnames[:3] == ["PROJETO", "REF", "ALT"]

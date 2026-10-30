@@ -60,12 +60,13 @@ class Posicao:
     folga_neg: float | None = None
     folga_pos: float | None = None
     mensagens: tuple[str, ...] = ()
+    folgas_internas: tuple[float, ...] = ()
 
     @property
     def margem(self) -> float | None:
         if self.folga_neg is None or self.folga_pos is None:
             return None
-        return min(self.folga_neg, self.folga_pos)
+        return min(self.folga_neg, self.folga_pos, *self.folgas_internas)
 
 
 @dataclass(frozen=True)
@@ -106,6 +107,7 @@ def posicao(e: EntradaCaso, cfg: ConfigProjeto, R: float, cota: float) -> Posica
         av.folga_neg,
         av.folga_pos,
         av.mensagens,
+        av.folgas_internas,
     )
 
 

@@ -38,14 +38,15 @@ def test_calcular_igual_ao_nucleo(ctx) -> None:
         ),
         ConfigProjeto(),
     )
-    assert r["status"] == "FORA_RANHURA" == nucleo.status.value
+    assert r["status"] == "OK" == nucleo.status.value
     assert r["cota_recomendada"] == nucleo.cota_recomendada
-    assert r["margem_recomendada"] == pytest.approx(-12.74, abs=0.01)
+    assert r["margem_recomendada"] == pytest.approx(28.56, abs=0.01)
     p0 = r["em_informada"][0]
     assert (p0["Cx"], p0["Cy"]) == pytest.approx((681.53, 1971.53), abs=0.01)
-    assert (p0["folga_neg"], p0["folga_pos"]) == pytest.approx((16.81, 41.19), abs=0.01)
+    assert (p0["folga_neg"], p0["folga_pos"]) == pytest.approx((16.30, 123.70), abs=0.01)
+    assert r["em_informada"][1]["folga_pos"] == pytest.approx(40.64, abs=0.01)
     assert r["motor"]["motor_id"] == "IEC-180L-4P" and r["h"] == 180
-    assert r["chapa"]["ranhura1_d_fim"] == 544.51 and r["chapa"]["ranhura2_d_ini"] == 192.51
+    assert r["chapa"]["ranhura1_d_fim"] == 544 and r["chapa"]["ranhura2_d_ini"] == 110
 
 
 def test_calcular_alt_2110_e_motor_escolhido(ctx) -> None:
@@ -54,8 +55,8 @@ def test_calcular_alt_2110_e_motor_escolhido(ctx) -> None:
         {"carcaca": "180", "motor_id": "IEC-180M-4P", "R_min": "2086", "R_max": "2110,0"},
     )
     assert r["status"] == "OK" and r["em_informada"] is None
-    assert r["faixas_cota"][0] == pytest.approx([1632.07, 1661.96], abs=0.01)
-    assert r["cota_recomendada"] == pytest.approx(1647.09, abs=0.01)
+    assert r["faixas_cota"][0] == pytest.approx([1551.88, 1661.47], abs=0.01)
+    assert r["cota_recomendada"] == pytest.approx(1607.26, abs=0.01)
     assert r["motor"]["motor_id"] == "IEC-180M-4P"
 
 

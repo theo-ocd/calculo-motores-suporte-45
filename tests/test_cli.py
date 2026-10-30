@@ -48,7 +48,7 @@ def test_caso_cria_e_adiciona_abas(tmp_path: Path) -> None:
         "OBRA-1",
     )
     assert r.exit_code == 0, r.output
-    assert "Caso REF: FORA_RANHURA" in r.output
+    assert "Caso REF: OK" in r.output
     r = _caso(proj, "--id", "ALT", "--rmax", "2110", "--motor", "IEC-180L-4P")
     assert r.exit_code == 0 and "Caso ALT: OK" in r.output
     wb = load_workbook(proj)

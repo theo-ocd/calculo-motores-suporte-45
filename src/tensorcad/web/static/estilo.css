@@ -221,3 +221,6 @@ select option { color: var(--txt); }
   fill: var(--acento); stroke: none; font-family: var(--mono); paint-order: stroke;
 }
 #mundo .rotulo-ponto { fill: var(--txt-2); }
+#mundo #el-O { stroke: var(--txt); stroke-dasharray: none; stroke-width: 1.4; fill: rgba(220, 230, 232, .08); }
+#mundo #el-eixo-apoio { stroke: #7f9aa1; stroke-dasharray: 18 5 3 5; }
+#mundo #el-tubo { stroke: #c9d6d9; stroke-width: 1.4; fill: rgba(201, 214, 217, .08); }

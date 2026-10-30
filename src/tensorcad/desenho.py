@@ -14,7 +14,9 @@ from tensorcad.projeto import ConfigProjeto, ResultadoProjeto, posicao
 
 CAMADAS = ("construcao", "estrutura", "cotas", "chapa", "motor")  # ordem de pintura
 ESPESSURA_CHAPA = 10.0  # apenas visual (espessura real não cadastrada)
-RAIO_TUBO = 30.0  # apenas visual (diâmetro do tubo não cadastrado)
+RAIO_SIMBOLO_O = 40.0  # octógono do centro dos raios (visual)
+MEIA_DIAGONAL_APOIO = 35.0  # quadrado a 45° do centro do apoio (visual)
+ACIMA_DE_O = 150.0  # linha de centro do apoio sobe até um pouco acima da altura de O
 ABERTURA_ARCO_GRAUS = 14.0
 
 
@@ -62,7 +64,22 @@ def gerar(r: ResultadoProjeto, cfg: ConfigProjeto) -> dict[str, Any] | None:
     pos = {"0": posicao(e, cfg, e.R_min, H), "3": posicao(e, cfg, e.R_max, H)}
 
     # ---------------------------------------------------------------- construção
-    add("ponto", "construcao", "O", "O — centro dos raios", {"X": 0, "Y": 0}, p=[0.0, 0.0])
+    octogono = [
+        [
+            RAIO_SIMBOLO_O * math.cos(math.radians(22.5 + 45 * k)),
+            RAIO_SIMBOLO_O * math.sin(math.radians(22.5 + 45 * k)),
+        ]
+        for k in range(8)
+    ]
+    add(
+        "poligono",
+        "construcao",
+        "O",
+        "O — centro dos raios",
+        {"X": 0, "Y": 0},
+        pts=octogono,
+        c=[0.0, 0.0],
+    )
     angulos = [math.degrees(math.atan2(-p.Cy, -p.Cx)) for p in pos.values() if p.Cx is not None]
     a_med = sum(angulos) / len(angulos) if angulos else -110.0
     for nome, R in (("R_min", e.R_min), ("R_max", e.R_max)):
@@ -100,14 +117,25 @@ def gerar(r: ResultadoProjeto, cfg: ConfigProjeto) -> dict[str, Any] | None:
         p0=_cad(x_piso[0], cfg.y_piso),
         p1=_cad(x_piso[1], cfg.y_piso),
     )
+    cT = _cad(*T)
+    m = MEIA_DIAGONAL_APOIO
     add(
-        "circulo",
+        "poligono",
         "estrutura",
         "tubo",
-        "tubo de apoio",
+        "centro do apoio (tubo)",
         {"x": T[0], "H": H},
-        c=_cad(*T),
-        r=RAIO_TUBO,
+        pts=[[cT[0] + m, cT[1]], [cT[0], cT[1] + m], [cT[0] - m, cT[1]], [cT[0], cT[1] - m]],
+        c=cT,
+    )
+    add(
+        "linha",
+        "construcao",
+        "eixo-apoio",
+        "linha de centro do apoio",
+        {"x": T[0]},
+        p0=cT,
+        p1=[cT[0], ACIMA_DE_O],
     )
     add(
         "polilinha",
