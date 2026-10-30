@@ -67,6 +67,10 @@ def test_posicoes_na_vista_do_cad() -> None:
     # centro do apoio: quadrado a 45° (losango); O: octógono; linha de centro do apoio
     assert len(ids["tubo"]["pts"]) == 4 and ids["tubo"]["pts"][0][1] == ids["tubo"]["c"][1]
     assert len(ids["O"]["pts"]) == 8 and ids["O"]["c"] == [0.0, 0.0]
+    # cota do x do tubo no alto do desenho (acima da altura de O)
+    cx = ids["cota-x-tubo"]
+    assert cx["p0"][1] == cx["p1"][1] > 0 and (cx["p0"][0], cx["p1"][0]) == (0, -465)
+    assert desenho.RAIO_SIMBOLO_O >= 70 and desenho.MEIA_DIAGONAL_APOIO >= 60
     eixo = ids["eixo-apoio"]
     assert eixo["p0"] == ids["tubo"]["c"] and eixo["p1"][0] == -465 and eixo["p1"][1] > 0
     assert ids["L"]["p"] == pytest.approx([-(465 + 358.44), -(767 + 1646 - 45)])

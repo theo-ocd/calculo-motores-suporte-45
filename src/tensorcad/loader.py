@@ -317,6 +317,7 @@ class Padroes:
     ranhuras: list[RanhuraPadrao] = field(default_factory=list)
     avisos: list[ErroValidacao] = field(default_factory=list)
     a_preencher: list[str] = field(default_factory=list)  # carcaças sem medidas na tabela
+    linhas: dict[str, ChapaCarcaca] = field(default_factory=dict)  # carcaça → linha da tabela
     erros: list[ErroValidacao] = field(default_factory=list)  # só no modo não estrito
     com_erro: dict[str, list[str]] = field(default_factory=dict)  # carcaça → mensagens
 
@@ -369,6 +370,7 @@ def carregar_padroes(diretorio: Path | str, *, estrito: bool = True) -> Padroes:
             continue
         chapa, ranhuras = cc.como_padrao()
         pad.chapas[chapa.chapa_id] = chapa
+        pad.linhas[cc.carcaca] = cc
         pad.ranhuras.extend(ranhuras)
         if cc.largura_ranhura is None:
             pad.avisos.append(
@@ -381,5 +383,6 @@ def carregar_padroes(diretorio: Path | str, *, estrito: bool = True) -> Padroes:
         carc = carcaca_da_linha.get(e.linha, "?")
         pad.com_erro.setdefault(carc, []).append(f"linha {e.linha} campo '{e.campo}': {e.mensagem}")
         pad.chapas.pop(f"CH-{carc}", None)  # carcaça duplicada: não usar nenhuma das linhas
+        pad.linhas.pop(carc, None)
     pad.ranhuras = [r for r in pad.ranhuras if r.chapa_id in pad.chapas]
     return pad

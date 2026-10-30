@@ -8,10 +8,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
 import tensorcad
 from tensorcad import desenho
 from tensorcad.loader import BaseDados, Padroes
-from tensorcad.models import Origem
+from tensorcad.models import ChapaCarcaca, Motor, Origem
 from tensorcad.projeto import (
     X_TUBO_PADRAO,
     Y_PISO_PADRAO,
@@ -26,6 +28,25 @@ FAIXA_CARCACAS = (160, 250)
 
 # Status exibidos na interface
 OK, PARCIAL, ERRO = "ok", "parcial", "erro"
+
+# Dimensões-chave editáveis (campo, rótulo, unidade); x do tubo e piso são fixos.
+CAMPOS_CHAPA: tuple[tuple[str, str, str], ...] = (
+    ("comprimento_chapa", "Comprimento da chapa", "mm"),
+    ("dx_L_tubo", "Tubo → ponta baixa (x)", "mm"),
+    ("dy_L_tubo", "Tubo → ponta baixa (y)", "mm"),
+    ("dist_L_ranhura", "Ponta baixa → ranhura", "mm"),
+    ("comprimento_ranhura", "Comprimento das ranhuras", "mm"),
+    ("dist_entre_ranhuras", "Vão entre ranhuras", "mm"),
+    ("dist_ranhura_topo", "Ranhura → ponta alta", "mm"),
+    ("largura_ranhura", "Largura das ranhuras", "mm"),
+    ("e_apoio", "Chapa → apoio dos pés", "mm"),
+    ("theta_deg", "Inclinação", "°"),
+)
+CAMPOS_MOTOR: tuple[tuple[str, str, str], ...] = (
+    ("H", "Altura de eixo", "mm"),
+    ("A", "A — entre furos dos pés", "mm"),
+    ("K", "K — diâmetro do furo", "mm"),
+)
 
 
 class ErroEntrada(ValueError):
@@ -81,12 +102,13 @@ def _status_chapa(ctx: Contexto, numero: int) -> tuple[str, str | None, str]:
     faltam = []
     if chapa.origem is not Origem.MEDIDO:
         faltam.append(f"origem {chapa.origem.value}")
-    if any(r.largura is None for r in rs):
-        faltam.append("largura das ranhuras")
     if any(r.d_ini is None or r.d_fim is None for r in rs):
         faltam.append("comprimento das ranhuras / vão")
     if faltam:
         return PARCIAL, chapa.chapa_id, "pendente: " + ", ".join(faltam)
+    # largura não entra na geometria 2D: só a verificação do furo K (aviso no cálculo)
+    if any(r.largura is None for r in rs):
+        return OK, chapa.chapa_id, "medidas completas (largura da ranhura não informada)"
     return OK, chapa.chapa_id, "medidas completas"
 
 
@@ -116,6 +138,7 @@ def carcacas(ctx: Contexto) -> list[dict[str, Any]]:
         lista = sorted(motores.get(n, []), key=lambda d: d["motor_id"])
         if status != ERRO and not lista:
             status, detalhe = ERRO, "nenhum motor cadastrado para a carcaça"
+        linha = ctx.padroes.linhas.get(str(n)) if chapa_id else None
         out.append(
             {
                 "carcaca": str(n),
@@ -124,9 +147,21 @@ def carcacas(ctx: Contexto) -> list[dict[str, Any]]:
                 "detalhe": detalhe,
                 "motores": lista,
                 "calculavel": status != ERRO,
+                "dimensoes_chapa": (
+                    {c: getattr(linha, c) for c, _, _ in CAMPOS_CHAPA} if linha else None
+                ),
             }
         )
     return out
+
+
+def campos(_ctx: Contexto) -> dict[str, Any]:
+    """Metadados dos campos editáveis (rótulos e unidades)."""
+
+    def lista(cs: tuple[tuple[str, str, str], ...]) -> list[dict[str, str]]:
+        return [{"campo": c, "rotulo": r, "unidade": u} for c, r, u in cs]
+
+    return {"chapa": lista(CAMPOS_CHAPA), "motor": lista(CAMPOS_MOTOR)}
 
 
 # --------------------------------------------------------------------------- cálculo
@@ -233,6 +268,18 @@ def calcular(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
     cota = _num(corpo, "cota", erros, obrigatorio=False)
     if r_min is not None and r_max is not None and r_min > r_max:
         erros["R_max"] = "R_max deve ser maior ou igual a R_min"
+    ajustes = corpo.get("ajustes") or {}
+    if not isinstance(ajustes, dict):
+        erros["ajustes"] = "esperado um objeto"
+        ajustes = {}
+    aj_chapa = _ler_ajustes(
+        ajustes.get("chapa"),
+        CAMPOS_CHAPA,
+        "chapa",
+        erros,
+        opcionais={"comprimento_ranhura", "dist_entre_ranhuras", "largura_ranhura"},
+    )
+    aj_motor = _ler_ajustes(ajustes.get("motor"), CAMPOS_MOTOR, "motor", erros, opcionais=set())
     motor = None
     if info is not None and info["calculavel"]:
         ids = [m["motor_id"] for m in info["motores"]]
@@ -244,17 +291,98 @@ def calcular(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
     if erros:
         raise ErroEntrada(erros)
     assert motor is not None and r_min is not None and r_max is not None
-    chapa = ctx.padroes.chapa_para(motor.carcaca)
-    assert chapa is not None
+    linha = ctx.padroes.linhas[carc]
+    if aj_chapa:
+        try:
+            linha = ChapaCarcaca.model_validate({**linha.model_dump(), **aj_chapa})
+        except ValidationError as exc:
+            erros.update(_erros_pydantic(exc, "chapa"))
+    if aj_motor:
+        try:
+            motor = Motor.model_validate({**motor.model_dump(), **aj_motor})
+        except ValidationError as exc:
+            erros.update(_erros_pydantic(exc, "motor"))
+    if erros:
+        raise ErroEntrada(erros)
+    chapa, ranhuras = linha.como_padrao()
     entrada = EntradaCaso(
         str(corpo.get("caso_id") or "caso"),
         motor,
         chapa,
-        ctx.padroes.ranhuras_de(chapa.chapa_id, motor.carcaca),
+        {r.ranhura_n: r.como_ranhura(motor.carcaca) for r in ranhuras},
         r_min,
         r_max,
         cota,
     )
     cfg = ConfigProjeto(y_piso=ctx.y_piso, x_tubo=ctx.x_tubo)
     r = resolver_caso(entrada, cfg)
-    return {**serializar(r), "desenho": desenho.gerar(r, cfg)}
+    return {
+        **serializar(r),
+        "desenho": desenho.gerar(r, cfg),
+        "ajustes_aplicados": {"chapa": aj_chapa, "motor": aj_motor},
+        "dimensoes_chapa": {c: getattr(linha, c) for c, _, _ in CAMPOS_CHAPA},
+    }
+
+
+def _ler_ajustes(
+    bruto: Any,
+    campos_validos: tuple[tuple[str, str, str], ...],
+    grupo: str,
+    erros: dict[str, str],
+    opcionais: set[str],
+) -> dict[str, float | None]:
+    """Valores numéricos dos ajustes; chave inválida ou número ruim viram erro de campo.
+    Campos opcionais aceitam vazio (= remover o valor)."""
+    if bruto is None:
+        return {}
+    if not isinstance(bruto, dict):
+        erros[f"ajustes.{grupo}"] = "esperado um objeto"
+        return {}
+    validos = {c for c, _, _ in campos_validos}
+    out: dict[str, float | None] = {}
+    for campo, valor in bruto.items():
+        chave = f"ajustes.{grupo}.{campo}"
+        if campo not in validos:
+            erros[chave] = "campo não editável"
+            continue
+        if valor is None or (isinstance(valor, str) and not valor.strip()):
+            if campo in opcionais:
+                out[campo] = None
+            else:
+                erros[chave] = "obrigatório"
+            continue
+        sub: dict[str, str] = {}
+        x = _num({campo: valor}, campo, sub, obrigatorio=True)
+        if sub:
+            erros[chave] = sub[campo]
+        else:
+            out[campo] = x
+    return out
+
+
+def _erros_pydantic(exc: ValidationError, grupo: str) -> dict[str, str]:
+    out = {}
+    for e in exc.errors():
+        loc = ".".join(str(p) for p in e["loc"])
+        chave = f"ajustes.{grupo}.{loc}" if loc else f"ajustes.{grupo}"
+        out[chave] = _traduzir(e)
+    return out
+
+
+_LIMITES = {
+    "greater_than": "deve ser maior que {gt:g}",
+    "greater_than_equal": "deve ser maior ou igual a {ge:g}",
+    "less_than": "deve ser menor que {lt:g}",
+    "less_than_equal": "deve ser menor ou igual a {le:g}",
+}
+
+
+def _traduzir(e: Any) -> str:
+    """Mensagem de validação em português (limites numéricos e erros do modelo)."""
+    modelo = _LIMITES.get(e.get("type", ""))
+    if modelo:
+        try:
+            return modelo.format(**e.get("ctx", {}))
+        except (KeyError, ValueError):
+            pass
+    return str(e["msg"]).removeprefix("Value error, ")

@@ -24,6 +24,7 @@ Rota = Callable[[api.Contexto], Any]
 ROTAS_GET: dict[str, Rota] = {
     "/api/saude": api.saude,
     "/api/carcacas": api.carcacas,
+    "/api/campos": api.campos,
 }
 RotaPost = Callable[[api.Contexto, Any], Any]
 ROTAS_POST: dict[str, RotaPost] = {
