@@ -184,3 +184,55 @@ def test_pagina_carrega_no_navegador(url: str) -> None:
             assert erros == []
         finally:
             nav.close()
+
+
+def test_calculo_ao_vivo_no_navegador(url: str) -> None:
+    sync = pytest.importorskip("playwright.sync_api")
+    with sync.sync_playwright() as p:
+        nav = _navegador(p)
+        try:
+            pg = nav.new_page()
+            erros: list[str] = []
+            pg.on("pageerror", lambda e: erros.append(str(e)))
+            pg.goto(url)
+            pg.wait_for_selector("#conexao[data-estado='ok']", timeout=10_000)
+            assert pg.inner_text("#fixo-x-tubo") == "465"
+            assert pg.inner_text("#fixo-y-piso") == "767"
+            assert pg.locator("#fixo-x-tubo").evaluate("e => e.tagName") == "DD"  # não editável
+            assert pg.locator("#carcaca").get_attribute("data-status") == "parcial"
+            assert pg.locator("#motor_id option").count() == 2
+
+            # REF-180: inviável, cota informada 1646
+            pg.fill("#R_min", "2086")
+            pg.fill("#R_max", "2161")
+            pg.fill("#cota", "1646")
+            pg.wait_for_selector("#status[data-status='FORA_RANHURA']", timeout=10_000)
+            resumo = pg.inner_text("#resumo")
+            assert "1.673,99" in resumo and "-12,74" in resumo and "nenhuma" in resumo
+            linhas = pg.locator("#posicoes tbody tr")
+            assert linhas.count() == 4
+            inf0 = linhas.nth(2).inner_text()
+            assert "380,70" in inf0 and "16,81" in inf0 and "41,19" in inf0
+
+            # ALT-2110 com o motor 180M, sem cota: viável
+            pg.select_option("#motor_id", "IEC-180M-4P")
+            pg.fill("#cota", "")
+            pg.fill("#R_max", "2110,0")
+            pg.wait_for_selector("#status[data-status='OK']", timeout=10_000)
+            resumo = pg.inner_text("#resumo")
+            assert "1.632,07 a 1.661,96" in resumo and "1.647,09" in resumo
+            assert pg.locator("#posicoes tbody tr").count() == 2
+            assert "IEC-180M-4P" in pg.inner_text("#chapa-info")
+
+            # erro por campo
+            pg.fill("#R_min", "2200")
+            pg.wait_for_selector(".campo[data-campo='R_max'].invalido", timeout=10_000)
+            assert "maior ou igual" in pg.inner_text(".campo[data-campo='R_max'] .erro-campo")
+
+            # carcaças com ERRO não podem ser escolhidas
+            assert pg.locator("#carcaca option[value='200']").is_disabled()
+            pg.click("#lista-carcacas li[data-carcaca='200']")
+            assert pg.locator("#carcaca").input_value() == "180"
+            assert erros == []
+        finally:
+            nav.close()
