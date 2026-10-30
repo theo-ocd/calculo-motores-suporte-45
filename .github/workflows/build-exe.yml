@@ -4,6 +4,13 @@ on:
   workflow_dispatch:
   push:
     tags: ["v*"]
+    branches: [develop]
+    paths:
+      - "src/**"
+      - "data/**"
+      - "scripts/build_exe.py"
+      - "pyproject.toml"
+      - ".github/workflows/build-exe.yml"
   pull_request:
     paths:
       - "src/**"
@@ -15,6 +22,8 @@ on:
 jobs:
   exe:
     runs-on: windows-latest
+    permissions:
+      contents: write  # publicar o .exe na pré-release exe-dev
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -47,6 +56,28 @@ jobs:
           foreach ($f in "ref.xlsx","p2.xlsx","out\resultados.csv","out\resultados.xlsx") {
             if (-not (Test-Path $f)) { throw "faltou $f" }
           }
+      - name: Publicar na pré-release exe-dev
+        # Anexos de release não contam na cota de artefatos do Actions.
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          ORIGEM: ${{ github.head_ref || github.ref_name }}
+        run: |
+          $tag = "exe-dev"
+          $notas = "Build de desenvolvimento do tensorcad.exe (substituído a cada build).`n`nCommit: $env:COMMIT`nBranch: $env:ORIGEM`nData: $((Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm')) UTC`n`nTestado no Windows sem Python no PATH (validar, casos REF-180/ALT, lote, modo interativo)."
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --prerelease --target $env:COMMIT --title "tensorcad.exe (desenvolvimento)" --notes $notas
+            if ($LASTEXITCODE) { throw "falha ao criar a pré-release" }
+          } else {
+            gh release edit $tag --prerelease --notes $notas
+            if ($LASTEXITCODE) { throw "falha ao editar a pré-release" }
+          }
+          gh release upload $tag dist/tensorcad.exe docs/executavel.md --clobber
+          if ($LASTEXITCODE) { throw "falha ao enviar o .exe" }
+          exit 0
       - uses: actions/upload-artifact@v4
         # Em PRs, falta de cota de armazenamento da conta não reprova o build já testado;
         # em execução manual e tags o artefato é obrigatório.
