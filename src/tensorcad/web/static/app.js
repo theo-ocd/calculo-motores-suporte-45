@@ -1,5 +1,6 @@
 "use strict";
-// tensorcad — interface web. W1: seletor de carcaça, campos e cálculo ao vivo.
+// tensorcad — interface web: projeto com vários casos (W4), campos e cálculo ao vivo (W1),
+// dimensões editáveis (W3) e desenho (desenho.js, W2).
 
 const ROTULO = { ok: "OK", parcial: "PARCIAL", erro: "ERRO" };
 const ESPERA_MS = 300;
@@ -80,7 +81,7 @@ function carcacaAtual() {
   return estado.carcacas.find((c) => c.carcaca === $("carcaca").value);
 }
 
-function aoTrocarCarcaca() {
+function aoTrocarCarcaca(_ev = null, { manterAjustes = false, motorId = null } = {}) {
   const c = carcacaAtual();
   $("carcaca").dataset.status = c ? c.status : "";
   $("carcaca-detalhe").textContent = c ? c.detalhe : "";
@@ -94,17 +95,18 @@ function aoTrocarCarcaca() {
     selM.append(op);
   }
   selM.disabled = !c || c.motores.length === 0;
+  if (motorId && c && c.motores.some((m) => m.motor_id === motorId)) selM.value = motorId;
   estado.padrao.chapa = (c && c.dimensoes_chapa) || {};
-  estado.ajustes = { chapa: {}, motor: {} };
+  if (!manterAjustes) estado.ajustes = { chapa: {}, motor: {} };
   montarDimensoes("chapa");
-  aoTrocarMotor();
+  aoTrocarMotor(null, { manterAjustes });
 }
 
-function aoTrocarMotor() {
+function aoTrocarMotor(_ev = null, { manterAjustes = false } = {}) {
   const c = carcacaAtual();
   const m = c && c.motores.find((x) => x.motor_id === $("motor_id").value);
   estado.padrao.motor = m ? { H: m.H, A: m.A, K: m.K } : {};
-  estado.ajustes.motor = {};
+  if (!manterAjustes) estado.ajustes.motor = {};
   montarDimensoes("motor");
   agendarCalculo();
 }
@@ -133,7 +135,8 @@ function montarDimensoes(grupo) {
     const inp = document.createElement("input");
     inp.id = id;
     inp.inputMode = "decimal";
-    inp.value = padrao === null || padrao === undefined ? "" : String(padrao);
+    const atual = meta.campo in estado.ajustes[grupo] ? estado.ajustes[grupo][meta.campo] : padrao;
+    inp.value = atual === null || atual === undefined ? "" : String(atual);
     inp.placeholder = OPCIONAIS.has(meta.campo) ? "vazio" : "";
     inp.addEventListener("input", () => aoEditarDimensao(grupo, meta.campo, inp.value));
     const rest = document.createElement("button");
@@ -234,6 +237,7 @@ function marcarErros(erros) {
 }
 
 function agendarCalculo() {
+  Projeto.lerFormulario();
   clearTimeout(estado.timer);
   estado.timer = setTimeout(calcular, ESPERA_MS);
 }
@@ -241,7 +245,8 @@ function agendarCalculo() {
 async function calcular() {
   const campos = lerCampos();
   if (!campos.R_min || !campos.R_max || !campos.carcaca) {
-    marcarErros({});
+    Projeto.definirStatus("");
+    marcarErros(Projeto.errosLocais());
     mostrarVazio("preencha Rmin e Rmax");
     return;
   }
@@ -254,7 +259,8 @@ async function calcular() {
       body: JSON.stringify(campos),
       signal: estado.controle.signal,
     });
-    marcarErros({});
+    marcarErros(Projeto.errosLocais());
+    Projeto.definirStatus(r.status);
     mostrarResultado(r);
     const trocou = estado.ultimaCarcaca !== campos.carcaca;
     estado.ultimaCarcaca = campos.carcaca;
@@ -264,7 +270,8 @@ async function calcular() {
       : "";
   } catch (e) {
     if (e.name === "AbortError") return;
-    marcarErros(e.campos || {});
+    Projeto.definirStatus("ERRO");
+    marcarErros({ ...(e.campos || {}), ...Projeto.errosLocais() });
     mostrarVazio(Object.keys(e.campos || {}).length ? "corrija os campos destacados" : `Erro: ${e.message}`);
   } finally {
     $("status").classList.remove("calculando");
@@ -363,7 +370,9 @@ function mostrarResultado(r) {
 
 async function iniciar() {
   Desenho.iniciar();
-  for (const id of ["cota", "caso_id", "R_min", "R_max"]) $(id).addEventListener("input", agendarCalculo);
+  for (const id of ["cota", "caso_id", "R_min", "R_max", "nome-projeto"]) {
+    $(id).addEventListener("input", agendarCalculo);
+  }
   $("carcaca").addEventListener("change", aoTrocarCarcaca);
   $("motor_id").addEventListener("change", aoTrocarMotor);
   $("btn-restaurar-tudo").addEventListener("click", (ev) => {
@@ -383,6 +392,7 @@ async function iniciar() {
     definirConexao("ok", "conectado");
     estado.campos = await obter("/api/campos");
     preencherCarcacas(await obter("/api/carcacas"));
+    Projeto.iniciar();
   } catch (e) {
     definirConexao("erro", "sem conexão");
     mostrarVazio(`Erro: ${e.message}`);

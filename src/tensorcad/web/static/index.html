@@ -14,6 +14,13 @@
       <span class="marca-nome">tensorcad</span>
       <span class="marca-sub">base tensora · posição do motor</span>
     </div>
+    <div class="acoes" role="toolbar" aria-label="Projeto">
+      <button type="button" id="btn-novo" title="Começar um projeto novo">novo</button>
+      <button type="button" id="btn-abrir" title="Abrir um projeto salvo (.json)">abrir…</button>
+      <button type="button" id="btn-salvar" title="Salvar o projeto em .json">salvar .json</button>
+      <button type="button" id="btn-exportar" class="principal" title="Exportar a planilha do projeto (uma aba por caso)">exportar .xlsx</button>
+      <input type="file" id="arquivo-projeto" accept=".json,application/json" hidden>
+    </div>
     <div class="topo-info">
       <span id="fonte-dados" class="info" title="Origem dos cadastros">dados: —</span>
       <span id="versao" class="info">v—</span>
@@ -21,10 +28,15 @@
     </div>
   </header>
 
+  <div id="aviso" class="aviso" role="status" hidden></div>
   <main class="layout">
     <aside class="painel painel-entradas" aria-label="Entradas">
       <form id="form-caso" autocomplete="off" novalidate>
         <h2>Projeto</h2>
+        <div class="campo" data-campo="nome-projeto">
+          <label for="nome-projeto">Nome do projeto</label>
+          <input id="nome-projeto" maxlength="80" value="PROJETO">
+        </div>
         <div class="campo" data-campo="cota">
           <label for="cota">Altura (H) do centro do apoio (mm)</label>
           <input id="cota" name="cota" inputmode="decimal" placeholder="opcional: verificar uma altura">
@@ -36,7 +48,15 @@
           <div><dt>Centro dos raios → piso</dt><dd id="fixo-y-piso">—</dd></div>
         </dl>
 
-        <h2>Caso</h2>
+        <h2>Casos <span id="contagem-casos" class="dica"></span></h2>
+        <ul id="lista-casos" class="lista-casos" aria-label="Casos do projeto"></ul>
+        <div class="botoes-casos">
+          <button type="button" id="btn-caso-novo" class="botao-mini">+ novo caso</button>
+          <button type="button" id="btn-caso-duplicar" class="botao-mini">duplicar</button>
+          <button type="button" id="btn-caso-excluir" class="botao-mini">excluir</button>
+        </div>
+
+        <h2>Caso ativo</h2>
         <div class="campo" data-campo="caso_id">
           <label for="caso_id">Nome do caso</label>
           <input id="caso_id" name="caso_id" value="caso-1" maxlength="31">
@@ -143,6 +163,7 @@
   </main>
 
   <script src="desenho.js"></script>
+  <script src="projeto.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

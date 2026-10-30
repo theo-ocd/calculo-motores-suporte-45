@@ -99,6 +99,11 @@ do tubo (465) e o piso (767) são fixos e aparecem apenas para consulta.
 - **Aceite:** um override muda o resultado como esperado, e o reset volta ao padrão.
 
 ### W4 — Projeto com vários casos e salvamento em .json
+
+A altura H é do projeto, comum a todos os casos. Cada caso guarda carcaça, motor, R_min,
+R_max e os ajustes de dimensões. O .json usa `"formato": "tensorcad-projeto", "versao": 1`.
+O rascunho fica no navegador (`localStorage`).
+
 - Lista de casos do projeto (adicionar, duplicar, renomear, excluir), um caso ativo por vez.
 - Salvar e abrir o projeto em `.json` versionado (`"formato": "tensorcad-projeto", "versao": 1`)
   com entradas, overrides e nome. Rascunho automático no navegador para não perder o progresso.
