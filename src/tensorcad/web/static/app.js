@@ -134,6 +134,12 @@ async function calcular() {
     });
     marcarErros({});
     mostrarResultado(r);
+    const trocou = estado.ultimaCarcaca !== campos.carcaca;
+    estado.ultimaCarcaca = campos.carcaca;
+    Desenho.desenhar(r.desenho, { reajustar: trocou });
+    $("info-desenho").textContent = r.desenho
+      ? `desenho em H = ${fmt(r.desenho.H)} (${r.cota_informada !== null ? "informada" : "recomendada"})`
+      : "";
   } catch (e) {
     if (e.name === "AbortError") return;
     marcarErros(e.campos || {});
@@ -155,6 +161,8 @@ function linhaResumo(dl, rotulo, valor, destaque = false) {
 }
 
 function mostrarVazio(texto) {
+  Desenho.desenhar(null);
+  $("info-desenho").textContent = "";
   const st = $("status");
   st.dataset.status = "";
   st.textContent = texto;
@@ -232,6 +240,7 @@ function mostrarResultado(r) {
 // ------------------------------------------------------------------ início
 
 async function iniciar() {
+  Desenho.iniciar();
   for (const id of ["cota", "caso_id", "R_min", "R_max"]) $(id).addEventListener("input", agendarCalculo);
   $("carcaca").addEventListener("change", aoTrocarCarcaca);
   $("motor_id").addEventListener("change", agendarCalculo);
@@ -252,12 +261,6 @@ async function iniciar() {
     mostrarVazio(`Erro: ${e.message}`);
   }
 
-  const svg = $("desenho");
-  const xy = $("cursor-xy");
-  svg.addEventListener("mousemove", (ev) => {
-    const r = svg.getBoundingClientRect();
-    xy.textContent = `tela ${Math.round(ev.clientX - r.left)}, ${Math.round(ev.clientY - r.top)} px`;
-  });
 }
 
 document.addEventListener("DOMContentLoaded", iniciar);

@@ -170,3 +170,54 @@ select[data-status="erro"] { color: var(--erro); border-color: var(--erro); }
 select option { color: var(--txt); }
 .tabela td:first-child { white-space: nowrap; }
 .tabela .tag { color: var(--txt-2); font-size: 10px; margin-right: 4px; }
+
+/* ---------------------------------------------------------------- W2: desenho */
+.area-desenho { overflow: hidden; user-select: none; }
+.desenho { cursor: crosshair; touch-action: none; }
+.desenho.arrastando { cursor: grabbing; }
+#fundo-grade { pointer-events: none; }
+.aviso-desenho { position: absolute; inset: 45% 0 auto; text-align: center; margin: 0;
+  color: var(--construcao); font: 13px var(--mono); pointer-events: none; }
+.aviso-desenho[hidden] { display: none; }
+.ferramentas {
+  position: absolute; top: 8px; left: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 5px 8px; background: rgba(22, 35, 42, .92); border: 1px solid var(--borda); border-radius: var(--raio);
+  font-size: 12px; color: var(--txt-2);
+}
+.ferramentas button {
+  background: var(--painel-2); color: var(--txt); border: 1px solid var(--borda); border-radius: 4px;
+  padding: 2px 8px; font: inherit; cursor: pointer;
+}
+.ferramentas button:hover { border-color: var(--acento); color: var(--acento); }
+.ferramentas label { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
+.ferramentas input { accent-color: var(--acento); margin: 0; padding: 0; width: auto; }
+.ferramentas .sep { width: 1px; height: 16px; background: var(--borda); }
+.barra-desenho { display: flex; justify-content: space-between; gap: 12px; }
+.dica-desenho {
+  position: absolute; pointer-events: none; z-index: 5; max-width: 280px;
+  background: rgba(14, 20, 24, .96); border: 1px solid var(--acento); border-radius: var(--raio);
+  padding: 6px 8px; font: 12px var(--mono); color: var(--txt); white-space: pre;
+}
+
+#mundo * { vector-effect: non-scaling-stroke; }
+#mundo [data-camada].oculta { display: none; }
+#mundo .el { fill: none; stroke-width: 1.2; }
+#mundo .el:hover { stroke-width: 2.4; }
+#mundo .construcao .el { stroke: var(--construcao); stroke-dasharray: 8 6; }
+#mundo .construcao .ponto { fill: var(--txt); stroke: none; }
+#mundo .estrutura .el { stroke: #9fb4ba; }
+#mundo #el-piso { stroke: #b08454; stroke-dasharray: 14 6; }
+#mundo #el-tubo-L { stroke-dasharray: 4 4; }
+#mundo .chapa .el { stroke: var(--chapa); stroke-width: 1.6; fill: rgba(230, 238, 240, .06); }
+#mundo .chapa .el[id^="el-ranhura"] { stroke: var(--ranhura); stroke-width: 3; }
+#mundo .chapa .ponto { fill: var(--chapa); stroke: none; }
+#mundo .motor .el { stroke: var(--m0); }
+#mundo .motor .el[id$="-3"], #mundo .motor .el[id*="-3-"] { stroke: var(--m3); }
+#mundo .motor .ponto { fill: var(--m0); stroke: none; }
+#mundo .motor .ponto[id$="-3"] { fill: var(--m3); }
+#mundo .motor .el[data-status="FORA_RANHURA"] { stroke-dasharray: 6 4; }
+#mundo .cotas .el { stroke: var(--acento); stroke-width: 1; }
+#mundo .cotas text, #mundo .rotulo {
+  fill: var(--acento); stroke: none; font-family: var(--mono); paint-order: stroke;
+}
+#mundo .rotulo-ponto { fill: var(--txt-2); }

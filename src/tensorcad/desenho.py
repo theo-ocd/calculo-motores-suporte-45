@@ -12,7 +12,7 @@ from typing import Any
 
 from tensorcad.projeto import ConfigProjeto, ResultadoProjeto, posicao
 
-CAMADAS = ("construcao", "estrutura", "chapa", "motor", "cotas")
+CAMADAS = ("construcao", "estrutura", "cotas", "chapa", "motor")  # ordem de pintura
 ESPESSURA_CHAPA = 10.0  # apenas visual (espessura real não cadastrada)
 RAIO_TUBO = 30.0  # apenas visual (diâmetro do tubo não cadastrado)
 ABERTURA_ARCO_GRAUS = 14.0

@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>tensorcad</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Cpath d=%22M1 15 15 15 15 1Z%22 fill=%22%2300a39a%22/%3E%3C/svg%3E">
   <link rel="stylesheet" href="estilo.css">
 </head>
 <body>
@@ -75,7 +76,7 @@
     </aside>
 
     <section class="area-desenho" aria-label="Desenho">
-      <svg id="desenho" class="desenho" role="img" aria-label="Área do desenho">
+      <svg id="desenho" class="desenho" role="img" aria-label="Desenho do caso">
         <defs>
           <pattern id="grade-fina" width="20" height="20" patternUnits="userSpaceOnUse">
             <path d="M 20 0 L 0 0 0 20" class="grade-fina"/>
@@ -85,13 +86,26 @@
             <path d="M 100 0 L 0 0 0 100" class="grade-grossa"/>
           </pattern>
         </defs>
-        <rect width="100%" height="100%" fill="url(#grade)"/>
-        <text x="50%" y="50%" class="aviso-desenho" text-anchor="middle">
-          desenho interativo — etapa W2
-        </text>
+        <rect id="fundo-grade" x="-100000" y="-100000" width="200000" height="200000" fill="url(#grade)"/>
+        <g id="mundo"></g>
       </svg>
+      <p id="aviso-desenho" class="aviso-desenho">preencha o caso para ver o desenho</p>
+
+      <div class="ferramentas" role="toolbar" aria-label="Ferramentas do desenho">
+        <button type="button" id="btn-ajustar" title="Ajustar à tela (duplo clique no desenho)">⤢ ajustar</button>
+        <button type="button" id="btn-mais" title="Aproximar">＋</button>
+        <button type="button" id="btn-menos" title="Afastar">－</button>
+        <span class="sep"></span>
+        <label><input type="checkbox" data-camada="construcao" checked> construção</label>
+        <label><input type="checkbox" data-camada="estrutura" checked> estrutura</label>
+        <label><input type="checkbox" data-camada="chapa" checked> chapa</label>
+        <label><input type="checkbox" data-camada="motor" checked> motor</label>
+        <label><input type="checkbox" data-camada="cotas" checked> cotas</label>
+      </div>
+      <div id="dica-desenho" class="dica-desenho" hidden></div>
       <div class="barra-desenho">
         <span id="cursor-xy">X —  Y —</span>
+        <span id="info-desenho"></span>
       </div>
     </section>
 
@@ -113,6 +127,7 @@
     </aside>
   </main>
 
+  <script src="desenho.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

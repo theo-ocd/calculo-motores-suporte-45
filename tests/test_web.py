@@ -236,3 +236,78 @@ def test_calculo_ao_vivo_no_navegador(url: str) -> None:
             assert erros == []
         finally:
             nav.close()
+
+
+def test_desenho_interativo_no_navegador(url: str) -> None:
+    sync = pytest.importorskip("playwright.sync_api")
+    with sync.sync_playwright() as p:
+        nav = _navegador(p)
+        try:
+            pg = nav.new_page(viewport={"width": 1500, "height": 900})
+            erros: list[str] = []
+            pg.on("pageerror", lambda e: erros.append(str(e)))
+            pg.on("console", lambda m: erros.append(m.text) if m.type == "error" else None)
+            pg.goto(url)
+            pg.wait_for_selector("#conexao[data-estado='ok']", timeout=10_000)
+            assert pg.locator("#aviso-desenho").is_visible()
+            pg.fill("#R_min", "2086")
+            pg.fill("#R_max", "2161")
+            pg.fill("#cota", "1646")
+            pg.wait_for_selector("#el-motor-0", timeout=10_000)
+            assert not pg.locator("#aviso-desenho").is_visible()
+            assert "H = 1.646,00 (informada)" in pg.inner_text("#info-desenho")
+
+            # elementos e posição do centro do motor (SVG: x = X, y = −Y)
+            for id_ in (
+                "O",
+                "arco-R_min",
+                "arco-R_max",
+                "piso",
+                "tubo",
+                "chapa",
+                "L",
+                "ranhura-1",
+                "ranhura-2",
+                "motor-3",
+                "cota-H",
+                "cota-h",
+            ):
+                assert pg.locator(f"#el-{id_}").count() == 1, id_
+            cx = float(pg.get_attribute("#el-centro-0", "cx"))
+            cy = float(pg.get_attribute("#el-centro-0", "cy"))
+            assert (cx, cy) == pytest.approx((-681.53, 1971.53), abs=0.01)
+            assert pg.get_attribute("#el-motor-3", "data-status") == "FORA_RANHURA"
+            assert "H = 1646.00" in pg.text_content("#mundo [data-camada='cotas']")
+
+            # camadas
+            pg.uncheck(".ferramentas input[data-camada='motor']")
+            assert not pg.locator("#el-motor-0").is_visible()
+            pg.check(".ferramentas input[data-camada='motor']")
+            assert pg.locator("#el-motor-0").is_visible()
+
+            # zoom e ajustar
+            vb0 = pg.get_attribute("#desenho", "viewBox")
+            w0 = float(vb0.split()[2])
+            caixa = pg.locator("#desenho").bounding_box()
+            pg.mouse.move(caixa["x"] + caixa["width"] / 2, caixa["y"] + caixa["height"] / 2)
+            pg.mouse.wheel(0, -400)
+            pg.wait_for_function(f"document.getElementById('desenho').viewBox.baseVal.width < {w0}")
+            pg.click("#btn-ajustar")
+            assert float(pg.get_attribute("#desenho", "viewBox").split()[2]) == pytest.approx(w0)
+
+            # coordenadas do cursor e dica ao passar o mouse
+            m = pg.locator("#el-centro-0").bounding_box()
+            pg.mouse.move(m["x"] + m["width"] / 2, m["y"] + m["height"] / 2)
+            assert "X -681," in pg.inner_text("#cursor-xy")
+            pg.wait_for_selector("#dica-desenho:not([hidden])")
+            assert "centro do motor 0 %" in pg.inner_text("#dica-desenho")
+
+            # sem H informada: desenha na recomendada
+            pg.fill("#cota", "")
+            pg.wait_for_function(
+                "document.getElementById('info-desenho').textContent.includes('recomendada')"
+            )
+            assert "1.673,99" in pg.inner_text("#info-desenho")
+            assert erros == []
+        finally:
+            nav.close()
