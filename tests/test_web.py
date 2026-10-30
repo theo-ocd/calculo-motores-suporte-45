@@ -389,7 +389,14 @@ def test_projeto_varios_casos_json_e_xlsx(url: str, tmp_path: Path) -> None:
             pg = contexto.new_page()
             erros: list[str] = []
             pg.on("pageerror", lambda e: erros.append(str(e)))
-            pg.on("dialog", lambda d: d.accept())
+            dialogos: list[str] = []
+            aceitar = {"sim": True}
+
+            def responder(d) -> None:
+                dialogos.append(d.message)
+                d.accept() if aceitar["sim"] else d.dismiss()
+
+            pg.on("dialog", responder)
             pg.goto(url)
             pg.wait_for_selector("#conexao[data-estado='ok']", timeout=10_000)
             assert pg.locator("#lista-casos li").count() == 1
@@ -460,8 +467,13 @@ def test_projeto_varios_casos_json_e_xlsx(url: str, tmp_path: Path) -> None:
             assert pg.locator("#lista-casos li").count() == 2
             assert pg.input_value("#nome-projeto") == "Obra Teste"
 
-            # novo projeto limpa; abrir o .json restaura
-            pg.click("#btn-novo")
+            # limpar memória pede confirmação: cancelar mantém os casos
+            aceitar["sim"] = False
+            pg.click("#btn-limpar")
+            assert "2 caso(s)" in dialogos[-1]
+            assert pg.locator("#lista-casos li").count() == 2
+            aceitar["sim"] = True
+            pg.click("#btn-limpar")
             assert pg.locator("#lista-casos li").count() == 1
             assert pg.input_value("#R_min") == ""
             pg.set_input_files("#arquivo-projeto", str(arq_json))

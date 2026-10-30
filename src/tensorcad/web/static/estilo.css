@@ -266,6 +266,8 @@ select option { color: var(--txt); }
 }
 .acoes button:hover { border-color: var(--acento); color: var(--acento); }
 .acoes button.principal { border-color: var(--acento); color: var(--acento); }
+.acoes button.perigo { color: var(--erro); margin-left: 12px; }
+.acoes button.perigo:hover { border-color: var(--erro); }
 .aviso {
   position: fixed; top: 52px; left: 50%; transform: translateX(-50%); z-index: 20; max-width: 640px;
   background: var(--painel-2); border: 1px solid var(--acento); border-radius: var(--raio);

@@ -262,7 +262,7 @@ const Projeto = (() => {
         return;
       }
       baixar(await r.blob(), `${nomeArquivo()}.xlsx`);
-      aviso(`planilha exportada: ${nomeArquivo()}.xlsx`);
+      aviso(`planilha exportada: ${nomeArquivo()}.xlsx (${p.casos.length} caso(s), uma aba cada)`);
     } catch (e) {
       aviso(`Erro ao exportar: ${e.message}`, "erro", 7000);
     }
@@ -286,10 +286,13 @@ const Projeto = (() => {
     renderLista();
   }
 
-  function novo() {
+  function limpar() {
     lerFormulario();
-    const mexido = p.casos.length > 1 || p.casos.some((c) => c.R_min || c.R_max);
-    if (mexido && !window.confirm("Começar um projeto novo? O atual fica só no arquivo salvo.")) return;
+    const n = p.casos.length;
+    const msg =
+      `Limpar a memória?\n\nOs ${n} caso(s) do projeto "${p.nome}" serão apagados deste navegador.\n` +
+      "Para guardá-los, cancele e use \"salvar .json\" ou \"exportar .xlsx\" antes.";
+    if (!window.confirm(msg)) return;
     p = novoProjeto();
     try {
       localStorage.removeItem(CHAVE_RASCUNHO);
@@ -297,12 +300,13 @@ const Projeto = (() => {
       /* ignora */
     }
     carregarNoFormulario();
+    aviso(`memória limpa: ${n} caso(s) apagado(s)`);
   }
 
   function iniciar() {
     const rascunho = lerRascunho();
     p = rascunho || novoProjeto();
-    $("btn-novo").addEventListener("click", novo);
+    $("btn-limpar").addEventListener("click", limpar);
     $("btn-salvar").addEventListener("click", salvarJson);
     $("btn-exportar").addEventListener("click", exportar);
     $("btn-abrir").addEventListener("click", () => $("arquivo-projeto").click());
@@ -312,6 +316,7 @@ const Projeto = (() => {
       if (f) abrirArquivo(f);
     });
     $("btn-caso-novo").addEventListener("click", novoCaso);
+    $("btn-caso-novo-lista").addEventListener("click", novoCaso);
     $("btn-caso-duplicar").addEventListener("click", duplicar);
     $("btn-caso-excluir").addEventListener("click", excluir);
     carregarNoFormulario();

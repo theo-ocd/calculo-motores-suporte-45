@@ -15,10 +15,11 @@
       <span class="marca-sub">base tensora · posição do motor</span>
     </div>
     <div class="acoes" role="toolbar" aria-label="Projeto">
-      <button type="button" id="btn-novo" title="Começar um projeto novo">novo</button>
+      <button type="button" id="btn-caso-novo" title="Adicionar um caso ao projeto (os outros continuam na memória)">+ novo caso</button>
       <button type="button" id="btn-abrir" title="Abrir um projeto salvo (.json)">abrir…</button>
       <button type="button" id="btn-salvar" title="Salvar o projeto em .json">salvar .json</button>
       <button type="button" id="btn-exportar" class="principal" title="Exportar a planilha do projeto (uma aba por caso)">exportar .xlsx</button>
+      <button type="button" id="btn-limpar" class="perigo" title="Apagar todos os casos da memória (pede confirmação)">limpar memória</button>
       <input type="file" id="arquivo-projeto" accept=".json,application/json" hidden>
     </div>
     <div class="topo-info">
@@ -48,13 +49,14 @@
           <div><dt>Centro dos raios → piso</dt><dd id="fixo-y-piso">—</dd></div>
         </dl>
 
-        <h2>Casos <span id="contagem-casos" class="dica"></span></h2>
+        <h2>Casos em memória <span id="contagem-casos" class="dica"></span></h2>
         <ul id="lista-casos" class="lista-casos" aria-label="Casos do projeto"></ul>
         <div class="botoes-casos">
-          <button type="button" id="btn-caso-novo" class="botao-mini">+ novo caso</button>
+          <button type="button" id="btn-caso-novo-lista" class="botao-mini">+ novo caso</button>
           <button type="button" id="btn-caso-duplicar" class="botao-mini">duplicar</button>
           <button type="button" id="btn-caso-excluir" class="botao-mini">excluir</button>
         </div>
+        <p class="dica">Clique num caso para voltar a ele. Todos os casos ficam na memória e são exportados juntos no .xlsx.</p>
 
         <h2>Caso ativo</h2>
         <div class="campo" data-campo="caso_id">
