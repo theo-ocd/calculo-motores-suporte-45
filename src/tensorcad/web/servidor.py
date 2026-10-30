@@ -25,6 +25,11 @@ ROTAS_GET: dict[str, Rota] = {
     "/api/saude": api.saude,
     "/api/carcacas": api.carcacas,
 }
+RotaPost = Callable[[api.Contexto, Any], Any]
+ROTAS_POST: dict[str, RotaPost] = {
+    "/api/calcular": api.calcular,
+}
+LIMITE_CORPO = 256 * 1024
 
 
 class Manipulador(BaseHTTPRequestHandler):
@@ -60,6 +65,31 @@ class Manipulador(BaseHTTPRequestHandler):
                 self._json(HTTPStatus.INTERNAL_SERVER_ERROR, {"erro": str(exc)})
             return
         self._estatico(caminho)
+
+    def do_POST(self) -> None:  # noqa: N802
+        caminho = urlparse(self.path).path
+        rota = ROTAS_POST.get(caminho)
+        if rota is None:
+            self._json(HTTPStatus.NOT_FOUND, {"erro": f"rota inexistente: {caminho}"})
+            return
+        try:
+            tamanho = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            tamanho = -1
+        if not 0 <= tamanho <= LIMITE_CORPO:
+            self._json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"erro": "corpo inválido ou grande"})
+            return
+        try:
+            corpo = json.loads(self.rfile.read(tamanho) or b"{}")
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            self._json(HTTPStatus.BAD_REQUEST, {"erro": "JSON inválido"})
+            return
+        try:
+            self._json(HTTPStatus.OK, rota(self.contexto, corpo))
+        except api.ErroEntrada as exc:
+            self._json(HTTPStatus.BAD_REQUEST, {"erro": "entradas inválidas", "erros": exc.erros})
+        except Exception as exc:
+            self._json(HTTPStatus.INTERNAL_SERVER_ERROR, {"erro": str(exc)})
 
     def _estatico(self, caminho: str) -> None:
         nome = "index.html" if caminho in ("", "/") else caminho.lstrip("/")

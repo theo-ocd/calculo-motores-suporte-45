@@ -18,7 +18,10 @@ DADOS = RAIZ / "data"
 @pytest.fixture(scope="module")
 def contexto() -> api.Contexto:
     return api.Contexto(
-        carregar_diretorio(DADOS), carregar_padroes(DADOS / "padrao"), DADOS, DADOS / "padrao"
+        carregar_diretorio(DADOS),
+        carregar_padroes(DADOS / "padrao", estrito=False),
+        DADOS,
+        DADOS / "padrao",
     )
 
 
@@ -47,11 +50,12 @@ def test_api_carcacas_status(contexto) -> None:
     lista = {c["carcaca"]: c for c in api.carcacas(contexto)}
     assert list(lista) == ["160", "180", "200", "225", "250"]
     c180 = lista["180"]
-    assert c180["status"] == "parcial" and c180["calculavel"] and c180["chapa"] == "CH-180"
+    assert c180["status"] == api.PARCIAL and c180["calculavel"] and c180["chapa"] == "CH-180"
     assert "origem CALCULADO" in c180["detalhe"] and "comprimento das ranhuras" in c180["detalhe"]
     assert [m["carcaca"] for m in c180["motores"]] == ["180L", "180M"]
     for n in ("160", "200", "225", "250"):
-        assert lista[n]["status"] == "a_preencher" and not lista[n]["calculavel"]
+        assert lista[n]["status"] == api.ERRO and not lista[n]["calculavel"]
+        assert "a preencher" in lista[n]["detalhe"]
 
 
 def test_status_completa_e_sem_chapa(tmp_path: Path) -> None:
@@ -63,8 +67,8 @@ def test_status_completa_e_sem_chapa(tmp_path: Path) -> None:
     )
     ctx = api.Contexto(carregar_diretorio(DADOS), carregar_padroes(tmp_path), DADOS, tmp_path)
     lista = {c["carcaca"]: c for c in api.carcacas(ctx)}
-    assert lista["200"]["status"] == "completa"
-    assert lista["180"]["status"] == "sem_chapa" and not lista["180"]["calculavel"]
+    assert lista["200"]["status"] == api.OK
+    assert lista["180"]["status"] == api.ERRO and "ausente" in lista["180"]["detalhe"]
 
 
 def test_servidor_rotas(url: str) -> None:
@@ -167,6 +171,12 @@ def test_pagina_carrega_no_navegador(url: str) -> None:
             assert pg.locator("#lista-carcacas li").count() == 5
             chip = pg.locator("#lista-carcacas li[data-carcaca='180'] .chip")
             assert chip.get_attribute("data-status") == "parcial"
+            assert (
+                pg.locator("#lista-carcacas li[data-carcaca='200'] .chip").get_attribute(
+                    "data-status"
+                )
+                == "erro"
+            )
             assert pg.locator("#carcaca").input_value() == "180"
             assert pg.locator("#carcaca option[value='200']").is_disabled()
             fundo = pg.evaluate("getComputedStyle(document.body).backgroundColor")

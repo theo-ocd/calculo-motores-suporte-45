@@ -88,7 +88,7 @@ def principal(
         typer.echo(f"tensorcad {__version__}")
         raise typer.Exit()
     if ctx.invoked_subcommand is None:
-        web(None, None, None, False)
+        web(None, None, None, False, 160, 250)
 
 
 @app.command()
@@ -101,14 +101,22 @@ def web(
     sem_navegador: Annotated[
         bool, typer.Option("--sem-navegador", help="Não abre o navegador automaticamente.")
     ] = False,
+    carcaca_min: Annotated[int, typer.Option(help="Menor carcaça oferecida.")] = 160,
+    carcaca_max: Annotated[int, typer.Option(help="Maior carcaça oferecida.")] = 250,
 ) -> None:
     """Abre a interface visual no navegador (servidor local em 127.0.0.1)."""
     from tensorcad.web import servidor
     from tensorcad.web.api import Contexto
 
     d, p = _resolver(dados, padroes)
-    base, pad = _carregar(d, p)
-    servidor.executar(Contexto(base, pad, d, p), porta=porta, abrir=not sem_navegador)
+    try:
+        base = carregar(d)
+        pad = carregar_padroes(p, estrito=False)  # linha com erro marca só a carcaça
+    except ErroCarga as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from None
+    ctx = Contexto(base, pad, d, p, faixa=(carcaca_min, carcaca_max))
+    servidor.executar(ctx, porta=porta, abrir=not sem_navegador)
 
 
 @app.command()
