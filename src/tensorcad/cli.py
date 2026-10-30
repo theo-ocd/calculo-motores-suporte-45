@@ -31,7 +31,7 @@ from tensorcad.projeto import X_TUBO_PADRAO, Y_PISO_PADRAO, ConfigProjeto
 app = typer.Typer(
     help=(
         "Posição do motor sobre a chapa inclinada (base tensora) e planilha do projeto. "
-        "Sem comando, abre o modo interativo."
+        "Sem comando, abre a interface no navegador."
     ),
     add_completion=False,
 )
@@ -83,12 +83,32 @@ def principal(
     ctx: typer.Context,
     versao: Annotated[bool, typer.Option("--versao", help="Mostra a versão.")] = False,
 ) -> None:
-    """Sem comando: modo interativo (uso com duplo clique no executável)."""
+    """Sem comando: interface no navegador (uso com duplo clique no executável)."""
     if versao:
         typer.echo(f"tensorcad {__version__}")
         raise typer.Exit()
     if ctx.invoked_subcommand is None:
-        interativo(None, None)
+        web(None, None, None, False)
+
+
+@app.command()
+def web(
+    dados: Dados = None,
+    padroes: PadroesOpt = None,
+    porta: Annotated[
+        int | None, typer.Option(help="Porta local (padrão: 8765 ou a próxima livre).")
+    ] = None,
+    sem_navegador: Annotated[
+        bool, typer.Option("--sem-navegador", help="Não abre o navegador automaticamente.")
+    ] = False,
+) -> None:
+    """Abre a interface visual no navegador (servidor local em 127.0.0.1)."""
+    from tensorcad.web import servidor
+    from tensorcad.web.api import Contexto
+
+    d, p = _resolver(dados, padroes)
+    base, pad = _carregar(d, p)
+    servidor.executar(Contexto(base, pad, d, p), porta=porta, abrir=not sem_navegador)
 
 
 @app.command()

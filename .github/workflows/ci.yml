@@ -28,6 +28,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
+      - name: Instalar Playwright (teste da interface no navegador)
+        if: runner.os == 'Linux'
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
       - name: Ruff
         run: |
           ruff check .
@@ -36,5 +41,6 @@ jobs:
         run: pytest
         env:
           TENSORCAD_EXIGIR_SOFFICE: ${{ runner.os == 'Linux' && '1' || '' }}
+          TENSORCAD_EXIGIR_NAVEGADOR: ${{ runner.os == 'Linux' && '1' || '' }}
       - name: Cobertura do núcleo geométrico (>= 95%)
         run: pytest tests/test_geometry.py -q --cov=tensorcad.geometry --cov-report=term-missing --cov-fail-under=95

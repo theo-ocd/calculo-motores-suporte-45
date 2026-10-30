@@ -316,6 +316,7 @@ class Padroes:
     chapas: dict[str, ChapaPadrao] = field(default_factory=dict)
     ranhuras: list[RanhuraPadrao] = field(default_factory=list)
     avisos: list[ErroValidacao] = field(default_factory=list)
+    a_preencher: list[str] = field(default_factory=list)  # carcaças sem medidas na tabela
 
     def chapa_para(self, carcaca: str) -> ChapaPadrao | None:
         """Primeira chapa padrão compatível com a carcaça."""
@@ -347,6 +348,7 @@ def carregar_padroes(diretorio: Path | str) -> Padroes:
     for i, reg in enumerate(ler_csv(caminho), start=2):
         if all(not (reg.get(c) or "").strip() for c in CAMPOS_MEDIDAS_CHAPA):
             carc = (reg.get("carcaca") or "?").strip()
+            pad.a_preencher.append(carc)
             pad.avisos.append(
                 aviso(tabela, i, "carcaca", f"carcaça {carc} sem medidas (a preencher)")
             )

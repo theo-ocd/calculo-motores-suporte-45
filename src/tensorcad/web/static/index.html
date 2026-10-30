@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tensorcad</title>
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="marca">
+      <span class="marca-icone" aria-hidden="true">◢</span>
+      <span class="marca-nome">tensorcad</span>
+      <span class="marca-sub">base tensora · posição do motor</span>
+    </div>
+    <div class="topo-info">
+      <span id="fonte-dados" class="info" title="Origem dos cadastros">dados: —</span>
+      <span id="versao" class="info">v—</span>
+      <span id="conexao" class="indicador" data-estado="aguardando">conectando…</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="painel painel-entradas" aria-label="Entradas">
+      <h2>Caso</h2>
+      <div class="campo">
+        <label for="carcaca">Carcaça</label>
+        <select id="carcaca" disabled><option>carregando…</option></select>
+        <p id="carcaca-detalhe" class="dica"></p>
+      </div>
+      <p class="dica em-breve">Campos R<sub>min</sub>, R<sub>max</sub> e cota 1646 — etapa W1.</p>
+
+      <h2>Carcaças</h2>
+      <ul id="lista-carcacas" class="lista-carcacas"></ul>
+    </aside>
+
+    <section class="area-desenho" aria-label="Desenho">
+      <svg id="desenho" class="desenho" role="img" aria-label="Área do desenho">
+        <defs>
+          <pattern id="grade-fina" width="20" height="20" patternUnits="userSpaceOnUse">
+            <path d="M 20 0 L 0 0 0 20" class="grade-fina"/>
+          </pattern>
+          <pattern id="grade" width="100" height="100" patternUnits="userSpaceOnUse">
+            <rect width="100" height="100" fill="url(#grade-fina)"/>
+            <path d="M 100 0 L 0 0 0 100" class="grade-grossa"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grade)"/>
+        <text x="50%" y="50%" class="aviso-desenho" text-anchor="middle">
+          desenho interativo — etapa W2
+        </text>
+      </svg>
+      <div class="barra-desenho">
+        <span id="cursor-xy">X —  Y —</span>
+      </div>
+    </section>
+
+    <aside class="painel painel-resultados" aria-label="Resultados">
+      <h2>Resultado</h2>
+      <div id="status" class="status" data-status="">—</div>
+      <p class="dica em-breve">Faixa admissível, cota recomendada e folgas — etapa W1.</p>
+    </aside>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -36,6 +36,7 @@ def main() -> None:
             f"--paths={RAIZ / 'src'}",
             f"--add-data={RAIZ / 'data'}{os.pathsep}data",
             "--collect-submodules=tensorcad",
+            "--collect-data=tensorcad",  # página da interface web (web/static)
             "--exclude-module=ezdxf",
             "--exclude-module=matplotlib",
             "--exclude-module=tkinter",
