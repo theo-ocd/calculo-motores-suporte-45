@@ -8,12 +8,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from pydantic import ValidationError
-
 import tensorcad
+from tensorcad import ajustes as ajustes_mod
 from tensorcad import desenho
 from tensorcad.loader import BaseDados, Padroes
-from tensorcad.models import ChapaCarcaca, Motor, Origem
+from tensorcad.models import Origem
 from tensorcad.projeto import (
     X_TUBO_PADRAO,
     Y_PISO_PADRAO,
@@ -29,24 +28,8 @@ FAIXA_CARCACAS = (160, 250)
 # Status exibidos na interface
 OK, PARCIAL, ERRO = "ok", "parcial", "erro"
 
-# Dimensões-chave editáveis (campo, rótulo, unidade); x do tubo e piso são fixos.
-CAMPOS_CHAPA: tuple[tuple[str, str, str], ...] = (
-    ("comprimento_chapa", "Comprimento da chapa", "mm"),
-    ("dx_L_tubo", "Tubo → ponta baixa (x)", "mm"),
-    ("dy_L_tubo", "Tubo → ponta baixa (y)", "mm"),
-    ("dist_L_ranhura", "Ponta baixa → ranhura", "mm"),
-    ("comprimento_ranhura", "Comprimento das ranhuras", "mm"),
-    ("dist_entre_ranhuras", "Vão entre ranhuras", "mm"),
-    ("dist_ranhura_topo", "Ranhura → ponta alta", "mm"),
-    ("largura_ranhura", "Largura das ranhuras", "mm"),
-    ("e_apoio", "Chapa → apoio dos pés", "mm"),
-    ("theta_deg", "Inclinação", "°"),
-)
-CAMPOS_MOTOR: tuple[tuple[str, str, str], ...] = (
-    ("H", "Altura de eixo", "mm"),
-    ("A", "A — entre furos dos pés", "mm"),
-    ("K", "K — diâmetro do furo", "mm"),
-)
+CAMPOS_CHAPA = ajustes_mod.CAMPOS_CHAPA
+CAMPOS_MOTOR = ajustes_mod.CAMPOS_MOTOR
 
 
 class ErroEntrada(ValueError):
@@ -268,18 +251,7 @@ def calcular(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
     cota = _num(corpo, "cota", erros, obrigatorio=False)
     if r_min is not None and r_max is not None and r_min > r_max:
         erros["R_max"] = "R_max deve ser maior ou igual a R_min"
-    ajustes = corpo.get("ajustes") or {}
-    if not isinstance(ajustes, dict):
-        erros["ajustes"] = "esperado um objeto"
-        ajustes = {}
-    aj_chapa = _ler_ajustes(
-        ajustes.get("chapa"),
-        CAMPOS_CHAPA,
-        "chapa",
-        erros,
-        opcionais={"comprimento_ranhura", "dist_entre_ranhuras", "largura_ranhura"},
-    )
-    aj_motor = _ler_ajustes(ajustes.get("motor"), CAMPOS_MOTOR, "motor", erros, opcionais=set())
+    aj_chapa, aj_motor = ajustes_mod.ler(corpo.get("ajustes"), erros)
     motor = None
     if info is not None and info["calculavel"]:
         ids = [m["motor_id"] for m in info["motores"]]
@@ -292,16 +264,7 @@ def calcular(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
         raise ErroEntrada(erros)
     assert motor is not None and r_min is not None and r_max is not None
     linha = ctx.padroes.linhas[carc]
-    if aj_chapa:
-        try:
-            linha = ChapaCarcaca.model_validate({**linha.model_dump(), **aj_chapa})
-        except ValidationError as exc:
-            erros.update(_erros_pydantic(exc, "chapa"))
-    if aj_motor:
-        try:
-            motor = Motor.model_validate({**motor.model_dump(), **aj_motor})
-        except ValidationError as exc:
-            erros.update(_erros_pydantic(exc, "motor"))
+    linha, motor = ajustes_mod.aplicar(linha, motor, aj_chapa, aj_motor, erros)
     if erros:
         raise ErroEntrada(erros)
     chapa, ranhuras = linha.como_padrao()
@@ -324,65 +287,68 @@ def calcular(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _ler_ajustes(
-    bruto: Any,
-    campos_validos: tuple[tuple[str, str, str], ...],
-    grupo: str,
-    erros: dict[str, str],
-    opcionais: set[str],
-) -> dict[str, float | None]:
-    """Valores numéricos dos ajustes; chave inválida ou número ruim viram erro de campo.
-    Campos opcionais aceitam vazio (= remover o valor)."""
-    if bruto is None:
-        return {}
-    if not isinstance(bruto, dict):
-        erros[f"ajustes.{grupo}"] = "esperado um objeto"
-        return {}
-    validos = {c for c, _, _ in campos_validos}
-    out: dict[str, float | None] = {}
-    for campo, valor in bruto.items():
-        chave = f"ajustes.{grupo}.{campo}"
-        if campo not in validos:
-            erros[chave] = "campo não editável"
-            continue
-        if valor is None or (isinstance(valor, str) and not valor.strip()):
-            if campo in opcionais:
-                out[campo] = None
-            else:
-                erros[chave] = "obrigatório"
-            continue
-        sub: dict[str, str] = {}
-        x = _num({campo: valor}, campo, sub, obrigatorio=True)
-        if sub:
-            erros[chave] = sub[campo]
-        else:
-            out[campo] = x
-    return out
+# --------------------------------------------------------------------------- projeto (W4)
+
+FORMATO_PROJETO = "tensorcad-projeto"
+VERSAO_PROJETO = 1
+MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
-def _erros_pydantic(exc: ValidationError, grupo: str) -> dict[str, str]:
-    out = {}
-    for e in exc.errors():
-        loc = ".".join(str(p) for p in e["loc"])
-        chave = f"ajustes.{grupo}.{loc}" if loc else f"ajustes.{grupo}"
-        out[chave] = _traduzir(e)
-    return out
+def validar_projeto(corpo: Any) -> dict[str, Any]:
+    """Confere o envelope do projeto (.json): formato, versão e lista de casos."""
+    if not isinstance(corpo, dict):
+        raise ErroEntrada({"(projeto)": "esperado um objeto JSON"})
+    erros: dict[str, str] = {}
+    if corpo.get("formato") != FORMATO_PROJETO:
+        erros["formato"] = f"esperado '{FORMATO_PROJETO}'"
+    if corpo.get("versao") != VERSAO_PROJETO:
+        erros["versao"] = f"versão suportada: {VERSAO_PROJETO}"
+    casos = corpo.get("casos")
+    if not isinstance(casos, list) or not casos:
+        erros["casos"] = "o projeto precisa de ao menos um caso"
+    else:
+        nomes = [str((c or {}).get("caso_id") or "").strip() for c in casos]
+        if any(not n for n in nomes):
+            erros["casos"] = "todo caso precisa de um nome"
+        elif len({n.lower() for n in nomes}) != len(nomes):
+            erros["casos"] = "nomes de caso repetidos"
+    if erros:
+        raise ErroEntrada(erros)
+    return corpo
 
 
-_LIMITES = {
-    "greater_than": "deve ser maior que {gt:g}",
-    "greater_than_equal": "deve ser maior ou igual a {ge:g}",
-    "less_than": "deve ser menor que {lt:g}",
-    "less_than_equal": "deve ser menor ou igual a {le:g}",
-}
+def exportar(ctx: Contexto, corpo: Any) -> tuple[bytes, str]:
+    """Planilha do projeto (.xlsx, uma aba por caso) a partir do projeto da interface."""
+    import io
 
+    from tensorcad.planilha_projeto import EntradaPlanilha, gerar_projeto
 
-def _traduzir(e: Any) -> str:
-    """Mensagem de validação em português (limites numéricos e erros do modelo)."""
-    modelo = _LIMITES.get(e.get("type", ""))
-    if modelo:
+    projeto = validar_projeto(corpo)
+    erros: dict[str, str] = {}
+    entradas = []
+    for i, caso in enumerate(projeto["casos"]):
+        dados = {**caso, "cota": projeto.get("cota")}
         try:
-            return modelo.format(**e.get("ctx", {}))
-        except (KeyError, ValueError):
-            pass
-    return str(e["msg"]).removeprefix("Value error, ")
+            r = calcular(ctx, dados)
+        except ErroEntrada as exc:
+            erros.update({f"casos[{i}].{k}": v for k, v in exc.erros.items()})
+            continue
+        aj = r["ajustes_aplicados"]
+        entradas.append(
+            EntradaPlanilha(
+                caso_id=str(caso["caso_id"]).strip(),
+                motor_id=r["motor"]["motor_id"],
+                R_min=r["R_min"],
+                R_max=r["R_max"],
+                cota_informada=r["cota_informada"],
+                ajustes={k: v for k, v in aj.items() if v} or None,
+            )
+        )
+    if erros:
+        raise ErroEntrada(erros)
+    nome = str(projeto.get("nome") or "PROJETO").strip() or "PROJETO"
+    cfg = ConfigProjeto(nome=nome, y_piso=ctx.y_piso, x_tubo=ctx.x_tubo)
+    buf = io.BytesIO()
+    gerar_projeto(buf, cfg, entradas, ctx.base, ctx.padroes)
+    arquivo = re.sub(r"[^\w\-. ]", "_", nome).strip() or "projeto"
+    return buf.getvalue(), f"{arquivo}.xlsx"

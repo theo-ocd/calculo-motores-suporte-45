@@ -12,7 +12,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from tensorcad.web import api
 
@@ -30,6 +30,11 @@ RotaPost = Callable[[api.Contexto, Any], Any]
 ROTAS_POST: dict[str, RotaPost] = {
     "/api/calcular": api.calcular,
 }
+RotaArquivo = Callable[[api.Contexto, Any], tuple[bytes, str]]
+ROTAS_POST_ARQUIVO: dict[str, RotaArquivo] = {
+    "/api/exportar": api.exportar,
+}
+MIME_ARQUIVO = {".xlsx": api.MIME_XLSX}
 LIMITE_CORPO = 256 * 1024
 
 
@@ -69,7 +74,7 @@ class Manipulador(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         caminho = urlparse(self.path).path
-        rota = ROTAS_POST.get(caminho)
+        rota = ROTAS_POST.get(caminho) or ROTAS_POST_ARQUIVO.get(caminho)
         if rota is None:
             self._json(HTTPStatus.NOT_FOUND, {"erro": f"rota inexistente: {caminho}"})
             return
@@ -86,11 +91,25 @@ class Manipulador(BaseHTTPRequestHandler):
             self._json(HTTPStatus.BAD_REQUEST, {"erro": "JSON inválido"})
             return
         try:
-            self._json(HTTPStatus.OK, rota(self.contexto, corpo))
+            if caminho in ROTAS_POST_ARQUIVO:
+                conteudo, nome = rota(self.contexto, corpo)
+                self._arquivo(conteudo, nome)
+            else:
+                self._json(HTTPStatus.OK, rota(self.contexto, corpo))
         except api.ErroEntrada as exc:
             self._json(HTTPStatus.BAD_REQUEST, {"erro": "entradas inválidas", "erros": exc.erros})
         except Exception as exc:
             self._json(HTTPStatus.INTERNAL_SERVER_ERROR, {"erro": str(exc)})
+
+    def _arquivo(self, conteudo: bytes, nome: str) -> None:
+        tipo = MIME_ARQUIVO.get(Path(nome).suffix.lower(), "application/octet-stream")
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", tipo)
+        self.send_header("Content-Length", str(len(conteudo)))
+        self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{quote(nome)}")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(conteudo)
 
     def _estatico(self, caminho: str) -> None:
         nome = "index.html" if caminho in ("", "/") else caminho.lstrip("/")

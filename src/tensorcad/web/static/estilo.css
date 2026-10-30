@@ -257,3 +257,30 @@ select option { color: var(--txt); }
 .soma-cotas.ok { color: var(--ok); }
 .soma-cotas.erro { color: var(--erro); }
 .contagem, .botao-mini { text-transform: none; white-space: nowrap; }
+
+/* ---------------------------------------------------------------- W4: projeto e casos */
+.acoes { display: flex; gap: 6px; margin-left: auto; margin-right: 12px; }
+.acoes button {
+  background: var(--painel-2); color: var(--txt); border: 1px solid var(--borda); border-radius: var(--raio);
+  padding: 4px 10px; font: 12px var(--fonte); cursor: pointer;
+}
+.acoes button:hover { border-color: var(--acento); color: var(--acento); }
+.acoes button.principal { border-color: var(--acento); color: var(--acento); }
+.acoes button.perigo { color: var(--erro); margin-left: 12px; }
+.acoes button.perigo:hover { border-color: var(--erro); }
+.aviso {
+  position: fixed; top: 52px; left: 50%; transform: translateX(-50%); z-index: 20; max-width: 640px;
+  background: var(--painel-2); border: 1px solid var(--acento); border-radius: var(--raio);
+  padding: 8px 14px; font-size: 13px; white-space: pre-line; box-shadow: 0 6px 20px rgba(0, 0, 0, .4);
+}
+.aviso[data-tipo="erro"] { border-color: var(--erro); color: #ffd6d6; }
+.lista-casos { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 3px; max-height: 180px; overflow-y: auto; }
+.lista-casos li {
+  display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 6px;
+  padding: 4px 8px; background: var(--painel-2); border: 1px solid transparent; border-radius: var(--raio);
+  cursor: pointer; font-size: 13px;
+}
+.lista-casos li:hover { border-color: var(--borda); }
+.lista-casos li.ativo { border-color: var(--acento); }
+.lista-casos li .info-caso { color: var(--txt-2); font: 11px var(--mono); }
+.botoes-casos { display: flex; gap: 6px; margin-bottom: 4px; }

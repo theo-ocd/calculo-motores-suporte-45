@@ -371,3 +371,136 @@ def test_dimensoes_editaveis_no_navegador(url: str) -> None:
             assert erros == []
         finally:
             nav.close()
+
+
+def test_projeto_varios_casos_json_e_xlsx(url: str, tmp_path: Path) -> None:
+    import io
+    import json
+
+    from openpyxl import load_workbook
+
+    sync = pytest.importorskip("playwright.sync_api")
+    with sync.sync_playwright() as p:
+        nav = _navegador(p)
+        try:
+            contexto = nav.new_context(
+                accept_downloads=True, viewport={"width": 1500, "height": 1000}
+            )
+            pg = contexto.new_page()
+            erros: list[str] = []
+            pg.on("pageerror", lambda e: erros.append(str(e)))
+            dialogos: list[str] = []
+            aceitar = {"sim": True}
+
+            def responder(d) -> None:
+                dialogos.append(d.message)
+                d.accept() if aceitar["sim"] else d.dismiss()
+
+            pg.on("dialog", responder)
+            pg.goto(url)
+            pg.wait_for_selector("#conexao[data-estado='ok']", timeout=10_000)
+            assert pg.locator("#lista-casos li").count() == 1
+
+            # caso 1
+            pg.fill("#nome-projeto", "Obra Teste")
+            pg.fill("#cota", "1646")
+            pg.fill("#caso_id", "REF")
+            pg.fill("#R_min", "2086")
+            pg.fill("#R_max", "2161")
+            pg.wait_for_selector("#lista-casos li.ativo .ponto[data-status='OK']", timeout=10_000)
+
+            # caso 2 com motor 180M e ajuste do A
+            pg.click("#btn-caso-novo")
+            assert pg.locator("#lista-casos li").count() == 2
+            assert pg.input_value("#R_min") == ""
+            pg.fill("#caso_id", "ALT")
+            pg.select_option("#motor_id", "IEC-180M-4P")
+            pg.fill("#R_min", "2086")
+            pg.fill("#R_max", "2110")
+            pg.fill("#dim-motor-A", "289")
+            pg.wait_for_function(
+                "document.querySelectorAll('#lista-casos .ponto[data-status=\"OK\"]').length === 2"
+            )
+
+            # nome repetido é apontado no campo
+            pg.fill("#caso_id", "ref")
+            pg.wait_for_selector(".campo[data-campo='caso_id'].invalido", timeout=10_000)
+            pg.fill("#caso_id", "ALT")
+
+            # voltar ao caso 1 carrega os valores dele; ao 2, o ajuste
+            pg.click("#lista-casos li[data-indice='0']")
+            assert pg.input_value("#caso_id") == "REF" and pg.input_value("#R_max") == "2161"
+            assert pg.locator(".dim.alterado").count() == 0
+            pg.click("#lista-casos li[data-indice='1']")
+            assert pg.input_value("#motor_id") == "IEC-180M-4P"
+            assert pg.input_value("#dim-motor-A") == "289"
+            assert pg.locator(".dim.alterado").count() == 1
+
+            # duplicar e excluir
+            pg.click("#btn-caso-duplicar")
+            assert pg.input_value("#caso_id") == "ALT-copia"
+            assert pg.locator("#lista-casos li").count() == 3
+            pg.click("#btn-caso-excluir")
+            assert pg.locator("#lista-casos li").count() == 2
+
+            # salvar .json
+            pg.wait_for_timeout(400)
+            with pg.expect_download() as dl:
+                pg.click("#btn-salvar")
+            arq_json = tmp_path / "proj.json"
+            dl.value.save_as(arq_json)
+            assert dl.value.suggested_filename == "Obra Teste.json"
+            dados = json.loads(arq_json.read_text(encoding="utf-8"))
+            assert dados["formato"] == "tensorcad-projeto" and dados["versao"] == 1
+            assert dados["cota"] == 1646 and [c["caso_id"] for c in dados["casos"]] == [
+                "REF",
+                "ALT",
+            ]
+            assert dados["casos"][1]["ajustes"]["motor"] == {"A": 289}
+            assert dados["casos"][1]["motor_id"] == "IEC-180M-4P"
+
+            # recarregar restaura o rascunho
+            pg.wait_for_timeout(600)
+            pg.reload()
+            pg.wait_for_selector("#aviso:not([hidden])", timeout=10_000)
+            assert "rascunho restaurado" in pg.inner_text("#aviso")
+            assert pg.locator("#lista-casos li").count() == 2
+            assert pg.input_value("#nome-projeto") == "Obra Teste"
+
+            # limpar memória pede confirmação: cancelar mantém os casos
+            aceitar["sim"] = False
+            pg.click("#btn-limpar")
+            assert "2 caso(s)" in dialogos[-1]
+            assert pg.locator("#lista-casos li").count() == 2
+            aceitar["sim"] = True
+            pg.click("#btn-limpar")
+            assert pg.locator("#lista-casos li").count() == 1
+            assert pg.input_value("#R_min") == ""
+            pg.set_input_files("#arquivo-projeto", str(arq_json))
+            pg.wait_for_function("document.querySelectorAll('#lista-casos li').length === 2")
+            assert pg.input_value("#cota") == "1646"
+            pg.wait_for_function(
+                "document.querySelectorAll('#lista-casos .ponto[data-status=\"OK\"]').length === 2"
+            )
+
+            # arquivo inválido: aviso de erro, projeto mantido
+            ruim = tmp_path / "ruim.json"
+            ruim.write_text('{"formato": "outro"}', encoding="utf-8")
+            pg.set_input_files("#arquivo-projeto", str(ruim))
+            pg.wait_for_selector("#aviso[data-tipo='erro']")
+            assert pg.locator("#lista-casos li").count() == 2
+
+            # exportar .xlsx: uma aba por caso
+            with pg.expect_download() as dl:
+                pg.click("#btn-exportar")
+            assert dl.value.suggested_filename == "Obra Teste.xlsx"
+            wb = load_workbook(io.BytesIO(Path(dl.value.path()).read_bytes()))
+            assert wb.sheetnames == ["PROJETO", "REF", "ALT", "_entradas"]
+            indice = {
+                r[0]: r for r in wb["PROJETO"].iter_rows(min_row=10, values_only=True) if r[0]
+            }
+            assert indice["REF"][7] == pytest.approx(1634.32, abs=0.01)
+            assert indice["ALT"][6] == "OK"
+            assert erros == []
+        finally:
+            nav.close()
