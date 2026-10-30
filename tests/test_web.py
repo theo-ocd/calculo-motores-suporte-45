@@ -50,8 +50,8 @@ def test_api_carcacas_status(contexto) -> None:
     lista = {c["carcaca"]: c for c in api.carcacas(contexto)}
     assert list(lista) == ["160", "180", "200", "225", "250"]
     c180 = lista["180"]
-    assert c180["status"] == api.PARCIAL and c180["calculavel"] and c180["chapa"] == "CH-180"
-    assert c180["detalhe"] == "pendente: largura das ranhuras"
+    assert c180["status"] == api.OK and c180["calculavel"] and c180["chapa"] == "CH-180"
+    assert c180["detalhe"] == "medidas completas (largura da ranhura não informada)"
     assert [m["carcaca"] for m in c180["motores"]] == ["180L", "180M"]
     for n in ("160", "200", "225", "250"):
         assert lista[n]["status"] == api.ERRO and not lista[n]["calculavel"]
@@ -170,7 +170,7 @@ def test_pagina_carrega_no_navegador(url: str) -> None:
             assert pg.title() == "tensorcad"
             assert pg.locator("#lista-carcacas li").count() == 5
             chip = pg.locator("#lista-carcacas li[data-carcaca='180'] .chip")
-            assert chip.get_attribute("data-status") == "parcial"
+            assert chip.get_attribute("data-status") == "ok"
             assert (
                 pg.locator("#lista-carcacas li[data-carcaca='200'] .chip").get_attribute(
                     "data-status"
@@ -199,7 +199,7 @@ def test_calculo_ao_vivo_no_navegador(url: str) -> None:
             assert pg.inner_text("#fixo-x-tubo") == "465"
             assert pg.inner_text("#fixo-y-piso") == "767"
             assert pg.locator("#fixo-x-tubo").evaluate("e => e.tagName") == "DD"  # não editável
-            assert pg.locator("#carcaca").get_attribute("data-status") == "parcial"
+            assert pg.locator("#carcaca").get_attribute("data-status") == "ok"
             assert pg.locator("#motor_id option").count() == 2
 
             # REF-180: inviável, cota informada 1646

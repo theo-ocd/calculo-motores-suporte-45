@@ -102,12 +102,13 @@ def _status_chapa(ctx: Contexto, numero: int) -> tuple[str, str | None, str]:
     faltam = []
     if chapa.origem is not Origem.MEDIDO:
         faltam.append(f"origem {chapa.origem.value}")
-    if any(r.largura is None for r in rs):
-        faltam.append("largura das ranhuras")
     if any(r.d_ini is None or r.d_fim is None for r in rs):
         faltam.append("comprimento das ranhuras / vão")
     if faltam:
         return PARCIAL, chapa.chapa_id, "pendente: " + ", ".join(faltam)
+    # largura não entra na geometria 2D: só a verificação do furo K (aviso no cálculo)
+    if any(r.largura is None for r in rs):
+        return OK, chapa.chapa_id, "medidas completas (largura da ranhura não informada)"
     return OK, chapa.chapa_id, "medidas completas"
 
 

@@ -14,8 +14,8 @@ from tensorcad.projeto import ConfigProjeto, ResultadoProjeto, posicao
 
 CAMADAS = ("construcao", "estrutura", "cotas", "chapa", "motor")  # ordem de pintura
 ESPESSURA_CHAPA = 10.0  # apenas visual (espessura real não cadastrada)
-RAIO_SIMBOLO_O = 40.0  # octógono do centro dos raios (visual)
-MEIA_DIAGONAL_APOIO = 35.0  # quadrado a 45° do centro do apoio (visual)
+RAIO_SIMBOLO_O = 70.0  # octógono do centro dos raios (visual)
+MEIA_DIAGONAL_APOIO = 60.0  # quadrado a 45° do centro do apoio (visual)
 ACIMA_DE_O = 150.0  # linha de centro do apoio sobe até um pouco acima da altura de O
 ABERTURA_ARCO_GRAUS = 14.0
 
@@ -250,8 +250,8 @@ def gerar(r: ResultadoProjeto, cfg: ConfigProjeto) -> dict[str, Any] | None:
         "cota-x-tubo",
         f"{cfg.x_tubo:g}",
         {"x_tubo": cfg.x_tubo},
-        p0=_cad(0, T[1] + 120),
-        p1=_cad(T[0], T[1] + 120),
+        p0=_cad(0, -ACIMA_DE_O / 2),  # no alto do desenho, acima da altura de O
+        p1=_cad(T[0], -ACIMA_DE_O / 2),
     )
     add(
         "cota",
