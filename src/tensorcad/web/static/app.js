@@ -82,7 +82,7 @@ function aoTrocarCarcaca() {
   for (const m of c ? c.motores : []) {
     const op = document.createElement("option");
     op.value = m.motor_id;
-    op.textContent = `${m.motor_id}  (H ${m.H} · A ${m.A} · K ${m.K})`;
+    op.textContent = `${m.motor_id}  (eixo ${m.H} · A ${m.A} · K ${m.K})`;
     selM.append(op);
   }
   selM.disabled = !c || c.motores.length === 0;
@@ -134,6 +134,12 @@ async function calcular() {
     });
     marcarErros({});
     mostrarResultado(r);
+    const trocou = estado.ultimaCarcaca !== campos.carcaca;
+    estado.ultimaCarcaca = campos.carcaca;
+    Desenho.desenhar(r.desenho, { reajustar: trocou });
+    $("info-desenho").textContent = r.desenho
+      ? `desenho em H = ${fmt(r.desenho.H)} (${r.cota_informada !== null ? "informada" : "recomendada"})`
+      : "";
   } catch (e) {
     if (e.name === "AbortError") return;
     marcarErros(e.campos || {});
@@ -155,6 +161,8 @@ function linhaResumo(dl, rotulo, valor, destaque = false) {
 }
 
 function mostrarVazio(texto) {
+  Desenho.desenhar(null);
+  $("info-desenho").textContent = "";
   const st = $("status");
   st.dataset.status = "";
   st.textContent = texto;
@@ -175,12 +183,12 @@ function mostrarResultado(r) {
   const faixas = r.faixas_cota.length
     ? r.faixas_cota.map(([a, b]) => `${fmt(a)} a ${fmt(b)}`).join("; ")
     : "nenhuma";
-  linhaResumo(resumo, "Faixa admissível da cota 1646", faixas);
-  linhaResumo(resumo, "Cota 1646 recomendada", fmt(r.cota_recomendada), true);
+  linhaResumo(resumo, "Faixa admissível de H", faixas);
+  linhaResumo(resumo, "H recomendada", fmt(r.cota_recomendada), true);
   linhaResumo(resumo, "Folga mínima na recomendada", fmt(r.margem_recomendada));
   if (r.em_informada) {
     const m = Math.min(...r.em_informada.map((p) => (p.margem ?? -Infinity)));
-    linhaResumo(resumo, `Folga mínima na cota ${fmt(r.cota_informada)}`, fmt(m));
+    linhaResumo(resumo, `Folga mínima em H = ${fmt(r.cota_informada)}`, fmt(m));
   }
 
   const tbody = $("posicoes").querySelector("tbody");
@@ -204,7 +212,7 @@ function mostrarResultado(r) {
           const tag = document.createElement("span");
           tag.className = "tag";
           tag.textContent = rotulo;
-          tag.title = rotulo === "rec" ? "cota recomendada" : "cota informada";
+          tag.title = rotulo === "rec" ? "H recomendada" : "H informada";
           td.prepend(tag);
         }
         if ((j === 3 && p.folga_neg < 0) || (j === 4 && p.folga_pos < 0)) td.classList.add("neg");
@@ -226,12 +234,13 @@ function mostrarResultado(r) {
   linhaResumo(info, "Chapa", `${r.chapa.chapa_id} (${r.chapa.origem})`);
   linhaResumo(info, "Comprimento / inclinação", `${fmt(r.chapa.comprimento, 0)} mm · ${fmt(r.chapa.theta_deg, 0)}°`);
   linhaResumo(info, "Tubo → L (dx / dy)", `${fmt(r.chapa.dx_L_tubo)} / ${fmt(r.chapa.dy_L_tubo)}`);
-  linhaResumo(info, "Motor / h", `${r.motor.motor_id} · h ${fmt(r.h, 0)}`);
+  linhaResumo(info, "Motor / h sobre a chapa", `${r.motor.motor_id} · ${fmt(r.h, 0)}`);
 }
 
 // ------------------------------------------------------------------ início
 
 async function iniciar() {
+  Desenho.iniciar();
   for (const id of ["cota", "caso_id", "R_min", "R_max"]) $(id).addEventListener("input", agendarCalculo);
   $("carcaca").addEventListener("change", aoTrocarCarcaca);
   $("motor_id").addEventListener("change", agendarCalculo);
@@ -252,12 +261,6 @@ async function iniciar() {
     mostrarVazio(`Erro: ${e.message}`);
   }
 
-  const svg = $("desenho");
-  const xy = $("cursor-xy");
-  svg.addEventListener("mousemove", (ev) => {
-    const r = svg.getBoundingClientRect();
-    xy.textContent = `tela ${Math.round(ev.clientX - r.left)}, ${Math.round(ev.clientY - r.top)} px`;
-  });
 }
 
 document.addEventListener("DOMContentLoaded", iniciar);

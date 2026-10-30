@@ -147,7 +147,7 @@ def caso(
     motor: Annotated[str | None, typer.Option(help="motor_id cadastrado.")] = None,
     carcaca: Annotated[str | None, typer.Option(help="Carcaça (alternativa a --motor).")] = None,
     cota: Annotated[
-        float | None, typer.Option(help="Cota 1646 a verificar (opcional, mm).")
+        float | None, typer.Option(help="Altura H do centro do apoio a verificar (opcional, mm).")
     ] = None,
     chapa: Annotated[str | None, typer.Option(help="Força uma chapa padrão.")] = None,
     nome_projeto: Annotated[str, typer.Option(help="Nome (só na criação).")] = "PROJETO",
@@ -264,7 +264,7 @@ def interativo(dados: Dados = None, padroes: PadroesOpt = None) -> None:
         carc = typer.prompt("Carcaça", default=carcacas[0] if carcacas else "")
         r_min = _perguntar_num("R_min (0 %) mm")
         r_max = _perguntar_num("R_max (3 %) mm")
-        cota = _perguntar_num("Cota 1646 a verificar (Enter = só calcular)", opcional=True)
+        cota = _perguntar_num("Altura H do centro do apoio (Enter = só calcular)", opcional=True)
         try:
             motor_id = _motor_por_carcaca(base, carc)
             adicionar_caso(

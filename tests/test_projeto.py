@@ -34,43 +34,56 @@ def test_padroes_carregados() -> None:
     assert CH.chapa_id == "CH-180" and CH.comprimento == 635
     assert PAD.chapa_para("180L") is CH and PAD.chapa_para("160M") is None
     rs = PAD.ranhuras_de("CH-180", "180M")
-    assert rs[1].u_ini == -544.51 and rs[2].u_fim == -192.51  # u = −d
+    # desenho da chapa: 110 | 155 | 124 | 155 | 91 a partir da ponta baixa (u = −d)
+    assert (rs[2].u_ini, rs[2].u_fim) == (-265, -110)
+    assert (rs[1].u_ini, rs[1].u_fim) == (-544, -389)
 
 
 def test_desenho_de_referencia_reproduzido() -> None:
+    """Motor 180 em H = 1646: folga de cima 16 a 0 % e de baixo 41 a 3 % (desenho)."""
     a0, b0 = ponto_base(CFG, CH)
     assert (a0, b0) == pytest.approx((823.44, 722.0))
     p = posicao(entrada(), CFG, 2086, 1646)
     assert (p.Cx, p.Cy) == pytest.approx((681.53, 1971.53), abs=0.01)
+    assert p.Cx - CFG.x_tubo == pytest.approx(217, abs=0.5)  # cota 217 do desenho
     assert p.d_motor == pytest.approx(380.70, abs=0.01)
-    assert (p.folga_neg, p.folga_pos) == pytest.approx((16.81, 41.19), abs=0.01)
+    assert p.folga_neg == pytest.approx(16.30, abs=0.01)  # topo, bloqueante a 0 %
     assert p.status is Status.OK
     assert math.hypot(p.Cx, p.Cy) == pytest.approx(2086)
-    # no desenho (s = 0 relativo ao P antigo) as folgas medidas são 9 e 49
-    t_L = (722.0 + 1646 - 2093.2792) / math.sin(math.radians(45))
-    fn = (-t_L - M180.A / 2 - M180.K / 2) - (-544.51)
-    assert fn == pytest.approx(9.0, abs=0.01)
+    p3 = posicao(entrada(), CFG, 2161, 1646)
+    assert p3.folga_pos == pytest.approx(40.64, abs=0.01)  # base, bloqueante a 3 %
+    assert p3.folgas_internas == pytest.approx((40.64, 99.36), abs=0.01)
 
 
-def test_referencia_inviavel_com_deficit() -> None:
+def test_referencia_viavel() -> None:
     r = resolver_caso(entrada(), CFG)
-    assert r.status is Status.FORA_RANHURA and r.faixas_cota == ()
-    assert r.margem_recomendada == pytest.approx(-12.74, abs=0.01)
-    assert r.cota_recomendada == pytest.approx(1673.99, abs=0.01)
+    assert r.status is Status.OK
+    ((lo, hi),) = r.faixas_cota
+    assert (lo, hi) == pytest.approx((1606.55, 1661.47), abs=0.01)
+    assert r.cota_recomendada == pytest.approx(1634.32, abs=0.01)
+    assert r.margem_recomendada == pytest.approx(28.56, abs=0.01)
     pmin, pmax = r.em_recomendada
-    # na cota de compromisso o déficit é igual nos dois extremos
+    # na recomendada a folga de cima a 0 % iguala a de baixo a 3 %
     assert pmin.folga_neg == pytest.approx(pmax.folga_pos, abs=1e-4)
-    assert "12.74" in r.mensagem
-    assert r.em_informada[1].status is Status.FORA_RANHURA
+    assert all(p.status is Status.OK for p in r.em_informada)
+
+
+def test_inviavel_com_deficit() -> None:
+    r = resolver_caso(entrada(R_max=2300), CFG)
+    assert r.status is Status.FORA_RANHURA and r.faixas_cota == ()
+    assert r.margem_recomendada == pytest.approx(-48.92, abs=0.01)
+    assert r.cota_recomendada == pytest.approx(1707.46, abs=0.01)
+    assert "48.92" in r.mensagem
 
 
 def test_caso_viavel_faixa_e_recomendada() -> None:
     r = resolver_caso(entrada(R_max=2110), CFG)
     assert r.status is Status.OK
     ((lo, hi),) = r.faixas_cota
-    assert (lo, hi) == pytest.approx((1632.07, 1661.96), abs=0.01)
+    assert (lo, hi) == pytest.approx((1551.88, 1661.47), abs=0.01)
     assert lo < r.cota_recomendada < hi
-    assert r.margem_recomendada == pytest.approx(15.67, abs=0.01)
+    assert r.cota_recomendada == pytest.approx(1607.26, abs=0.01)
+    assert r.margem_recomendada == pytest.approx(56.77, abs=0.01)
     # nas bordas da faixa uma das folgas zera
     for c in (lo, hi):
         ms = [posicao(entrada(R_max=2110), CFG, R, c).margem for R in (2086, 2110)]

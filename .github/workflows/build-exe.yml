@@ -48,7 +48,9 @@ jobs:
           Rodar @("--help") | Out-Null
           Rodar @("validar") | Out-Null
           $r = Rodar @("caso","--projeto","ref.xlsx","--id","REF-180","--carcaca","180M","--rmin","2086","--rmax","2161","--cota","1646")
-          if ($r -notmatch "FORA_RANHURA") { throw "REF-180 deveria ser FORA_RANHURA" }
+          if ($r -notmatch "REF-180: OK") { throw "REF-180 deveria ser OK (chapa CH-180 real)" }
+          $r = Rodar @("caso","--projeto","ref.xlsx","--id","LONGO","--carcaca","180M","--rmin","2086","--rmax","2300")
+          if ($r -notmatch "LONGO: FORA_RANHURA") { throw "LONGO deveria ser FORA_RANHURA" }
           $r = Rodar @("caso","--projeto","ref.xlsx","--id","ALT","--carcaca","180M","--rmin","2086","--rmax","2110")
           if ($r -notmatch "ALT: OK") { throw "ALT deveria ser OK" }
           Rodar @("lote","--saida","out","--passo","50") | Out-Null

@@ -1,8 +1,8 @@
 id;item;impacto;status
 P1;Confirmar carcaça do motor do desenho (160?) e e_apoio=20 mm;h de todos os casos;ABERTO
-P2;Confirmar lado das folgas 9 e 49 (ranhura 1 = lado do centro do arco?);u_ini/u_fim e status;ABERTO
-P3;Medir u_fim da ranhura 1, u_ini da ranhura 2 e largura real das ranhuras;Desenho CAD;ABERTO
-P4;Curso da ranhura (~49 mm) menor que o necessário R2086→R2161 (~83 mm);Projeto da chapa;ALERTA
+P2;Confirmar lado das folgas 9 e 49 (ranhura 1 = lado do centro do arco?);u_ini/u_fim e status;RESOLVIDO
+P3;Medir u_fim da ranhura 1, u_ini da ranhura 2 e largura real das ranhuras;Desenho CAD;PARCIAL (falta largura)
+P4;Curso da ranhura (~49 mm) menor que o necessário R2086→R2161 (~83 mm);Projeto da chapa;RESOLVIDO (chapa real: 155 mm)
 P5;Catálogo de motores (AC, HD, L, massa) — fabricante a definir;Desenho e interferência;ABERTO
 P6;Coordenadas X_O_cad/Y_O_cad do centro do arco;Exportação CAD;ABERTO
 P7;Dimensões da chapa (espessura, comprimento, largura);Desenho CAD;ABERTO

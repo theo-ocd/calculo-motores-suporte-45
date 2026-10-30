@@ -38,7 +38,7 @@ def test_uma_aba_por_caso_e_indice(projeto: Path) -> None:
     assert wb.sheetnames == ["PROJETO", "REF-180", "ALT-2110", ABA_ENTRADAS]
     assert wb[ABA_ENTRADAS].sheet_state == "hidden"
     assert wb["PROJETO"]["A1"].value == "Projeto TESTE"
-    assert status_do_caso(projeto, "REF-180") == "FORA_RANHURA"
+    assert status_do_caso(projeto, "REF-180") == "OK"
     assert status_do_caso(projeto, "ALT-2110") == "OK"
     assert wb["PROJETO"]["A10"].hyperlink.location == "'REF-180'!A1"
 
@@ -47,8 +47,8 @@ def test_aba_do_caso_tem_resultado_e_graficos(projeto: Path) -> None:
     ws = load_workbook(projeto)["ALT-2110"]
     valores = {ws.cell(i, 1).value: ws.cell(i, 2).value for i in range(1, 60)}
     assert valores["status"] == "OK"
-    assert valores["cota 1646 recomendada (máx. folga mínima)"] == pytest.approx(1647.09, abs=0.01)
-    assert valores["faixa admissível da cota 1646"] == "1632.07 a 1661.96"
+    assert valores["H recomendada (máx. folga mínima)"] == pytest.approx(1607.26, abs=0.01)
+    assert valores["faixa admissível de H"] == "1551.88 a 1661.47"
     assert valores["chapa"] == "CH-180"
     assert len(ws._charts) == 2
 

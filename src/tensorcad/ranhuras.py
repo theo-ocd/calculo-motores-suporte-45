@@ -23,13 +23,22 @@ class AvaliacaoRanhuras:
     folga_neg: float | None = None
     folga_pos: float | None = None
     mensagens: tuple[str, ...] = ()
+    # folgas nas pontas internas (fim da ranhura 1, início da ranhura 2), se conhecidas
+    folgas_internas: tuple[float, ...] = ()
 
     @property
     def margem(self) -> float | None:
-        """Menor das duas folgas (None se não calculadas)."""
+        """Menor folga (externas e internas); None se não calculadas."""
         if self.folga_neg is None or self.folga_pos is None:
             return None
-        return min(self.folga_neg, self.folga_pos)
+        return min(self.folga_neg, self.folga_pos, *self.folgas_internas)
+
+
+def folgas_internas(
+    s: float, A: float, K: float, u_fim_1: float, u_ini_2: float
+) -> tuple[float, float]:
+    """Folgas dos furos nas pontas internas: (fim da ranhura 1, início da ranhura 2)."""
+    return u_fim_1 - (s - A / 2 + K / 2), (s + A / 2 - K / 2) - u_ini_2
 
 
 def folgas(s: float, A: float, K: float, u_ini_1: float, u_fim_2: float) -> tuple[float, float]:
@@ -81,10 +90,16 @@ def avaliar(
         msgs.append(f"furo excede o início da ranhura 1 em {-fn:.2f} mm")
     if fp < 0:
         msgs.append(f"furo excede o fim da ranhura 2 em {-fp:.2f} mm")
+    internas: tuple[float, ...] = ()
+    if ranhuras[1].u_fim is not None and ranhuras[2].u_ini is not None:
+        internas = folgas_internas(s, motor.A, motor.K, ranhuras[1].u_fim, ranhuras[2].u_ini)
+        for n, f in zip((1, 2), internas, strict=True):
+            if f < 0:
+                msgs.append(f"furo excede a ponta interna da ranhura {n} em {-f:.2f} mm")
     status = Status.FORA_RANHURA if msgs else Status.OK
     if sem_largura:
         msgs.append("AVISO: largura da ranhura não informada; verificação com K não feita")
-    return AvaliacaoRanhuras(status, fn, fp, tuple(msgs))
+    return AvaliacaoRanhuras(status, fn, fp, tuple(msgs), internas)
 
 
 def calibrar_ranhuras(
@@ -135,13 +150,17 @@ def ranhuras_calibradas(
 
 
 def s_admissivel(ranhuras: Mapping[int, Ranhura], motor: Motor) -> tuple[float, float] | None:
-    """[s_min, s_max] com folga_neg ≥ 0 e folga_pos ≥ 0. None se ranhuras ausentes
-    ou intervalo vazio."""
+    """[s_min, s_max] com todas as folgas ≥ 0 (externas e, se conhecidas, internas).
+    None se ranhuras ausentes ou intervalo vazio."""
     if 1 not in ranhuras or 2 not in ranhuras:
         return None
     meio = motor.A / 2 + motor.K / 2
     s_min = ranhuras[1].u_ini + meio
     s_max = ranhuras[2].u_fim - meio
+    if ranhuras[1].u_fim is not None and ranhuras[2].u_ini is not None:
+        interno = motor.A / 2 - motor.K / 2  # pontas internas, quando conhecidas
+        s_max = min(s_max, ranhuras[1].u_fim + interno)
+        s_min = max(s_min, ranhuras[2].u_ini - interno)
     if s_min > s_max:
         return None
     return s_min, s_max

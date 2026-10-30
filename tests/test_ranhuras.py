@@ -13,7 +13,7 @@ S_REF1 = g.resolver_s(A_REF, B_REF, 0, 180, 45, 2086)  # ≈ 7.81
 
 def sinteticas(largura: float = 20, folga_neg: float = 9, folga_pos: float = 49, chapa="CH"):
     r1, r2 = rn.ranhuras_calibradas(
-        chapa, "160M", S_REF1, MOTOR.A, MOTOR.K, folga_neg, folga_pos, largura, comprimento=60
+        chapa, "160M", S_REF1, MOTOR.A, MOTOR.K, folga_neg, folga_pos, largura
     )
     return {1: r1, 2: r2}
 
@@ -170,3 +170,22 @@ def test_calibracao_sem_comprimento_deixa_pontas_internas_vazias() -> None:
     r1, r2 = rn.ranhuras_calibradas("CH-REF", "160L", 0, 254, 15, 9, 49, 17)
     assert (r1.u_ini, r1.u_fim) == (-143.5, None)
     assert (r2.u_ini, r2.u_fim) == (None, 183.5)
+
+
+def test_pontas_internas_quando_conhecidas() -> None:
+    # ranhuras de 60 mm: além das pontas externas, os furos não podem passar das internas
+    r1, r2 = rn.ranhuras_calibradas(
+        "CH", "160M", S_REF1, MOTOR.A, MOTOR.K, 9, 49, 20, comprimento=60
+    )
+    rs = {1: r1, 2: r2}
+    av = rn.avaliar(S_REF1, MOTOR, CHAPA, rs)
+    fi1, fi2 = av.folgas_internas
+    assert fi1 == pytest.approx(60 - 9 - MOTOR.K)  # 36
+    assert fi2 == pytest.approx(60 - 49 - MOTOR.K)  # −4: furo passa da ponta interna 2
+    assert av.status is Status.FORA_RANHURA and av.margem == pytest.approx(-4)
+    assert "ponta interna da ranhura 2" in av.mensagens[0]
+    s_min, s_max = rn.s_admissivel(rs, MOTOR)
+    assert s_max == pytest.approx(S_REF1 + 60 - 9 - MOTOR.K)  # ponta interna 1 (+36)
+    assert s_min == pytest.approx(S_REF1 + 4)  # ponta interna 2 eleva o mínimo
+    for s in (s_min, s_max):
+        assert rn.avaliar(s, MOTOR, CHAPA, rs).margem == pytest.approx(0, abs=1e-9)

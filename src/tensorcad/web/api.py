@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import tensorcad
+from tensorcad import desenho
 from tensorcad.loader import BaseDados, Padroes
 from tensorcad.models import Origem
 from tensorcad.projeto import (
@@ -255,4 +256,5 @@ def calcular(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
         cota,
     )
     cfg = ConfigProjeto(y_piso=ctx.y_piso, x_tubo=ctx.x_tubo)
-    return serializar(resolver_caso(entrada, cfg))
+    r = resolver_caso(entrada, cfg)
+    return {**serializar(r), "desenho": desenho.gerar(r, cfg)}

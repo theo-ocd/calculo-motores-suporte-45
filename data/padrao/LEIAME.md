@@ -56,10 +56,6 @@ preencher. O programa as ignora e mostra um aviso.
 
 ## CH-180 (atual)
 
-Valores calculados a partir do desenho de referência (folgas 9 e 49, motor na posição do
-desenho), a confirmar pelo print:
-- dx = 358,44;
-- dy = 45;
-- L → ranhura = 192,51;
-- ranhura → topo = 90,49;
-- largura 17 (hipótese).
+Medidas do desenho da chapa: a partir da ponta baixa L, 110 | ranhura 155 | 124 | ranhura
+155 | 91, total 635. dx 358,44 e dy 45 foram validados pelas folgas 16 (topo, 0 %) e 41
+(base, 3 %) do desenho em H = 1646. A largura da ranhura ainda está pendente.
