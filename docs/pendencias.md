@@ -15,9 +15,9 @@ Os IDs P1–P7 abaixo devem ficar sincronizados com o CSV (verificado em teste).
 | P5 | Catálogo de motores (AC, HD, L, massa) — fabricante a definir | Desenho e interferência | ABERTO |
 | P6 | Coordenadas X_O_cad/Y_O_cad do centro do arco | Exportação CAD | ABERTO |
 | P7 | Dimensões da chapa (espessura, comprimento, largura) | Desenho CAD | ABERTO |
-| P8 | Banco duplo: sentido do deslocamento de 500 mm de O2 (esboço: acima de O) | Banco duplo — posição de O2 | ABERTO |
-| P9 | Banco duplo: definição dos adicionais de raio (esboço: R2 = R + adicional, um para R_min e outro para R_max, por caso) | Banco duplo — R2_min/R2_max | ABERTO |
-| P10 | Banco duplo: critério 'motor entre as linhas de raio' (esboço: R2_min ≤ distância C–O2 ≤ R2_max a 0 % e 3 %, fora gera só aviso) | Banco duplo — status e H recomendada | ABERTO |
+| P8 | Banco duplo: O2 fica 500 mm acima de O | Banco duplo — posição de O2 | RESOLVIDO (acima) |
+| P9 | Banco duplo: raios R2_min/R2_max do banco 2 | Banco duplo — R2_min/R2_max | RESOLVIDO (independentes do banco 1, por caso) |
+| P10 | Banco duplo: critério de posição do motor único | Banco duplo — status e H recomendada | RESOLVIDO (≥ R1 de O e ≤ R2 de O2 a 0 % e 3 %, aviso) |
 
 Pendência do repositório (fora do CSV): licença (LICENSE provisório, TODO).
 
@@ -95,10 +95,10 @@ Substitui S2, S3, S4 e S5 acima:
 
 ## Banco duplo — esboço (branch feature/banco-duplo)
 
-Suposições do esboço, todas opcionais e atrás do switch (desligado não muda nada).
-Detalhes em docs/banco_duplo.md.
+Atrás do switch: desligado, nada muda. Detalhes em docs/banco_duplo.md.
 
-- O2 fica 500 mm **acima** de O (P8).
-- R2_min = R_min + adicional_R_min e R2_max = R_max + adicional_R_max, por caso (P9).
-- Motor único posicionado pelo banco 1. Fora de [R2_min, R2_max] gera **aviso** e não
-  muda o status (P10).
+- O2 fica 500 mm **acima** de O (P8, confirmado).
+- R2_min e R2_max são entradas por caso, **independentes** do banco 1 (P9, confirmado).
+- Motor único: a 0 % e a 3 %, o centro deve ficar a ≥ R1 de O e ≤ R2 de O2 (P10,
+  confirmado). Sem trecho entre os arcos, gera **aviso**.
+- Suposição em aberto: o banco 2 só gera aviso. Não altera o status nem a H recomendada.

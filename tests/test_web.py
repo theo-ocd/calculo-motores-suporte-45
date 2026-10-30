@@ -528,32 +528,33 @@ def test_banco_duplo_no_navegador(url: str) -> None:
             assert pg.locator("#resultado-banco2").is_hidden()
             assert pg.locator("#el-O2").count() == 0
 
-            # ligado sem adicionais: banco 1 continua calculado e pede os adicionais
+            # ligado sem R2: banco 1 continua calculado e pede os raios do banco 2
             pg.click("label[for='banco-duplo']")
-            assert pg.locator("#adicional_R_min").is_visible()
+            assert pg.locator("#R2_min").is_visible()
             assert pg.inner_text("#fixo-dy-banco2") == "500"
-            pg.wait_for_selector("#banco2-mensagem:has-text('preencha os adicionais')")
+            pg.wait_for_selector("#banco2-mensagem:has-text('preencha R2min e R2max')")
             assert pg.get_attribute("#status", "data-status") == "OK"
 
-            # adicionais que deixam o motor entre as linhas
-            pg.fill("#adicional_R_min", "470")
-            pg.fill("#adicional_R_max", "480")
+            # R2 que deixam trecho entre os arcos nas duas tensões
+            pg.fill("#R2_min", "2600")
+            pg.fill("#R2_max", "2680")
             pg.wait_for_selector("#el-O2", timeout=10_000)
-            pg.wait_for_selector("#banco2-mensagem:has-text('entre as linhas')")
+            pg.wait_for_selector("#banco2-mensagem:has-text('entre os arcos R1 e R2')")
             assert pg.locator("#banco2 tbody tr").count() == 2
             assert pg.locator("#el-arco-R2_min").count() == 1
+            assert pg.locator("#el-trecho-0").count() == 1
 
-            # fora das linhas: aviso, status do caso não muda
-            pg.fill("#adicional_R_min", "500")
+            # sem trecho a 0 %: aviso, status do caso não muda
+            pg.fill("#R2_min", "2560")
             pg.wait_for_selector("#banco2 .ponto[data-status='AVISO']", timeout=10_000)
-            assert "abaixo de R2_min" in pg.inner_text("#banco2-mensagem")
+            assert "não há posição" in pg.inner_text("#banco2-mensagem")
             assert pg.get_attribute("#status", "data-status") == "OK"
             assert pg.locator("#el-raio2-0[data-status='AVISO']").count() == 1
 
             # persiste no projeto (switch no projeto, adicionais por caso)
             dados = pg.evaluate("Projeto.serializar()")
             assert dados["banco_duplo"] is True
-            assert dados["casos"][0]["adicional_R_min"] == 500
+            assert dados["casos"][0]["R2_min"] == 2560
 
             # desligar esconde e remove o banco 2 do desenho
             pg.click("label[for='banco-duplo']")

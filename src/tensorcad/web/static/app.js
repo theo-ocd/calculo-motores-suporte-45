@@ -224,10 +224,10 @@ function lerCampos() {
     cota: $("cota").value.trim() || null,
     ajustes: estado.ajustes,
     banco_duplo: {
-      // ligado sem nenhum adicional preenchido: calcula só o banco 1 (e pede os adicionais)
-      ativo: $("banco-duplo").checked && Boolean($("adicional_R_min").value.trim() || $("adicional_R_max").value.trim()),
-      adicional_R_min: $("adicional_R_min").value.trim(),
-      adicional_R_max: $("adicional_R_max").value.trim(),
+      // ligado sem nenhum R2 preenchido: calcula só o banco 1 (e pede os raios)
+      ativo: $("banco-duplo").checked && Boolean($("R2_min").value.trim() || $("R2_max").value.trim()),
+      R2_min: $("R2_min").value.trim(),
+      R2_max: $("R2_max").value.trim(),
     },
   };
 }
@@ -244,15 +244,15 @@ function mostrarBanco2(b) {
   tbody.replaceChildren();
   $("banco2-mensagem").textContent = b
     ? b.ok
-      ? "motor entre as linhas de raio do banco 2"
+      ? "motor entre os arcos R1 e R2 nas duas tensões"
       : b.avisos.join("\n")
     : $("banco-duplo").checked
-      ? "preencha os adicionais de raio"
+      ? "preencha R2min e R2max"
       : "";
   if (!b) return;
   for (const q of b.posicoes) {
     const tr = document.createElement("tr");
-    for (const t of [`${q.rotulo} %`, fmt(q.R2), `${fmt(b.R2_min, 0)}–${fmt(b.R2_max, 0)}`, fmt(q.desvio)]) {
+    for (const t of [`${q.rotulo} %`, fmt(q.dist_O2), fmt(q.R2, 0), fmt(q.curso)]) {
       const td = document.createElement("td");
       td.textContent = t;
       tr.append(td);
@@ -262,7 +262,7 @@ function mostrarBanco2(b) {
     const ponto = document.createElement("span");
     ponto.className = "ponto";
     ponto.dataset.status = q.dentro ? "OK" : "AVISO";
-    ponto.title = q.dentro ? "entre R2min e R2max" : "fora das linhas de raio do banco 2";
+    ponto.title = q.dentro ? "há trecho entre o arco R1 e o arco R2" : "sem trecho entre o arco R1 e o arco R2";
     td.append(ponto);
     tr.append(td);
     tbody.append(tr);
@@ -415,7 +415,7 @@ function mostrarResultado(r) {
 
 async function iniciar() {
   Desenho.iniciar();
-  for (const id of ["cota", "caso_id", "R_min", "R_max", "nome-projeto", "adicional_R_min", "adicional_R_max"]) {
+  for (const id of ["cota", "caso_id", "R_min", "R_max", "nome-projeto", "R2_min", "R2_max"]) {
     $(id).addEventListener("input", agendarCalculo);
   }
   $("banco-duplo").addEventListener("change", () => {

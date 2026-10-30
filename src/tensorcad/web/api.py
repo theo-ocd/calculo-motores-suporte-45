@@ -237,7 +237,7 @@ def serializar(r: ResultadoProjeto) -> dict[str, Any]:
 def _ler_banco_duplo(
     ctx: Contexto, bruto: Any, erros: dict[str, str]
 ) -> banco_duplo.ConfigBancoDuplo | None:
-    """{"ativo": bool, "adicional_R_min", "adicional_R_max"}; None se desligado."""
+    """{"ativo": bool, "R2_min", "R2_max"} (raios do banco 2); None se desligado."""
     if bruto is None:
         return None
     if not isinstance(bruto, dict):
@@ -246,25 +246,36 @@ def _ler_banco_duplo(
     if not bruto.get("ativo"):
         return None
     sub: dict[str, str] = {}
-    a_min = _num(bruto, "adicional_R_min", sub, obrigatorio=True)
-    a_max = _num(bruto, "adicional_R_max", sub, obrigatorio=True)
+    r2_min = _num(bruto, "R2_min", sub, obrigatorio=True, positivo=True)
+    r2_max = _num(bruto, "R2_max", sub, obrigatorio=True, positivo=True)
+    if r2_min is not None and r2_max is not None and r2_min > r2_max:
+        sub["R2_max"] = "R2_max deve ser maior ou igual a R2_min"
     erros.update({f"banco_duplo.{k}": v for k, v in sub.items()})
-    if a_min is None or a_max is None:
+    if sub or r2_min is None or r2_max is None:
         return None
-    return banco_duplo.ConfigBancoDuplo(a_min, a_max, ctx.dy_banco2)
+    return banco_duplo.ConfigBancoDuplo(r2_min, r2_max, ctx.dy_banco2)
 
 
 def _banco_duplo(av: banco_duplo.AvaliacaoBancoDuplo) -> dict[str, Any]:
     return {
         "deslocamento_y": av.config.deslocamento_y,
-        "adicional_R_min": av.config.adicional_R_min,
-        "adicional_R_max": av.config.adicional_R_max,
-        "R2_min": av.R2_min,
-        "R2_max": av.R2_max,
+        "R2_min": av.config.R2_min,
+        "R2_max": av.config.R2_max,
+        "H": av.H,
         "ok": av.ok,
         "avisos": list(av.avisos),
         "posicoes": [
-            {"rotulo": q.rotulo, "R1": q.R1, "R2": q.R2, "dentro": q.dentro, "desvio": q.desvio}
+            {
+                "rotulo": q.rotulo,
+                "R1": q.R1,
+                "R2": q.R2,
+                "dist_O2": q.dist_O2,
+                "folga_R2": q.folga_R2,
+                "d_R1": -q.s_R1,
+                "d_R2": None if q.s_R2 is None else -q.s_R2,
+                "curso": q.curso,
+                "dentro": q.dentro,
+            }
             for q in av.posicoes
         ],
     }
@@ -272,7 +283,7 @@ def _banco_duplo(av: banco_duplo.AvaliacaoBancoDuplo) -> dict[str, Any]:
 
 def calcular(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
     """Entradas: carcaca, motor_id (opcional), R_min, R_max, cota (opcional), caso_id,
-    banco_duplo (opcional: ativo, adicional_R_min, adicional_R_max)."""
+    banco_duplo (opcional: ativo, R2_min, R2_max)."""
     if not isinstance(corpo, dict):
         raise ErroEntrada({"(corpo)": "esperado um objeto JSON"})
     erros: dict[str, str] = {}
@@ -320,7 +331,9 @@ def calcular(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
     r = resolver_caso(entrada, cfg)
     av = None
     if bd is not None:
-        av = banco_duplo.avaliar(bd, r_min, r_max, r.em_informada or r.em_recomendada)
+        av = banco_duplo.avaliar(
+            bd, entrada, cfg, desenho.altura_desenho(r), r.em_informada or r.em_recomendada
+        )
     return {
         **serializar(r),
         "banco_duplo": None if av is None else _banco_duplo(av),

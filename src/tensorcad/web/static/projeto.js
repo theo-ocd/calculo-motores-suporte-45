@@ -18,7 +18,7 @@ const Projeto = (() => {
 
   function casoVazio(nome) {
     return { caso_id: nome, carcaca: primeiraCarcaca(), motor_id: null, R_min: "", R_max: "",
-      adicional_R_min: "", adicional_R_max: "", ajustes: { chapa: {}, motor: {} }, _status: "" };
+      R2_min: "", R2_max: "", ajustes: { chapa: {}, motor: {} }, _status: "" };
   }
   function novoProjeto() {
     return { formato: FORMATO, versao: VERSAO, nome: "PROJETO", cota: "", banco_duplo: false, ativo: 0,
@@ -64,8 +64,8 @@ const Projeto = (() => {
     c.motor_id = $("motor_id").value || null;
     c.R_min = $("R_min").value.trim();
     c.R_max = $("R_max").value.trim();
-    c.adicional_R_min = $("adicional_R_min").value.trim();
-    c.adicional_R_max = $("adicional_R_max").value.trim();
+    c.R2_min = $("R2_min").value.trim();
+    c.R2_max = $("R2_max").value.trim();
     c.ajustes = copia(estado.ajustes);
     renderLista();
     agendarRascunho();
@@ -81,8 +81,8 @@ const Projeto = (() => {
     $("caso_id").value = c.caso_id;
     $("R_min").value = texto(c.R_min);
     $("R_max").value = texto(c.R_max);
-    $("adicional_R_min").value = texto(c.adicional_R_min);
-    $("adicional_R_max").value = texto(c.adicional_R_max);
+    $("R2_min").value = texto(c.R2_min);
+    $("R2_max").value = texto(c.R2_max);
     const info = estado.carcacas.find((x) => x.carcaca === c.carcaca && x.calculavel);
     $("carcaca").value = info ? c.carcaca : primeiraCarcaca();
     estado.ajustes = info ? copia(c.ajustes || { chapa: {}, motor: {} }) : { chapa: {}, motor: {} };
@@ -186,8 +186,8 @@ const Projeto = (() => {
         motor_id: c.motor_id,
         R_min: num(c.R_min),
         R_max: num(c.R_max),
-        adicional_R_min: num(c.adicional_R_min),
-        adicional_R_max: num(c.adicional_R_max),
+        R2_min: num(c.R2_min),
+        R2_max: num(c.R2_max),
         ajustes: { chapa: grupo(c.ajustes?.chapa), motor: grupo(c.ajustes?.motor) },
       })),
     };
@@ -210,8 +210,8 @@ const Projeto = (() => {
         motor_id: c.motor_id || null,
         R_min: texto(c.R_min),
         R_max: texto(c.R_max),
-        adicional_R_min: texto(c.adicional_R_min),
-        adicional_R_max: texto(c.adicional_R_max),
+        R2_min: texto(c.R2_min),
+        R2_max: texto(c.R2_max),
         ajustes: { chapa: grupo(c.ajustes?.chapa), motor: grupo(c.ajustes?.motor) },
         _status: "",
       })),

@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from tensorcad.banco_duplo import AvaliacaoBancoDuplo
+from tensorcad.banco_duplo import AvaliacaoBancoDuplo, centro_em
 from tensorcad.projeto import ConfigProjeto, ResultadoProjeto, posicao
 
 CAMADAS = ("construcao", "banco2", "estrutura", "cotas", "chapa", "motor")  # ordem de pintura
@@ -38,7 +38,8 @@ def gerar(
     """Primitivas do desenho na altura H de exibição (None se não há H).
 
     Com `banco2` (modo banco duplo), acrescenta na camada "banco2" o centro O2, os arcos
-    R2_min/R2_max e os raios de O2 ao motor.
+    R2_min/R2_max, os raios de O2 ao motor e o trecho admissível da trajetória do centro
+    (entre o arco R1 e o arco R2) em cada tensão.
     """
     H = altura_desenho(r)
     if H is None:
@@ -141,7 +142,7 @@ def gerar(
             if p.Cx is not None and p.Cy is not None
         ]
         a2 = sum(angulos2) / len(angulos2) if angulos2 else a_med
-        for nome, R in (("R2_min", banco2.R2_min), ("R2_max", banco2.R2_max)):
+        for nome, R in (("R2_min", banco2.config.R2_min), ("R2_max", banco2.config.R2_max)):
             add(
                 "arco",
                 "banco2",
@@ -160,12 +161,23 @@ def gerar(
                 "linha",
                 "banco2",
                 f"raio2-{q.rotulo}",
-                f"raio do banco 2 ao motor {q.rotulo} %",
-                {"R2": q.R2, "dentro": q.dentro, "desvio": q.desvio},
+                f"O2 → motor {q.rotulo} % (sobre o arco R1)",
+                {"dist_O2": q.dist_O2, "R2": q.R2, "folga_R2": q.folga_R2},
                 p0=c2,
                 p1=_cad(p.Cx, p.Cy),
                 status="OK" if q.dentro else "AVISO",
             )
+            if q.s_R2 is not None and q.dentro:
+                add(
+                    "linha",
+                    "banco2",
+                    f"trecho-{q.rotulo}",
+                    f"trecho admissível do centro a {q.rotulo} % (entre R1 e R2)",
+                    {"curso": q.curso, "d_R1": -q.s_R1, "d_R2": -q.s_R2},
+                    p0=_cad(*centro_em(e, cfg, H, q.s_R1)),
+                    p1=_cad(*centro_em(e, cfg, H, q.s_R2)),
+                    status="OK",
+                )
 
     # ---------------------------------------------------------------- estrutura
     x_piso = [-300.0, max(1300.0, r.a0 + e.chapa.comprimento + 200)]

@@ -209,6 +209,7 @@ select option { color: var(--txt); }
 #mundo .banco2 .el { stroke: var(--banco2); stroke-dasharray: 8 6; }
 #mundo .banco2 .el[data-status="AVISO"] { stroke: var(--alerta); stroke-width: 1.8; }
 #mundo .banco2 .rotulo { fill: var(--banco2); }
+#mundo .banco2 .el[id^="el-trecho"] { stroke-dasharray: none; stroke-width: 5; stroke-linecap: round; opacity: .8; }
 #mundo #el-O2 { stroke-dasharray: none; stroke-width: 1.4; fill: rgba(111, 168, 220, .10); }
 #mundo .estrutura .el { stroke: #9fb4ba; }
 #mundo #el-piso { stroke: #b08454; stroke-dasharray: 14 6; }

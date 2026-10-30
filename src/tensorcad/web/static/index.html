@@ -54,7 +54,7 @@
           <span class="trilho" aria-hidden="true"></span>
           <span>Banco duplo</span>
         </label>
-        <p class="dica so-banco2" hidden>Segundo centro de arcos O2. Motor único: deve ficar entre as linhas R2<sub>min</sub> e R2<sub>max</sub>; fora delas, aviso.</p>
+        <p class="dica so-banco2" hidden>Segundo centro de arcos O2, com raios próprios. Motor único: em cada tensão, o centro deve ficar a ≥ R1 de O e ≤ R2 de O2; sem esse trecho, aviso.</p>
 
         <h2>Casos em memória <span id="contagem-casos" class="dica"></span></h2>
         <ul id="lista-casos" class="lista-casos" aria-label="Casos do projeto"></ul>
@@ -94,14 +94,14 @@
           </div>
         </div>
         <div class="linha-2 so-banco2" hidden>
-          <div class="campo" data-campo="banco_duplo.adicional_R_min">
-            <label for="adicional_R_min">Adicional R2<sub>min</sub> (mm)</label>
-            <input id="adicional_R_min" inputmode="decimal" placeholder="R2min = Rmin + adicional">
+          <div class="campo" data-campo="banco_duplo.R2_min">
+            <label for="R2_min">R2<sub>min</sub> 0 % (mm)</label>
+            <input id="R2_min" inputmode="decimal" placeholder="raio do banco 2">
             <p class="erro-campo"></p>
           </div>
-          <div class="campo" data-campo="banco_duplo.adicional_R_max">
-            <label for="adicional_R_max">Adicional R2<sub>max</sub> (mm)</label>
-            <input id="adicional_R_max" inputmode="decimal" placeholder="R2max = Rmax + adicional">
+          <div class="campo" data-campo="banco_duplo.R2_max">
+            <label for="R2_max">R2<sub>max</sub> 3 % (mm)</label>
+            <input id="R2_max" inputmode="decimal" placeholder="raio do banco 2">
             <p class="erro-campo"></p>
           </div>
         </div>
@@ -183,7 +183,7 @@
         <h2>Banco 2</h2>
         <p id="banco2-mensagem" class="mensagem"></p>
         <table id="banco2" class="tabela">
-          <thead><tr><th>tensão</th><th title="distância do centro do motor a O2">R2</th><th>faixa R2</th><th>desvio</th><th></th></tr></thead>
+          <thead><tr><th>tensão</th><th title="distância a O2 com o motor sobre o arco R1">dist. O2</th><th>R2</th><th title="trecho da chapa entre o arco R1 e o arco R2">curso</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </section>
