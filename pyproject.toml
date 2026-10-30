@@ -32,7 +32,7 @@ tensorcad = "tensorcad.cli:app"
 where = ["src"]
 
 [tool.setuptools.package-data]
-tensorcad = ["py.typed"]
+tensorcad = ["py.typed", "web/static/*"]
 
 [tool.ruff]
 line-length = 100

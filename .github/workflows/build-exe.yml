@@ -52,7 +52,22 @@ jobs:
           $r = Rodar @("caso","--projeto","ref.xlsx","--id","ALT","--carcaca","180M","--rmin","2086","--rmax","2110")
           if ($r -notmatch "ALT: OK") { throw "ALT deveria ser OK" }
           Rodar @("lote","--saida","out","--passo","50") | Out-Null
-          "p2`nP`nX`n180M`n2086`n2110`n`nn`nn`n" | & $exe | Out-Host
+          "p2`nP`nX`n180M`n2086`n2110`n`nn`nn`n" | & $exe interativo | Out-Host
+          # interface web: sobe o servidor sem navegador e consulta a API e a página
+          $srv = Start-Process -FilePath $exe -ArgumentList "web","--sem-navegador","--porta","8799" -PassThru -NoNewWindow
+          try {
+            $ok = $false
+            for ($i = 0; $i -lt 40 -and -not $ok; $i++) {
+              Start-Sleep -Milliseconds 500
+              try { $saude = Invoke-RestMethod "http://127.0.0.1:8799/api/saude"; $ok = $true } catch {}
+            }
+            if (-not $ok) { throw "servidor web não respondeu" }
+            if ($saude.status -ne "ok") { throw "saude: $($saude | ConvertTo-Json)" }
+            $carc = Invoke-RestMethod "http://127.0.0.1:8799/api/carcacas"
+            if (-not ($carc | Where-Object { $_.carcaca -eq "180" -and $_.calculavel })) { throw "carcaça 180 indisponível" }
+            $pag = Invoke-WebRequest "http://127.0.0.1:8799/" -UseBasicParsing
+            if ($pag.Content -notmatch "tensorcad") { throw "página inicial inválida" }
+          } finally { Stop-Process -Id $srv.Id -Force }
           foreach ($f in "ref.xlsx","p2.xlsx","out\resultados.csv","out\resultados.xlsx") {
             if (-not (Test-Path $f)) { throw "faltou $f" }
           }

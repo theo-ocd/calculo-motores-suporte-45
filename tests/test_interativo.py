@@ -65,7 +65,7 @@ def test_versao() -> None:
     assert r.exit_code == 0 and r.output.startswith("tensorcad ")
 
 
-def test_interativo_sem_argumentos_cria_projeto(tmp_path: Path, monkeypatch, sem_abrir) -> None:
+def test_interativo_cria_projeto(tmp_path: Path, monkeypatch, sem_abrir) -> None:
     monkeypatch.chdir(tmp_path)
     respostas = "\n".join(
         [
@@ -87,7 +87,7 @@ def test_interativo_sem_argumentos_cria_projeto(tmp_path: Path, monkeypatch, sem
             "s",  # abrir
         ]
     )
-    r = runner.invoke(app, [], input=respostas + "\n")
+    r = runner.invoke(app, ["interativo"], input=respostas + "\n")
     saida = ANSI.sub("", r.output)
     assert r.exit_code == 0, saida
     assert "Carcaças com chapa padrão: 180L, 180M" in saida
