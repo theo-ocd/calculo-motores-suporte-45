@@ -63,6 +63,13 @@ Status: OK verde, FORA_RANHURA amarelo, SEM_SOLUCAO/INCOMPATIVEL vermelho, como 
   Playwright de carregamento.
 
 ### W1 — Formulário e cálculo ao vivo
+
+Status das carcaças: **OK** (verde, chapa completa), **PARCIAL** (amarelo, dados a
+confirmar), **ERRO** (vermelho: a preencher, sem chapa, cotas que não fecham, sem motor).
+As opções vêm da planilha, e a faixa de carcaças é configurável
+(`tensorcad web --carcaca-min/--carcaca-max`). No projeto, só a **cota 1646** é editável; o x
+do tubo (465) e o piso (767) são fixos e aparecem apenas para consulta.
+
 - **Seletor de carcaça:** lista 160 a 250, indicando quais têm chapa completa, parcial ou a
   preencher. As a preencher ficam desabilitadas, com aviso.
 - **Campos dedicados:** R_min (0 %), R_max (3 %), cota 1646 (opcional) e nome do caso, com

@@ -317,6 +317,8 @@ class Padroes:
     ranhuras: list[RanhuraPadrao] = field(default_factory=list)
     avisos: list[ErroValidacao] = field(default_factory=list)
     a_preencher: list[str] = field(default_factory=list)  # carcaças sem medidas na tabela
+    erros: list[ErroValidacao] = field(default_factory=list)  # só no modo não estrito
+    com_erro: dict[str, list[str]] = field(default_factory=dict)  # carcaça → mensagens
 
     def chapa_para(self, carcaca: str) -> ChapaPadrao | None:
         """Primeira chapa padrão compatível com a carcaça."""
@@ -334,9 +336,11 @@ class Padroes:
 ARQ_CHAPAS_CARCACA = "chapas_carcaca.csv"
 
 
-def carregar_padroes(diretorio: Path | str) -> Padroes:
+def carregar_padroes(diretorio: Path | str, *, estrito: bool = True) -> Padroes:
     """Lê chapas_carcaca.csv (uma linha por carcaça). Linhas sem nenhuma medida são
-    modelos a preencher: geram aviso e são ignoradas. Levanta ErroCarga se houver erros."""
+    modelos a preencher: geram aviso e são ignoradas. Com erros, levanta ErroCarga; com
+    `estrito=False` (interface), as linhas com erro ficam em `erros`/`com_erro` e as
+    demais carcaças continuam utilizáveis."""
     caminho = Path(diretorio) / ARQ_CHAPAS_CARCACA
     tabela = caminho.stem
     pad = Padroes()
@@ -345,7 +349,9 @@ def carregar_padroes(diretorio: Path | str) -> Padroes:
     erros: list[ErroValidacao] = []
     a_validar: list[dict[str, str]] = []
     linhas_reais: list[int] = []
+    carcaca_da_linha: dict[int, str] = {}
     for i, reg in enumerate(ler_csv(caminho), start=2):
+        carcaca_da_linha[i] = (reg.get("carcaca") or "?").strip()
         if all(not (reg.get(c) or "").strip() for c in CAMPOS_MEDIDAS_CHAPA):
             carc = (reg.get("carcaca") or "?").strip()
             pad.a_preencher.append(carc)
@@ -368,6 +374,12 @@ def carregar_padroes(diretorio: Path | str) -> Padroes:
             pad.avisos.append(
                 aviso(tabela, n, "largura_ranhura", "não informada: K não verificado")
             )
-    if erros:
+    if erros and estrito:
         raise ErroCarga(erros)
+    pad.erros = erros
+    for e in erros:
+        carc = carcaca_da_linha.get(e.linha, "?")
+        pad.com_erro.setdefault(carc, []).append(f"linha {e.linha} campo '{e.campo}': {e.mensagem}")
+        pad.chapas.pop(f"CH-{carc}", None)  # carcaça duplicada: não usar nenhuma das linhas
+    pad.ranhuras = [r for r in pad.ranhuras if r.chapa_id in pad.chapas]
     return pad

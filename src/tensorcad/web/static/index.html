@@ -22,16 +22,56 @@
 
   <main class="layout">
     <aside class="painel painel-entradas" aria-label="Entradas">
-      <h2>Caso</h2>
-      <div class="campo">
-        <label for="carcaca">Carcaça</label>
-        <select id="carcaca" disabled><option>carregando…</option></select>
-        <p id="carcaca-detalhe" class="dica"></p>
-      </div>
-      <p class="dica em-breve">Campos R<sub>min</sub>, R<sub>max</sub> e cota 1646 — etapa W1.</p>
+      <form id="form-caso" autocomplete="off" novalidate>
+        <h2>Projeto</h2>
+        <div class="campo" data-campo="cota">
+          <label for="cota">Cota 1646 — tubo de apoio → piso (mm)</label>
+          <input id="cota" name="cota" inputmode="decimal" placeholder="opcional: verificar uma cota">
+          <p class="erro-campo"></p>
+          <p class="dica">Definida no início de cada projeto. Vazia: só calcula a faixa admissível.</p>
+        </div>
+        <dl class="fixos">
+          <div><dt>Centro dos raios → tubo (x)</dt><dd id="fixo-x-tubo">—</dd></div>
+          <div><dt>Centro dos raios → piso</dt><dd id="fixo-y-piso">—</dd></div>
+        </dl>
+
+        <h2>Caso</h2>
+        <div class="campo" data-campo="caso_id">
+          <label for="caso_id">Nome do caso</label>
+          <input id="caso_id" name="caso_id" value="caso-1" maxlength="31">
+        </div>
+        <div class="campo" data-campo="carcaca">
+          <label for="carcaca">Carcaça</label>
+          <select id="carcaca" name="carcaca" disabled><option>carregando…</option></select>
+          <p class="erro-campo"></p>
+          <p id="carcaca-detalhe" class="dica"></p>
+        </div>
+        <div class="campo" data-campo="motor_id">
+          <label for="motor_id">Motor</label>
+          <select id="motor_id" name="motor_id" disabled></select>
+          <p class="erro-campo"></p>
+        </div>
+        <div class="linha-2">
+          <div class="campo" data-campo="R_min">
+            <label for="R_min">R<sub>min</sub> 0 % (mm)</label>
+            <input id="R_min" name="R_min" inputmode="decimal" placeholder="ex.: 2086">
+            <p class="erro-campo"></p>
+          </div>
+          <div class="campo" data-campo="R_max">
+            <label for="R_max">R<sub>max</sub> 3 % (mm)</label>
+            <input id="R_max" name="R_max" inputmode="decimal" placeholder="ex.: 2161">
+            <p class="erro-campo"></p>
+          </div>
+        </div>
+      </form>
 
       <h2>Carcaças</h2>
       <ul id="lista-carcacas" class="lista-carcacas"></ul>
+      <p class="dica legenda">
+        <span class="chip" data-status="ok">OK</span> chapa completa
+        <span class="chip" data-status="parcial">PARCIAL</span> dados a confirmar
+        <span class="chip" data-status="erro">ERRO</span> indisponível
+      </p>
     </aside>
 
     <section class="area-desenho" aria-label="Desenho">
@@ -57,8 +97,19 @@
 
     <aside class="painel painel-resultados" aria-label="Resultados">
       <h2>Resultado</h2>
-      <div id="status" class="status" data-status="">—</div>
-      <p class="dica em-breve">Faixa admissível, cota recomendada e folgas — etapa W1.</p>
+      <div id="status" class="status" data-status="">preencha R<sub>min</sub> e R<sub>max</sub></div>
+      <p id="mensagem" class="mensagem"></p>
+      <dl id="resumo" class="resumo"></dl>
+
+      <h2>Posições do motor</h2>
+      <p class="dica">d = centro do motor medido da ponta baixa da chapa, subindo.</p>
+      <table id="posicoes" class="tabela">
+        <thead><tr><th>cota</th><th>tensão</th><th>d</th><th>folga −</th><th>folga +</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <h2>Chapa / motor</h2>
+      <dl id="chapa-info" class="resumo"></dl>
     </aside>
   </main>
 

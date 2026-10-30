@@ -18,7 +18,10 @@ DADOS = RAIZ / "data"
 @pytest.fixture(scope="module")
 def contexto() -> api.Contexto:
     return api.Contexto(
-        carregar_diretorio(DADOS), carregar_padroes(DADOS / "padrao"), DADOS, DADOS / "padrao"
+        carregar_diretorio(DADOS),
+        carregar_padroes(DADOS / "padrao", estrito=False),
+        DADOS,
+        DADOS / "padrao",
     )
 
 
@@ -47,11 +50,12 @@ def test_api_carcacas_status(contexto) -> None:
     lista = {c["carcaca"]: c for c in api.carcacas(contexto)}
     assert list(lista) == ["160", "180", "200", "225", "250"]
     c180 = lista["180"]
-    assert c180["status"] == "parcial" and c180["calculavel"] and c180["chapa"] == "CH-180"
+    assert c180["status"] == api.PARCIAL and c180["calculavel"] and c180["chapa"] == "CH-180"
     assert "origem CALCULADO" in c180["detalhe"] and "comprimento das ranhuras" in c180["detalhe"]
     assert [m["carcaca"] for m in c180["motores"]] == ["180L", "180M"]
     for n in ("160", "200", "225", "250"):
-        assert lista[n]["status"] == "a_preencher" and not lista[n]["calculavel"]
+        assert lista[n]["status"] == api.ERRO and not lista[n]["calculavel"]
+        assert "a preencher" in lista[n]["detalhe"]
 
 
 def test_status_completa_e_sem_chapa(tmp_path: Path) -> None:
@@ -63,8 +67,8 @@ def test_status_completa_e_sem_chapa(tmp_path: Path) -> None:
     )
     ctx = api.Contexto(carregar_diretorio(DADOS), carregar_padroes(tmp_path), DADOS, tmp_path)
     lista = {c["carcaca"]: c for c in api.carcacas(ctx)}
-    assert lista["200"]["status"] == "completa"
-    assert lista["180"]["status"] == "sem_chapa" and not lista["180"]["calculavel"]
+    assert lista["200"]["status"] == api.OK
+    assert lista["180"]["status"] == api.ERRO and "ausente" in lista["180"]["detalhe"]
 
 
 def test_servidor_rotas(url: str) -> None:
@@ -167,10 +171,68 @@ def test_pagina_carrega_no_navegador(url: str) -> None:
             assert pg.locator("#lista-carcacas li").count() == 5
             chip = pg.locator("#lista-carcacas li[data-carcaca='180'] .chip")
             assert chip.get_attribute("data-status") == "parcial"
+            assert (
+                pg.locator("#lista-carcacas li[data-carcaca='200'] .chip").get_attribute(
+                    "data-status"
+                )
+                == "erro"
+            )
             assert pg.locator("#carcaca").input_value() == "180"
             assert pg.locator("#carcaca option[value='200']").is_disabled()
             fundo = pg.evaluate("getComputedStyle(document.body).backgroundColor")
             assert fundo == "rgb(17, 25, 29)"  # --bg (tema escuro)
+            assert erros == []
+        finally:
+            nav.close()
+
+
+def test_calculo_ao_vivo_no_navegador(url: str) -> None:
+    sync = pytest.importorskip("playwright.sync_api")
+    with sync.sync_playwright() as p:
+        nav = _navegador(p)
+        try:
+            pg = nav.new_page()
+            erros: list[str] = []
+            pg.on("pageerror", lambda e: erros.append(str(e)))
+            pg.goto(url)
+            pg.wait_for_selector("#conexao[data-estado='ok']", timeout=10_000)
+            assert pg.inner_text("#fixo-x-tubo") == "465"
+            assert pg.inner_text("#fixo-y-piso") == "767"
+            assert pg.locator("#fixo-x-tubo").evaluate("e => e.tagName") == "DD"  # não editável
+            assert pg.locator("#carcaca").get_attribute("data-status") == "parcial"
+            assert pg.locator("#motor_id option").count() == 2
+
+            # REF-180: inviável, cota informada 1646
+            pg.fill("#R_min", "2086")
+            pg.fill("#R_max", "2161")
+            pg.fill("#cota", "1646")
+            pg.wait_for_selector("#status[data-status='FORA_RANHURA']", timeout=10_000)
+            resumo = pg.inner_text("#resumo")
+            assert "1.673,99" in resumo and "-12,74" in resumo and "nenhuma" in resumo
+            linhas = pg.locator("#posicoes tbody tr")
+            assert linhas.count() == 4
+            inf0 = linhas.nth(2).inner_text()
+            assert "380,70" in inf0 and "16,81" in inf0 and "41,19" in inf0
+
+            # ALT-2110 com o motor 180M, sem cota: viável
+            pg.select_option("#motor_id", "IEC-180M-4P")
+            pg.fill("#cota", "")
+            pg.fill("#R_max", "2110,0")
+            pg.wait_for_selector("#status[data-status='OK']", timeout=10_000)
+            resumo = pg.inner_text("#resumo")
+            assert "1.632,07 a 1.661,96" in resumo and "1.647,09" in resumo
+            assert pg.locator("#posicoes tbody tr").count() == 2
+            assert "IEC-180M-4P" in pg.inner_text("#chapa-info")
+
+            # erro por campo
+            pg.fill("#R_min", "2200")
+            pg.wait_for_selector(".campo[data-campo='R_max'].invalido", timeout=10_000)
+            assert "maior ou igual" in pg.inner_text(".campo[data-campo='R_max'] .erro-campo")
+
+            # carcaças com ERRO não podem ser escolhidas
+            assert pg.locator("#carcaca option[value='200']").is_disabled()
+            pg.click("#lista-carcacas li[data-carcaca='200']")
+            assert pg.locator("#carcaca").input_value() == "180"
             assert erros == []
         finally:
             nav.close()

@@ -58,7 +58,7 @@ body {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 300px 1fr 300px;
+  grid-template-columns: 300px 1fr 340px;
 }
 .painel {
   background: var(--painel);
@@ -96,9 +96,6 @@ select:focus, input:focus { outline: 2px solid var(--acento); outline-offset: 0;
   padding: 5px 8px; background: var(--painel-2); border-radius: var(--raio);
 }
 .chip { font-size: 11px; padding: 1px 7px; border-radius: 9px; border: 1px solid currentColor; }
-.chip[data-status="completa"] { color: var(--ok); }
-.chip[data-status="parcial"] { color: var(--alerta); }
-.chip[data-status="a_preencher"], .chip[data-status="sem_chapa"] { color: var(--txt-2); }
 
 .area-desenho { position: relative; min-width: 0; background: var(--bg-desenho); }
 .desenho { width: 100%; height: 100%; display: block; }
@@ -121,5 +118,55 @@ select:focus, input:focus { outline: 2px solid var(--acento); outline-offset: 0;
 
 @media (max-width: 1000px) {
   .layout { grid-template-columns: 1fr; grid-auto-rows: auto minmax(360px, 1fr) auto; }
+  body { height: auto; }
   .painel-entradas, .painel-resultados { border: 0; }
 }
+
+/* ---------------------------------------------------------------- W1: formulário e resultados */
+.linha-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.campo.invalido input, .campo.invalido select { border-color: var(--erro); }
+.erro-campo { color: var(--erro); font-size: 12px; margin: 0; min-height: 0; }
+.erro-campo:empty { display: none; }
+input::placeholder { color: #5f7479; }
+select option:disabled { color: #6c7f84; }
+
+.fixos { margin: 0 0 8px; display: grid; gap: 2px; font-size: 12px; }
+.fixos div { display: flex; justify-content: space-between; color: var(--txt-2); }
+.fixos dt { margin: 0; }
+.fixos dd { margin: 0; font-family: var(--mono); color: var(--txt); }
+.fixos dd::after { content: " fixo"; color: var(--txt-2); font-family: var(--fonte); font-size: 11px; }
+
+.chip[data-status="ok"] { color: var(--ok); }
+.chip[data-status="parcial"] { color: var(--alerta); }
+.chip[data-status="erro"] { color: var(--erro); }
+.lista-carcacas li { cursor: pointer; border: 1px solid transparent; }
+.lista-carcacas li:hover { border-color: var(--borda); }
+.lista-carcacas li.ativa { border-color: var(--acento); }
+.lista-carcacas li[data-status="erro"] { cursor: not-allowed; opacity: .75; }
+.legenda { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+
+.mensagem { color: var(--txt-2); font-size: 12px; margin: 6px 0; }
+.resumo { margin: 0; display: grid; gap: 4px; font-size: 13px; }
+.resumo div { display: flex; justify-content: space-between; gap: 8px; }
+.resumo dt { color: var(--txt-2); }
+.resumo dd { margin: 0; font-family: var(--mono); text-align: right; }
+.resumo dd.destaque { color: var(--acento); font-weight: 700; }
+
+.tabela { width: 100%; border-collapse: collapse; font: 12px var(--mono); }
+.tabela th { color: var(--txt-2); font: 600 11px var(--fonte); text-align: right; padding: 3px 4px; border-bottom: 1px solid var(--borda); }
+.tabela th:first-child, .tabela td:first-child { text-align: left; }
+.tabela td { text-align: right; padding: 3px 4px; border-bottom: 1px solid var(--grade); }
+.tabela td.neg { color: var(--erro); }
+.ponto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--borda); }
+.ponto[data-status="OK"] { background: var(--ok); }
+.ponto[data-status="FORA_RANHURA"] { background: var(--alerta); }
+.ponto[data-status="SEM_SOLUCAO"], .ponto[data-status="INCOMPATIVEL"] { background: var(--erro); }
+.status.calculando { opacity: .6; }
+.campo input, .campo select { width: 100%; min-width: 0; }
+.linha-2 > .campo { min-width: 0; }
+select[data-status="ok"] { color: var(--ok); border-color: var(--ok); }
+select[data-status="parcial"] { color: var(--alerta); border-color: var(--alerta); }
+select[data-status="erro"] { color: var(--erro); border-color: var(--erro); }
+select option { color: var(--txt); }
+.tabela td:first-child { white-space: nowrap; }
+.tabela .tag { color: var(--txt-2); font-size: 10px; margin-right: 4px; }
