@@ -263,7 +263,7 @@ def test_desenho_interativo_no_navegador(url: str) -> None:
 
             # elementos e posição do centro do motor (SVG: x = X, y = −Y)
             for id_ in (
-                "O",
+                "O1",
                 "arco-R_min",
                 "arco-R_max",
                 "piso",
@@ -544,11 +544,15 @@ def test_banco_duplo_no_navegador(url: str) -> None:
             assert pg.locator("#el-arco-R2_min").count() == 1
             assert pg.locator("#el-trecho-0").count() == 1
 
-            # sem trecho a 0 %: aviso, status do caso não muda
+            # sem trecho a 0 %: obrigatório, o caso fica FORA_TENSIONAMENTO
             pg.fill("#R2_min", "2560")
             pg.wait_for_selector("#banco2 .ponto[data-status='AVISO']", timeout=10_000)
             assert "não há posição" in pg.inner_text("#banco2-mensagem")
-            assert pg.get_attribute("#status", "data-status") == "OK"
+            pg.wait_for_selector("#status[data-status='FORA_TENSIONAMENTO']")
+            assert (
+                pg.locator("#lista-casos li.ativo .ponto[data-status='FORA_TENSIONAMENTO']").count()
+                == 1
+            )
             assert pg.locator("#el-raio2-0[data-status='AVISO']").count() == 1
 
             # persiste no projeto (switch no projeto, adicionais por caso)

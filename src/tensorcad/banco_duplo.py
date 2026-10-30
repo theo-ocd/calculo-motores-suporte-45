@@ -1,13 +1,14 @@
 """Esboço do modo "banco duplo" (funções puras).
 
-Um segundo centro de arcos O2, `deslocamento_y` mm ACIMA de O (P8), com raios próprios
+Um segundo centro de arcos O2, `deslocamento_y` mm ACIMA de O1 (P8), com raios próprios
 R2_min e R2_max, independentes do banco 1 (P9). O motor é único; para cada tensão
 (0 %: R1_min/R2_min; 3 %: R1_max/R2_max) o centro do motor deve ficar a uma distância
-de O MAIOR OU IGUAL a R1 e de O2 MENOR OU IGUAL a R2 (P10): um trecho da chapa entre o
-arco R1 e o arco R2. Sem esse trecho, gera aviso — não muda o status do caso.
+de O1 MAIOR OU IGUAL a R1 e de O2 MENOR OU IGUAL a R2 (P10): um trecho da chapa entre
+o arco R1 e o arco R2. É obrigatório: o curso desse trecho entra como folga na escolha da
+H recomendada e, sem trecho em nenhuma H, o caso fica FORA_TENSIONAMENTO.
 
 Referencial de docs/geometria.md (x+ esquerda, y+ baixo); s ao longo da guia (s+ desce).
-A posição do motor do banco 1 (|C − O| = R1) é a ponta alta do trecho; a ponta baixa é
+A posição do motor do banco 1 (|C − O1| = R1) é a ponta alta do trecho; a ponta baixa é
 onde |C − O2| = R2.
 """
 
@@ -17,9 +18,18 @@ import math
 from dataclasses import dataclass
 
 from tensorcad import geometry as g
-from tensorcad.projeto import ConfigProjeto, EntradaCaso, Posicao, ponto_base
+from tensorcad.projeto import (
+    ConfigProjeto,
+    EntradaCaso,
+    Posicao,
+    Restricao,
+    ResultadoProjeto,
+    ponto_base,
+    resolver_caso,
+)
 
 DESLOCAMENTO_Y_PADRAO = 500.0
+NOME = "tensionamento para banco duplo"
 
 
 @dataclass(frozen=True)
@@ -85,6 +95,37 @@ def _cruzamentos_o2(
     return -l_proj - raiz, -l_proj + raiz
 
 
+def curso_minimo(cfg: ConfigBancoDuplo, e: EntradaCaso, pcfg: ConfigProjeto) -> Restricao:
+    """Restrição da cota: menor curso (mm ao longo da chapa) entre o arco R1 de O1 e o
+    arco R2 de O2, entre 0 % e 3 %; < 0 = sem trecho."""
+    a0, b0 = ponto_base(pcfg, e.chapa)
+    h = g.calcular_h(e.motor.H, e.chapa.e_apoio)
+    th = e.chapa.theta_deg
+
+    def curso(H: float) -> float:
+        cursos = []
+        for R1, R2 in ((e.R_min, cfg.R2_min), (e.R_max, cfg.R2_max)):
+            s1 = g.resolver_s(a0, b0, H, h, th, R1)
+            cruza = _cruzamentos_o2(cfg, e, pcfg, H, R2)
+            if s1 is None or cruza is None:
+                return -math.inf
+            # dentro do círculo R2 de O2 sobre o arco R1; o trecho vai até a saída
+            cursos.append(min(cruza[1] - s1, s1 - cruza[0]))
+        return min(cursos)
+
+    return curso
+
+
+def resolver(
+    cfg: ConfigBancoDuplo, e: EntradaCaso, pcfg: ConfigProjeto
+) -> tuple[ResultadoProjeto, AvaliacaoBancoDuplo]:
+    """Resolve o caso com o tensionamento para banco duplo como restrição obrigatória."""
+    r = resolver_caso(e, pcfg, curso_minimo(cfg, e, pcfg))
+    H = r.entrada.cota_informada if r.entrada.cota_informada is not None else r.cota_recomendada
+    av = avaliar(cfg, e, pcfg, H, r.em_informada or r.em_recomendada)
+    return r, av
+
+
 def centro_em(e: EntradaCaso, pcfg: ConfigProjeto, H: float, s: float) -> tuple[float, float]:
     """Centro do motor (referencial do núcleo) na posição s da guia, na altura H."""
     a0, b0 = ponto_base(pcfg, e.chapa)
@@ -102,15 +143,15 @@ def avaliar(
     """Confere, a 0 % e 3 %, se existe trecho da chapa com |C−O| ≥ R1 e |C−O2| ≤ R2."""
     avisos: list[str] = []
     if cfg.R2_min > cfg.R2_max:
-        avisos.append(f"banco 2: R2_min ({cfg.R2_min:g}) maior que R2_max ({cfg.R2_max:g})")
+        avisos.append(f"{NOME}: R2_min ({cfg.R2_min:g}) maior que R2_max ({cfg.R2_max:g})")
     ox, oy = cfg.centro
     if H is None or posicoes is None:
-        avisos.append("banco 2: sem posição do motor para verificar (sem altura H)")
+        avisos.append(f"{NOME}: sem posição do motor para verificar (sem altura H)")
         return AvaliacaoBancoDuplo(cfg, H, (), tuple(avisos))
     itens: list[PosicaoBanco2] = []
     for rotulo, R2, p in zip(("0", "3"), (cfg.R2_min, cfg.R2_max), posicoes, strict=True):
         if p.s is None or p.Cx is None or p.Cy is None:
-            avisos.append(f"banco 2: motor {rotulo} % sem posição (banco 1 sem solução)")
+            avisos.append(f"{NOME}: motor {rotulo} % sem posição (banco 1 sem solução)")
             continue
         cruza = _cruzamentos_o2(cfg, e, pcfg, H, R2)
         # o trecho começa em s_R1 e termina onde a trajetória sai do círculo R2 de O2
@@ -119,7 +160,8 @@ def avaliar(
         itens.append(q)
         if not q.dentro:
             avisos.append(
-                f"banco 2: a {rotulo} % não há posição a ≥ R1 ({p.R:g}) de O e ≤ R2 "
+                f"{NOME}: a {rotulo} % não há posição a ≥ R1 "
+                f"({p.R:g}) de O1 e ≤ R2 "
                 f"({R2:g}) de O2 — sobre o arco R1, a distância a O2 é {q.dist_O2:.2f} "
                 f"({-q.folga_R2:.2f} mm além de R2)"
             )

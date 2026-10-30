@@ -114,7 +114,7 @@ select:focus, input:focus { outline: 2px solid var(--acento); outline-offset: 0;
   background: var(--painel-2); border-left: 4px solid var(--borda);
 }
 .status[data-status="OK"] { border-color: var(--ok); color: var(--ok); }
-.status[data-status="FORA_RANHURA"] { border-color: var(--alerta); color: var(--alerta); }
+.status[data-status="FORA_RANHURA"], .status[data-status="FORA_TENSIONAMENTO"] { border-color: var(--alerta); color: var(--alerta); }
 .status[data-status="SEM_SOLUCAO"], .status[data-status="INCOMPATIVEL"] { border-color: var(--erro); color: var(--erro); }
 
 @media (max-width: 1000px) {
@@ -160,7 +160,7 @@ select option:disabled { color: #6c7f84; }
 .tabela td.neg { color: var(--erro); }
 .ponto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--borda); }
 .ponto[data-status="OK"] { background: var(--ok); }
-.ponto[data-status="FORA_RANHURA"] { background: var(--alerta); }
+.ponto[data-status="FORA_RANHURA"], .ponto[data-status="FORA_TENSIONAMENTO"] { background: var(--alerta); }
 .ponto[data-status="SEM_SOLUCAO"], .ponto[data-status="INCOMPATIVEL"] { background: var(--erro); }
 .status.calculando { opacity: .6; }
 .campo input, .campo select { width: 100%; min-width: 0; }
@@ -227,7 +227,7 @@ select option { color: var(--txt); }
   fill: var(--acento); stroke: none; font-family: var(--mono); paint-order: stroke;
 }
 #mundo .rotulo-ponto { fill: var(--txt-2); }
-#mundo #el-O { stroke: var(--txt); stroke-dasharray: none; stroke-width: 1.4; fill: rgba(220, 230, 232, .08); }
+#mundo #el-O1 { stroke: var(--txt); stroke-dasharray: none; stroke-width: 1.4; fill: rgba(220, 230, 232, .08); }
 #mundo #el-eixo-apoio { stroke: #7f9aa1; stroke-dasharray: 18 5 3 5; }
 #mundo #el-tubo { stroke: #c9d6d9; stroke-width: 1.4; fill: rgba(201, 214, 217, .08); }
 

@@ -82,8 +82,8 @@ def gerar(
     add(
         "poligono",
         "construcao",
-        "O",
-        "O — centro dos raios",
+        "O1",
+        "O1 — centro dos raios",
         {"X": 0, "Y": 0},
         pts=octogono,
         c=[0.0, 0.0],
@@ -114,7 +114,7 @@ def gerar(
                 p1=_cad(p.Cx, p.Cy),
             )
 
-    # ---------------------------------------------------------------- banco 2
+    # ---------------------------------------------------------------- banco duplo (O2)
     if banco2 is not None:
         o2x, o2y = banco2.config.centro
         c2 = _cad(o2x, o2y)
@@ -122,7 +122,7 @@ def gerar(
             "poligono",
             "banco2",
             "O2",
-            "O2 — centro dos raios do banco 2",
+            "O2 — centro dos raios (tensionamento para banco duplo)",
             {"deslocamento_y": banco2.config.deslocamento_y},
             pts=[[c2[0] + q[0], c2[1] + q[1]] for q in octogono],
             c=c2,

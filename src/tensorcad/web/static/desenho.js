@@ -110,7 +110,7 @@ const Desenho = (() => {
       case "ponto": {
         const [x, y] = P(p.p);
         e = el("circle", { ...comum, class: "ponto", cx: x, cy: y, r: 1 }, g);
-        if (p.id === "O" || p.id === "L") texto(g, p.id, [x, y], 10, -10, "rotulo rotulo-ponto", "start");
+        if (p.id === "L") texto(g, p.id, [x, y], 10, -10, "rotulo rotulo-ponto", "start");
         break;
       }
       case "linha": {
@@ -123,7 +123,7 @@ const Desenho = (() => {
       case "poligono": {
         const pts = p.pts.map(P).map((q) => q.join(",")).join(" ");
         e = el(p.tipo === "poligono" ? "polygon" : "polyline", { ...comum, points: pts }, g);
-        if ((p.id === "O" || p.id === "O2") && p.c) texto(g, p.id, P(p.c), 16, -16, "rotulo rotulo-ponto", "start");
+        if ((p.id === "O1" || p.id === "O2") && p.c) texto(g, p.id, P(p.c), 16, -16, "rotulo rotulo-ponto", "start");
         break;
       }
       case "circulo": {
@@ -215,7 +215,7 @@ const Desenho = (() => {
     });
     svg.addEventListener("pointermove", (ev) => {
       const [X, Y] = paraDesenho(ev);
-      xy.textContent = `X ${fmt(X, 1)}   Y ${fmt(Y, 1)} mm  (a partir de O; X→, Y↑)`;
+      xy.textContent = `X ${fmt(X, 1)}   Y ${fmt(Y, 1)} mm  (a partir de O1; X→, Y↑)`;
       if (arrasto) {
         const u = mmPorPx();
         vb.x = arrasto.vx - (ev.clientX - arrasto.x) * u;

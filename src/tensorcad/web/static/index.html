@@ -45,16 +45,16 @@
           <p class="dica">Centro do tubo de apoio → piso do banco de cilindros. Definida no início de cada projeto; vazia: só calcula a faixa admissível.</p>
         </div>
         <dl class="fixos">
-          <div><dt>Centro dos raios → tubo (x)</dt><dd id="fixo-x-tubo">—</dd></div>
-          <div><dt>Centro dos raios → piso</dt><dd id="fixo-y-piso">—</dd></div>
-          <div class="so-banco2" hidden><dt>O → O2 (y, acima)</dt><dd id="fixo-dy-banco2">—</dd></div>
+          <div><dt>Centro dos raios O1 → tubo (x)</dt><dd id="fixo-x-tubo">—</dd></div>
+          <div><dt>Centro dos raios O1 → piso</dt><dd id="fixo-y-piso">—</dd></div>
+          <div class="so-banco2" hidden><dt>O1 → O2 (y, acima)</dt><dd id="fixo-dy-banco2">—</dd></div>
         </dl>
         <label class="switch" for="banco-duplo">
           <input type="checkbox" id="banco-duplo" role="switch">
           <span class="trilho" aria-hidden="true"></span>
-          <span>Banco duplo</span>
+          <span>Tensionamento para banco duplo</span>
         </label>
-        <p class="dica so-banco2" hidden>Segundo centro de arcos O2, com raios próprios. Motor único: em cada tensão, o centro deve ficar a ≥ R1 de O e ≤ R2 de O2; sem esse trecho, aviso.</p>
+        <p class="dica so-banco2" hidden>Segundo centro de arcos O2, com raios próprios. Motor único: em cada tensão, o centro deve ficar a ≥ R1 de O1 e ≤ R2 de O2; sem esse trecho, o caso fica FORA_TENSIONAMENTO e a H recomendada passa a respeitar esse trecho.</p>
 
         <h2>Casos em memória <span id="contagem-casos" class="dica"></span></h2>
         <ul id="lista-casos" class="lista-casos" aria-label="Casos do projeto"></ul>
@@ -96,12 +96,12 @@
         <div class="linha-2 so-banco2" hidden>
           <div class="campo" data-campo="banco_duplo.R2_min">
             <label for="R2_min">R2<sub>min</sub> 0 % (mm)</label>
-            <input id="R2_min" inputmode="decimal" placeholder="raio do banco 2">
+            <input id="R2_min" inputmode="decimal" placeholder="raio a partir de O2">
             <p class="erro-campo"></p>
           </div>
           <div class="campo" data-campo="banco_duplo.R2_max">
             <label for="R2_max">R2<sub>max</sub> 3 % (mm)</label>
-            <input id="R2_max" inputmode="decimal" placeholder="raio do banco 2">
+            <input id="R2_max" inputmode="decimal" placeholder="raio a partir de O2">
             <p class="erro-campo"></p>
           </div>
         </div>
@@ -153,7 +153,7 @@
         <button type="button" id="btn-menos" title="Afastar">－</button>
         <span class="sep"></span>
         <label><input type="checkbox" data-camada="construcao" checked> construção</label>
-        <label class="so-banco2" hidden><input type="checkbox" data-camada="banco2" checked> banco 2</label>
+        <label class="so-banco2" hidden><input type="checkbox" data-camada="banco2" checked> tensionamento banco duplo</label>
         <label><input type="checkbox" data-camada="estrutura" checked> estrutura</label>
         <label><input type="checkbox" data-camada="chapa" checked> chapa</label>
         <label><input type="checkbox" data-camada="motor" checked> motor</label>
@@ -180,7 +180,7 @@
       </table>
 
       <section id="resultado-banco2" class="so-banco2" hidden>
-        <h2>Banco 2</h2>
+        <h2>Tensionamento para banco duplo</h2>
         <p id="banco2-mensagem" class="mensagem"></p>
         <table id="banco2" class="tabela">
           <thead><tr><th>tensão</th><th title="distância a O2 com o motor sobre o arco R1">dist. O2</th><th>R2</th><th title="trecho da chapa entre o arco R1 e o arco R2">curso</th><th></th></tr></thead>

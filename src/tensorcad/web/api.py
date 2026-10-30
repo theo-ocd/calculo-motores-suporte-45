@@ -328,12 +328,10 @@ def calcular(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
         cota,
     )
     cfg = ConfigProjeto(y_piso=ctx.y_piso, x_tubo=ctx.x_tubo)
-    r = resolver_caso(entrada, cfg)
-    av = None
-    if bd is not None:
-        av = banco_duplo.avaliar(
-            bd, entrada, cfg, desenho.altura_desenho(r), r.em_informada or r.em_recomendada
-        )
+    if bd is None:
+        r, av = resolver_caso(entrada, cfg), None
+    else:
+        r, av = banco_duplo.resolver(bd, entrada, cfg)
     return {
         **serializar(r),
         "banco_duplo": None if av is None else _banco_duplo(av),
@@ -383,7 +381,15 @@ def exportar(ctx: Contexto, corpo: Any) -> tuple[bytes, str]:
     erros: dict[str, str] = {}
     entradas = []
     for i, caso in enumerate(projeto["casos"]):
-        dados = {**caso, "cota": projeto.get("cota")}
+        dados = {
+            **caso,
+            "cota": projeto.get("cota"),
+            "banco_duplo": {
+                "ativo": bool(projeto.get("banco_duplo")),
+                "R2_min": caso.get("R2_min"),
+                "R2_max": caso.get("R2_max"),
+            },
+        }
         try:
             r = calcular(ctx, dados)
         except ErroEntrada as exc:
@@ -398,6 +404,13 @@ def exportar(ctx: Contexto, corpo: Any) -> tuple[bytes, str]:
                 R_max=r["R_max"],
                 cota_informada=r["cota_informada"],
                 ajustes={k: v for k, v in aj.items() if v} or None,
+                banco_duplo=None
+                if r["banco_duplo"] is None
+                else {
+                    "R2_min": r["banco_duplo"]["R2_min"],
+                    "R2_max": r["banco_duplo"]["R2_max"],
+                    "deslocamento_y": r["banco_duplo"]["deslocamento_y"],
+                },
             )
         )
     if erros:

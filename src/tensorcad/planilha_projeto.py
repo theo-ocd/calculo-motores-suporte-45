@@ -24,6 +24,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 import tensorcad
 from tensorcad import ajustes as ajustes_mod
+from tensorcad import banco_duplo as bd
 from tensorcad.loader import BaseDados, Padroes
 from tensorcad.planilha import CORES_STATUS, FMT_MM, _cor_status
 from tensorcad.projeto import (
@@ -53,6 +54,8 @@ class EntradaPlanilha:
     chapa_id: str | None = None
     # ajustes de dimensões {"chapa": {...}, "motor": {...}} sobre o padrão (opcional)
     ajustes: dict[str, Any] | None = None
+    # tensionamento para banco duplo {"R2_min": ..., "R2_max": ...} (opcional)
+    banco_duplo: dict[str, Any] | None = None
 
 
 CAMPOS_ENTRADA = tuple(EntradaPlanilha.__dataclass_fields__)
@@ -104,6 +107,21 @@ def montar_entrada(ent: EntradaPlanilha, base: BaseDados, pad: Padroes) -> Entra
 
 
 # --------------------------------------------------------------------------- aba do caso
+
+
+def resolver_entrada(
+    ent: EntradaPlanilha, base: BaseDados, pad: Padroes, cfg: ConfigProjeto
+) -> tuple[ResultadoProjeto, bd.AvaliacaoBancoDuplo | None]:
+    """Resolve o caso; com banco duplo, o tensionamento entra como restrição obrigatória."""
+    e = montar_entrada(ent, base, pad)
+    if not ent.banco_duplo:
+        return resolver_caso(e, cfg), None
+    cfg_bd = bd.ConfigBancoDuplo(
+        float(ent.banco_duplo["R2_min"]),
+        float(ent.banco_duplo["R2_max"]),
+        float(ent.banco_duplo.get("deslocamento_y", bd.DESLOCAMENTO_Y_PADRAO)),
+    )
+    return bd.resolver(cfg_bd, e, cfg)
 
 
 def _bloco(ws: Worksheet, linha: int, titulo: str, pares: Sequence[tuple[str, Any]]) -> int:
@@ -336,6 +354,7 @@ def escrever_aba_caso(
     r: ResultadoProjeto,
     cfg: ConfigProjeto,
     ajustes: dict[str, Any] | None = None,
+    banco: bd.AvaliacaoBancoDuplo | None = None,
 ) -> None:
     e = r.entrada
     ws["A1"] = f"Caso {e.caso_id}"
@@ -378,6 +397,20 @@ def escrever_aba_caso(
             "Ajustes de dimensões (diferentes do padrão)",
             [(rot, "vazio" if v is None else float(v)) for rot, v in pares],
         )
+    if banco is not None:
+        pares: list[tuple[str, Any]] = [
+            ("O1 → O2 (acima)", banco.config.deslocamento_y),
+            ("R2_min (0 %) a partir de O2", banco.config.R2_min),
+            ("R2_max (3 %) a partir de O2", banco.config.R2_max),
+            ("verificado em H", banco.H),
+        ]
+        for q in banco.posicoes:
+            pares += [
+                (f"{q.rotulo} %: distância a O2 sobre o arco R1", q.dist_O2),
+                (f"{q.rotulo} %: curso entre os arcos R1 e R2", q.curso),
+            ]
+        pares.append(("situação", "OK" if banco.ok else "; ".join(banco.avisos)))
+        lin = _bloco(ws, lin, "Tensionamento para banco duplo", pares)
     ini_resultado = lin
     lin = _bloco(
         ws,
@@ -526,6 +559,7 @@ def ler_entradas(caminho: Path) -> tuple[ConfigProjeto, list[EntradaPlanilha]]:
                 else float(d["cota_informada"]),
                 chapa_id=None if d.get("chapa_id") in (None, "") else str(d["chapa_id"]),
                 ajustes=json.loads(d["ajustes"]) if d.get("ajustes") else None,
+                banco_duplo=json.loads(d["banco_duplo"]) if d.get("banco_duplo") else None,
             )
         )
     return cfg, entradas
@@ -543,18 +577,21 @@ def gerar_projeto(
     ids = [nome_aba(e.caso_id) for e in entradas]
     if len(set(ids)) != len(ids):
         raise ValueError("casos com nomes de aba repetidos")
-    resultados = [resolver_caso(montar_entrada(e, base, pad), cfg) for e in entradas]
+    resolvidos = [resolver_entrada(e, base, pad, cfg) for e in entradas]
+    resultados = [r for r, _ in resolvidos]
     wb = Workbook()
     _aba_projeto(wb.active, cfg, resultados)
     wb.active.title = ABA_PROJETO
-    for e, r in zip(entradas, resultados, strict=True):
-        escrever_aba_caso(wb.create_sheet(nome_aba(r.entrada.caso_id)), r, cfg, e.ajustes)
+    for e, (r, banco) in zip(entradas, resolvidos, strict=True):
+        aba = wb.create_sheet(nome_aba(r.entrada.caso_id))
+        escrever_aba_caso(aba, r, cfg, e.ajustes, banco)
     we = wb.create_sheet(ABA_ENTRADAS)
     we.append(["config", "nome", cfg.nome, "y_piso", cfg.y_piso, "x_tubo", cfg.x_tubo])
     we.append(list(CAMPOS_ENTRADA))
     for e in entradas:
         d = asdict(e)
         d["ajustes"] = json.dumps(e.ajustes, ensure_ascii=False) if e.ajustes else None
+        d["banco_duplo"] = json.dumps(e.banco_duplo) if e.banco_duplo else None
         we.append([d[c] for c in CAMPOS_ENTRADA])
     we.sheet_state = "hidden"
     if not isinstance(caminho, (str, Path)):
