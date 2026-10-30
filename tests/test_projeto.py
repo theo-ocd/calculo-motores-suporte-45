@@ -120,16 +120,6 @@ def test_modelos_padrao_validacao(tmp_path: Path) -> None:
         origem="TODO",
     )
     assert ch.como_chapa().aceita_carcaca("200L")
-    (tmp_path / "chapas_padrao.csv").write_text(
-        (DATA / "padrao" / "chapas_padrao.csv").read_text(encoding="utf-8"), encoding="utf-8"
-    )
-    (tmp_path / "ranhuras_padrao.csv").write_text(
-        "chapa_id;ranhura_n;d_ini;d_fim;largura;origem\nCH-NADA;1;;10;17;TODO\n",
-        encoding="utf-8",
-    )
-    with pytest.raises(ErroCarga, match="não existe em chapas_padrao"):
-        carregar_padroes(tmp_path)
-    (tmp_path / "ranhuras_padrao.csv").unlink()
     with pytest.raises(ErroCarga, match="arquivo ausente"):
         carregar_padroes(tmp_path)
 

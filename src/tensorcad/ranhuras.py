@@ -62,7 +62,10 @@ def avaliar(
                 " (TODO); folgas não verificadas",
             ),
         )
-    estreitas = [n for n in (1, 2) if ranhuras[n].largura < motor.K]
+    sem_largura = [n for n in (1, 2) if ranhuras[n].largura is None]
+    estreitas = [
+        n for n in (1, 2) if ranhuras[n].largura is not None and ranhuras[n].largura < motor.K
+    ]
     if estreitas:
         return AvaliacaoRanhuras(
             Status.INCOMPATIVEL,
@@ -79,6 +82,8 @@ def avaliar(
     if fp < 0:
         msgs.append(f"furo excede o fim da ranhura 2 em {-fp:.2f} mm")
     status = Status.FORA_RANHURA if msgs else Status.OK
+    if sem_largura:
+        msgs.append("AVISO: largura da ranhura não informada; verificação com K não feita")
     return AvaliacaoRanhuras(status, fn, fp, tuple(msgs))
 
 
