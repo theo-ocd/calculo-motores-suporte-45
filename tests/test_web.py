@@ -504,3 +504,61 @@ def test_projeto_varios_casos_json_e_xlsx(url: str, tmp_path: Path) -> None:
             assert erros == []
         finally:
             nav.close()
+
+
+def test_banco_duplo_no_navegador(url: str) -> None:
+    sync = pytest.importorskip("playwright.sync_api")
+    with sync.sync_playwright() as p:
+        nav = _navegador(p)
+        try:
+            pg = nav.new_page(viewport={"width": 1500, "height": 1000})
+            erros: list[str] = []
+            pg.on("pageerror", lambda e: erros.append(str(e)))
+            pg.on("dialog", lambda d: d.accept())
+            pg.goto(url)
+            pg.wait_for_selector("#conexao[data-estado='ok']", timeout=10_000)
+            pg.evaluate("localStorage.clear()")
+            pg.click("#btn-limpar")
+            pg.fill("#cota", "1646")
+            pg.fill("#R_min", "2086")
+            pg.fill("#R_max", "2161")
+            pg.wait_for_selector("#status[data-status='OK']", timeout=10_000)
+
+            # desligado: nada do banco 2
+            assert pg.locator("#resultado-banco2").is_hidden()
+            assert pg.locator("#el-O2").count() == 0
+
+            # ligado sem adicionais: banco 1 continua calculado e pede os adicionais
+            pg.click("label[for='banco-duplo']")
+            assert pg.locator("#adicional_R_min").is_visible()
+            assert pg.inner_text("#fixo-dy-banco2") == "500"
+            pg.wait_for_selector("#banco2-mensagem:has-text('preencha os adicionais')")
+            assert pg.get_attribute("#status", "data-status") == "OK"
+
+            # adicionais que deixam o motor entre as linhas
+            pg.fill("#adicional_R_min", "470")
+            pg.fill("#adicional_R_max", "480")
+            pg.wait_for_selector("#el-O2", timeout=10_000)
+            pg.wait_for_selector("#banco2-mensagem:has-text('entre as linhas')")
+            assert pg.locator("#banco2 tbody tr").count() == 2
+            assert pg.locator("#el-arco-R2_min").count() == 1
+
+            # fora das linhas: aviso, status do caso não muda
+            pg.fill("#adicional_R_min", "500")
+            pg.wait_for_selector("#banco2 .ponto[data-status='AVISO']", timeout=10_000)
+            assert "abaixo de R2_min" in pg.inner_text("#banco2-mensagem")
+            assert pg.get_attribute("#status", "data-status") == "OK"
+            assert pg.locator("#el-raio2-0[data-status='AVISO']").count() == 1
+
+            # persiste no projeto (switch no projeto, adicionais por caso)
+            dados = pg.evaluate("Projeto.serializar()")
+            assert dados["banco_duplo"] is True
+            assert dados["casos"][0]["adicional_R_min"] == 500
+
+            # desligar esconde e remove o banco 2 do desenho
+            pg.click("label[for='banco-duplo']")
+            pg.wait_for_function("!document.querySelector('#el-O2')")
+            assert pg.locator("#resultado-banco2").is_hidden()
+            assert erros == []
+        finally:
+            nav.close()

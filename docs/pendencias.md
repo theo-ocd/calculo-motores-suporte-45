@@ -15,6 +15,9 @@ Os IDs P1–P7 abaixo devem ficar sincronizados com o CSV (verificado em teste).
 | P5 | Catálogo de motores (AC, HD, L, massa) — fabricante a definir | Desenho e interferência | ABERTO |
 | P6 | Coordenadas X_O_cad/Y_O_cad do centro do arco | Exportação CAD | ABERTO |
 | P7 | Dimensões da chapa (espessura, comprimento, largura) | Desenho CAD | ABERTO |
+| P8 | Banco duplo: sentido do deslocamento de 500 mm de O2 (esboço: acima de O) | Banco duplo — posição de O2 | ABERTO |
+| P9 | Banco duplo: definição dos adicionais de raio (esboço: R2 = R + adicional, um para R_min e outro para R_max, por caso) | Banco duplo — R2_min/R2_max | ABERTO |
+| P10 | Banco duplo: critério 'motor entre as linhas de raio' (esboço: R2_min ≤ distância C–O2 ≤ R2_max a 0 % e 3 %, fora gera só aviso) | Banco duplo — status e H recomendada | ABERTO |
 
 Pendência do repositório (fora do CSV): licença (LICENSE provisório, TODO).
 
@@ -89,3 +92,13 @@ Substitui S2, S3, S4 e S5 acima:
   (deslizar para baixo). O cálculo exige todas as folgas ≥ 0, incluindo as das pontas
   internas, quando conhecidas.
 - Pendente: largura das ranhuras (por isso a carcaça 180 aparece como PARCIAL).
+
+## Banco duplo — esboço (branch feature/banco-duplo)
+
+Suposições do esboço, todas opcionais e atrás do switch (desligado não muda nada).
+Detalhes em docs/banco_duplo.md.
+
+- O2 fica 500 mm **acima** de O (P8).
+- R2_min = R_min + adicional_R_min e R2_max = R_max + adicional_R_max, por caso (P9).
+- Motor único posicionado pelo banco 1. Fora de [R2_min, R2_max] gera **aviso** e não
+  muda o status (P10).

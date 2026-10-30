@@ -223,7 +223,50 @@ function lerCampos() {
     R_max: $("R_max").value.trim(),
     cota: $("cota").value.trim() || null,
     ajustes: estado.ajustes,
+    banco_duplo: {
+      // ligado sem nenhum adicional preenchido: calcula só o banco 1 (e pede os adicionais)
+      ativo: $("banco-duplo").checked && Boolean($("adicional_R_min").value.trim() || $("adicional_R_max").value.trim()),
+      adicional_R_min: $("adicional_R_min").value.trim(),
+      adicional_R_max: $("adicional_R_max").value.trim(),
+    },
   };
+}
+
+// ------------------------------------------------------------------ banco duplo
+
+function mostrarBancoDuplo() {
+  const ativo = $("banco-duplo").checked;
+  for (const el of document.querySelectorAll(".so-banco2")) el.hidden = !ativo;
+}
+
+function mostrarBanco2(b) {
+  const tbody = $("banco2").querySelector("tbody");
+  tbody.replaceChildren();
+  $("banco2-mensagem").textContent = b
+    ? b.ok
+      ? "motor entre as linhas de raio do banco 2"
+      : b.avisos.join("\n")
+    : $("banco-duplo").checked
+      ? "preencha os adicionais de raio"
+      : "";
+  if (!b) return;
+  for (const q of b.posicoes) {
+    const tr = document.createElement("tr");
+    for (const t of [`${q.rotulo} %`, fmt(q.R2), `${fmt(b.R2_min, 0)}–${fmt(b.R2_max, 0)}`, fmt(q.desvio)]) {
+      const td = document.createElement("td");
+      td.textContent = t;
+      tr.append(td);
+    }
+    tr.lastChild.classList.toggle("neg", !q.dentro);
+    const td = document.createElement("td");
+    const ponto = document.createElement("span");
+    ponto.className = "ponto";
+    ponto.dataset.status = q.dentro ? "OK" : "AVISO";
+    ponto.title = q.dentro ? "entre R2min e R2max" : "fora das linhas de raio do banco 2";
+    td.append(ponto);
+    tr.append(td);
+    tbody.append(tr);
+  }
 }
 
 function marcarErros(erros) {
@@ -299,6 +342,7 @@ function mostrarVazio(texto) {
   $("resumo").replaceChildren();
   $("chapa-info").replaceChildren();
   $("posicoes").querySelector("tbody").replaceChildren();
+  mostrarBanco2(null);
 }
 
 function mostrarResultado(r) {
@@ -364,15 +408,20 @@ function mostrarResultado(r) {
   linhaResumo(info, "Comprimento / inclinação", `${fmt(r.chapa.comprimento, 0)} mm · ${fmt(r.chapa.theta_deg, 0)}°`);
   linhaResumo(info, "Tubo → L (dx / dy)", `${fmt(r.chapa.dx_L_tubo)} / ${fmt(r.chapa.dy_L_tubo)}`);
   linhaResumo(info, "Motor / h sobre a chapa", `${r.motor.motor_id} · ${fmt(r.h, 0)}`);
+  mostrarBanco2(r.banco_duplo);
 }
 
 // ------------------------------------------------------------------ início
 
 async function iniciar() {
   Desenho.iniciar();
-  for (const id of ["cota", "caso_id", "R_min", "R_max", "nome-projeto"]) {
+  for (const id of ["cota", "caso_id", "R_min", "R_max", "nome-projeto", "adicional_R_min", "adicional_R_max"]) {
     $(id).addEventListener("input", agendarCalculo);
   }
+  $("banco-duplo").addEventListener("change", () => {
+    mostrarBancoDuplo();
+    agendarCalculo();
+  });
   $("carcaca").addEventListener("change", aoTrocarCarcaca);
   $("motor_id").addEventListener("change", aoTrocarMotor);
   $("btn-restaurar-tudo").addEventListener("click", (ev) => {
@@ -389,6 +438,7 @@ async function iniciar() {
     fonte.title = `cadastros: ${s.dados}\nchapas: ${s.padroes}\navisos: ${s.avisos}\nerros na tabela de chapas: ${s.erros_chapas}\nfaixa: ${s.faixa.join("–")}`;
     $("fixo-x-tubo").textContent = fmt(s.fixos.x_tubo, 0);
     $("fixo-y-piso").textContent = fmt(s.fixos.y_piso, 0);
+    $("fixo-dy-banco2").textContent = fmt(s.fixos.dy_banco2, 0);
     definirConexao("ok", "conectado");
     estado.campos = await obter("/api/campos");
     preencherCarcacas(await obter("/api/carcacas"));

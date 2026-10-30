@@ -12,6 +12,7 @@
   --acento: #00a39a;
   --acento-2: #4cc38a;
   --construcao: #5e7c85;
+  --banco2: #6fa8dc;
   --chapa: #e6eef0;
   --m0: #4cc38a;
   --m3: #f2a65a;
@@ -205,6 +206,10 @@ select option { color: var(--txt); }
 #mundo .el:hover { stroke-width: 2.4; }
 #mundo .construcao .el { stroke: var(--construcao); stroke-dasharray: 8 6; }
 #mundo .construcao .ponto { fill: var(--txt); stroke: none; }
+#mundo .banco2 .el { stroke: var(--banco2); stroke-dasharray: 8 6; }
+#mundo .banco2 .el[data-status="AVISO"] { stroke: var(--alerta); stroke-width: 1.8; }
+#mundo .banco2 .rotulo { fill: var(--banco2); }
+#mundo #el-O2 { stroke-dasharray: none; stroke-width: 1.4; fill: rgba(111, 168, 220, .10); }
 #mundo .estrutura .el { stroke: #9fb4ba; }
 #mundo #el-piso { stroke: #b08454; stroke-dasharray: 14 6; }
 #mundo #el-tubo-L { stroke-dasharray: 4 4; }
@@ -284,3 +289,13 @@ select option { color: var(--txt); }
 .lista-casos li.ativo { border-color: var(--acento); }
 .lista-casos li .info-caso { color: var(--txt-2); font: 11px var(--mono); }
 .botoes-casos { display: flex; gap: 6px; margin-bottom: 4px; }
+
+/* switch (banco duplo) */
+.switch { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; cursor: pointer; user-select: none; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch .trilho { width: 34px; height: 18px; border-radius: 9px; background: var(--borda); position: relative; transition: background .15s; }
+.switch .trilho::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--txt-2); transition: transform .15s, background .15s; }
+.switch input:checked + .trilho { background: var(--banco2); }
+.switch input:checked + .trilho::after { transform: translateX(16px); background: var(--txt); }
+.switch input:focus-visible + .trilho { outline: 2px solid var(--acento); outline-offset: 2px; }
+.ponto[data-status="AVISO"] { background: var(--alerta); }

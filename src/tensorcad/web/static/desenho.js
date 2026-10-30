@@ -123,7 +123,7 @@ const Desenho = (() => {
       case "poligono": {
         const pts = p.pts.map(P).map((q) => q.join(",")).join(" ");
         e = el(p.tipo === "poligono" ? "polygon" : "polyline", { ...comum, points: pts }, g);
-        if (p.id === "O" && p.c) texto(g, "O", P(p.c), 16, -16, "rotulo rotulo-ponto", "start");
+        if ((p.id === "O" || p.id === "O2") && p.c) texto(g, p.id, P(p.c), 16, -16, "rotulo rotulo-ponto", "start");
         break;
       }
       case "circulo": {
@@ -133,11 +133,13 @@ const Desenho = (() => {
       }
       case "arco": {
         const rad = (a) => (a * Math.PI) / 180;
-        const [x0, y0] = P([p.r * Math.cos(rad(p.a0)), p.r * Math.sin(rad(p.a0))]);
-        const [x1, y1] = P([p.r * Math.cos(rad(p.a1)), p.r * Math.sin(rad(p.a1))]);
+        const [ox, oy] = p.c || [0, 0];
+        const [x0, y0] = P([ox + p.r * Math.cos(rad(p.a0)), oy + p.r * Math.sin(rad(p.a0))]);
+        const [x1, y1] = P([ox + p.r * Math.cos(rad(p.a1)), oy + p.r * Math.sin(rad(p.a1))]);
         const grande = Math.abs(p.a1 - p.a0) > 180 ? 1 : 0;
         e = el("path", { ...comum, d: `M ${x0} ${y0} A ${p.r} ${p.r} 0 ${grande} 0 ${x1} ${y1}` }, g);
-        texto(g, p.rotulo, [x1, y1], 0, -12);
+        // banco 2: rótulo na outra ponta para não sobrepor o do banco 1
+        texto(g, p.rotulo, p.camada === "banco2" ? [x0, y0] : [x1, y1], 0, -12);
         break;
       }
       case "cota": {

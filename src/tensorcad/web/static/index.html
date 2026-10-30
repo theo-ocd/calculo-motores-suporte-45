@@ -47,7 +47,14 @@
         <dl class="fixos">
           <div><dt>Centro dos raios → tubo (x)</dt><dd id="fixo-x-tubo">—</dd></div>
           <div><dt>Centro dos raios → piso</dt><dd id="fixo-y-piso">—</dd></div>
+          <div class="so-banco2" hidden><dt>O → O2 (y, acima)</dt><dd id="fixo-dy-banco2">—</dd></div>
         </dl>
+        <label class="switch" for="banco-duplo">
+          <input type="checkbox" id="banco-duplo" role="switch">
+          <span class="trilho" aria-hidden="true"></span>
+          <span>Banco duplo</span>
+        </label>
+        <p class="dica so-banco2" hidden>Segundo centro de arcos O2. Motor único: deve ficar entre as linhas R2<sub>min</sub> e R2<sub>max</sub>; fora delas, aviso.</p>
 
         <h2>Casos em memória <span id="contagem-casos" class="dica"></span></h2>
         <ul id="lista-casos" class="lista-casos" aria-label="Casos do projeto"></ul>
@@ -83,6 +90,18 @@
           <div class="campo" data-campo="R_max">
             <label for="R_max">R<sub>max</sub> 3 % (mm)</label>
             <input id="R_max" name="R_max" inputmode="decimal" placeholder="ex.: 2161">
+            <p class="erro-campo"></p>
+          </div>
+        </div>
+        <div class="linha-2 so-banco2" hidden>
+          <div class="campo" data-campo="banco_duplo.adicional_R_min">
+            <label for="adicional_R_min">Adicional R2<sub>min</sub> (mm)</label>
+            <input id="adicional_R_min" inputmode="decimal" placeholder="R2min = Rmin + adicional">
+            <p class="erro-campo"></p>
+          </div>
+          <div class="campo" data-campo="banco_duplo.adicional_R_max">
+            <label for="adicional_R_max">Adicional R2<sub>max</sub> (mm)</label>
+            <input id="adicional_R_max" inputmode="decimal" placeholder="R2max = Rmax + adicional">
             <p class="erro-campo"></p>
           </div>
         </div>
@@ -134,6 +153,7 @@
         <button type="button" id="btn-menos" title="Afastar">－</button>
         <span class="sep"></span>
         <label><input type="checkbox" data-camada="construcao" checked> construção</label>
+        <label class="so-banco2" hidden><input type="checkbox" data-camada="banco2" checked> banco 2</label>
         <label><input type="checkbox" data-camada="estrutura" checked> estrutura</label>
         <label><input type="checkbox" data-camada="chapa" checked> chapa</label>
         <label><input type="checkbox" data-camada="motor" checked> motor</label>
@@ -158,6 +178,15 @@
         <thead><tr><th>H</th><th>tensão</th><th>d</th><th>folga −</th><th>folga +</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
+
+      <section id="resultado-banco2" class="so-banco2" hidden>
+        <h2>Banco 2</h2>
+        <p id="banco2-mensagem" class="mensagem"></p>
+        <table id="banco2" class="tabela">
+          <thead><tr><th>tensão</th><th title="distância do centro do motor a O2">R2</th><th>faixa R2</th><th>desvio</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
 
       <h2>Chapa / motor</h2>
       <dl id="chapa-info" class="resumo"></dl>

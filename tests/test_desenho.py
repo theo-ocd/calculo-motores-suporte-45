@@ -53,7 +53,7 @@ def test_elementos_e_camadas() -> None:
         "cota-h",
     }
     assert esperados <= set(ids)
-    assert {p["camada"] for p in d["primitivas"]} == set(desenho.CAMADAS)
+    assert {p["camada"] for p in d["primitivas"]} == set(desenho.CAMADAS) - {"banco2"}
     assert d["H"] == 1646
 
 
