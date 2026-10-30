@@ -224,3 +224,36 @@ select option { color: var(--txt); }
 #mundo #el-O { stroke: var(--txt); stroke-dasharray: none; stroke-width: 1.4; fill: rgba(220, 230, 232, .08); }
 #mundo #el-eixo-apoio { stroke: #7f9aa1; stroke-dasharray: 18 5 3 5; }
 #mundo #el-tubo { stroke: #c9d6d9; stroke-width: 1.4; fill: rgba(201, 214, 217, .08); }
+
+/* ---------------------------------------------------------------- W3: dimensões */
+.painel-dimensoes { margin-top: 6px; border-top: 1px solid var(--borda); padding-top: 6px; }
+.painel-dimensoes summary {
+  display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none;
+  font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--acento); margin: 8px 0;
+}
+.painel-dimensoes summary::-webkit-details-marker { display: none; }
+.painel-dimensoes summary::before { content: "▸"; transition: transform .15s; }
+.painel-dimensoes[open] summary::before { transform: rotate(90deg); }
+.painel-dimensoes summary span:first-of-type { flex: 1; }
+.painel-dimensoes h3 { margin: 8px 0 4px; font-size: 11px; color: var(--txt-2); text-transform: uppercase; letter-spacing: .8px; }
+.contagem { background: var(--acento); color: #071012; border-radius: 9px; padding: 0 7px; font-size: 11px; letter-spacing: 0; }
+.botao-mini {
+  background: var(--painel-2); color: var(--txt-2); border: 1px solid var(--borda); border-radius: 4px;
+  font: 11px var(--fonte); padding: 1px 6px; cursor: pointer; text-transform: none; letter-spacing: 0;
+}
+.botao-mini:hover:not(:disabled) { color: var(--acento); border-color: var(--acento); }
+.botao-mini:disabled { opacity: .45; cursor: default; }
+.dims { display: grid; gap: 4px; }
+.dim { display: grid; grid-template-columns: 1fr 86px 20px; align-items: center; gap: 4px; }
+.dim label { font-size: 12px; color: var(--txt-2); line-height: 1.2; }
+.dim label small { display: block; font-size: 10px; color: #6c8186; }
+.dim input { padding: 3px 6px; font: 12px var(--mono); text-align: right; width: 100%; min-width: 0; }
+.dim .restaurar { visibility: hidden; background: none; border: 0; color: var(--acento); cursor: pointer; font-size: 14px; padding: 0; }
+.dim.alterado input { border-color: var(--acento); color: var(--acento); background: rgba(0, 163, 154, .08); }
+.dim.alterado .restaurar { visibility: visible; }
+.dim.invalido input { border-color: var(--erro); color: var(--erro); }
+.dim .erro-campo { grid-column: 1 / -1; }
+.soma-cotas { font: 11px var(--mono); color: var(--txt-2); margin: 6px 0 0; }
+.soma-cotas.ok { color: var(--ok); }
+.soma-cotas.erro { color: var(--erro); }
+.contagem, .botao-mini { text-transform: none; white-space: nowrap; }

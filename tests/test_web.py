@@ -315,3 +315,59 @@ def test_desenho_interativo_no_navegador(url: str) -> None:
             assert erros == []
         finally:
             nav.close()
+
+
+def test_dimensoes_editaveis_no_navegador(url: str) -> None:
+    sync = pytest.importorskip("playwright.sync_api")
+    with sync.sync_playwright() as p:
+        nav = _navegador(p)
+        try:
+            pg = nav.new_page(viewport={"width": 1500, "height": 1000})
+            erros: list[str] = []
+            pg.on("pageerror", lambda e: erros.append(str(e)))
+            pg.goto(url)
+            pg.wait_for_selector("#conexao[data-estado='ok']", timeout=10_000)
+            pg.fill("#R_min", "2086")
+            pg.fill("#R_max", "2161")
+            pg.fill("#cota", "1646")
+            pg.wait_for_selector("#el-motor-0", timeout=10_000)
+
+            # padrão da carcaça 180 carregado; x do tubo e piso não aparecem como editáveis
+            assert pg.input_value("#dim-chapa-dist_L_ranhura") == "110"
+            assert pg.input_value("#dim-motor-A") == "279"
+            assert pg.locator("#dim-chapa-x_tubo").count() == 0
+            assert "= 635,0 ✓" in pg.inner_text("#soma-cotas")
+            assert pg.locator(".dim.alterado").count() == 0
+            assert pg.locator("#btn-restaurar-tudo").is_disabled()
+
+            # soma que não fecha: aviso na soma e erro do servidor no painel
+            pg.fill("#dim-chapa-dist_L_ranhura", "130")
+            pg.wait_for_selector("#soma-cotas.erro")
+            pg.wait_for_function(
+                "document.getElementById('erro-dimensoes').textContent.includes('não fecham')"
+            )
+            # fecha a soma reduzindo o vão: recalcula com o ajuste
+            pg.fill("#dim-chapa-dist_entre_ranhuras", "104")
+            pg.wait_for_selector("#soma-cotas.ok")
+            pg.wait_for_function(
+                "document.getElementById('resumo').textContent.includes('1.643,92')"
+            )
+            assert pg.locator(".dim.alterado").count() == 2
+            assert "2 alteradas" in pg.inner_text("#contagem-ajustes")
+            inf3 = pg.locator("#posicoes tbody tr").nth(3).inner_text()
+            assert "20,64" in inf3  # base a 3 %: 40,64 − 20
+
+            # restaurar um campo e depois tudo
+            pg.click(".dim[data-nome='dist_entre_ranhuras'] .restaurar")
+            assert pg.input_value("#dim-chapa-dist_entre_ranhuras") == "124"
+            assert pg.locator(".dim.alterado").count() == 1
+            pg.fill("#dim-motor-A", "289")
+            pg.click("#btn-restaurar-tudo")
+            assert pg.locator(".dim.alterado").count() == 0
+            pg.wait_for_function(
+                "document.getElementById('resumo').textContent.includes('1.634,32')"
+            )
+            assert pg.input_value("#dim-motor-A") == "279"
+            assert erros == []
+        finally:
+            nav.close()

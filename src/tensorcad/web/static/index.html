@@ -64,6 +64,21 @@
             <p class="erro-campo"></p>
           </div>
         </div>
+
+        <details id="painel-dimensoes" class="painel-dimensoes" open>
+          <summary>
+            <span>Dimensões</span>
+            <span id="contagem-ajustes" class="contagem" hidden></span>
+            <button type="button" id="btn-restaurar-tudo" class="botao-mini" title="Voltar todas as dimensões ao padrão da carcaça" disabled>restaurar tudo</button>
+          </summary>
+          <p class="dica">Valores padrão da carcaça escolhida. Altere para simular; o destaque indica o que difere do padrão.</p>
+          <h3>Chapa</h3>
+          <div id="dims-chapa" class="dims"></div>
+          <p id="soma-cotas" class="soma-cotas"></p>
+          <p class="erro-campo" id="erro-dimensoes"></p>
+          <h3>Motor</h3>
+          <div id="dims-motor" class="dims"></div>
+        </details>
       </form>
 
       <h2>Carcaças</h2>

@@ -3,7 +3,15 @@
 
 const ROTULO = { ok: "OK", parcial: "PARCIAL", erro: "ERRO" };
 const ESPERA_MS = 300;
-const estado = { carcacas: [], timer: null, controle: null };
+const estado = {
+  carcacas: [],
+  timer: null,
+  controle: null,
+  campos: { chapa: [], motor: [] },
+  padrao: { chapa: {}, motor: {} },
+  ajustes: { chapa: {}, motor: {} },
+};
+const OPCIONAIS = new Set(["comprimento_ranhura", "dist_entre_ranhuras", "largura_ranhura"]);
 
 const $ = (id) => document.getElementById(id);
 const fmt = (v, casas = 2) =>
@@ -86,6 +94,118 @@ function aoTrocarCarcaca() {
     selM.append(op);
   }
   selM.disabled = !c || c.motores.length === 0;
+  estado.padrao.chapa = (c && c.dimensoes_chapa) || {};
+  estado.ajustes = { chapa: {}, motor: {} };
+  montarDimensoes("chapa");
+  aoTrocarMotor();
+}
+
+function aoTrocarMotor() {
+  const c = carcacaAtual();
+  const m = c && c.motores.find((x) => x.motor_id === $("motor_id").value);
+  estado.padrao.motor = m ? { H: m.H, A: m.A, K: m.K } : {};
+  estado.ajustes.motor = {};
+  montarDimensoes("motor");
+  agendarCalculo();
+}
+
+// ------------------------------------------------------------------ dimensões (W3)
+
+const numero = (t) => (t === "" || t === null || t === undefined ? null : Number(String(t).replace(",", ".")));
+
+function montarDimensoes(grupo) {
+  const caixa = $(grupo === "chapa" ? "dims-chapa" : "dims-motor");
+  caixa.replaceChildren();
+  for (const meta of estado.campos[grupo]) {
+    const padrao = estado.padrao[grupo][meta.campo];
+    const div = document.createElement("div");
+    div.className = "dim campo";
+    div.dataset.campo = `ajustes.${grupo}.${meta.campo}`;
+    div.dataset.grupo = grupo;
+    div.dataset.nome = meta.campo;
+    const id = `dim-${grupo}-${meta.campo}`;
+    const label = document.createElement("label");
+    label.htmlFor = id;
+    label.textContent = `${meta.rotulo} (${meta.unidade})`;
+    const peq = document.createElement("small");
+    peq.textContent = `padrão: ${padrao === null || padrao === undefined ? "—" : fmt(padrao, padrao % 1 ? 2 : 0)}`;
+    label.append(peq);
+    const inp = document.createElement("input");
+    inp.id = id;
+    inp.inputMode = "decimal";
+    inp.value = padrao === null || padrao === undefined ? "" : String(padrao);
+    inp.placeholder = OPCIONAIS.has(meta.campo) ? "vazio" : "";
+    inp.addEventListener("input", () => aoEditarDimensao(grupo, meta.campo, inp.value));
+    const rest = document.createElement("button");
+    rest.type = "button";
+    rest.className = "restaurar";
+    rest.title = "restaurar o padrão";
+    rest.textContent = "↺";
+    rest.addEventListener("click", () => {
+      inp.value = padrao === null || padrao === undefined ? "" : String(padrao);
+      aoEditarDimensao(grupo, meta.campo, inp.value);
+    });
+    const erro = document.createElement("p");
+    erro.className = "erro-campo";
+    div.append(label, inp, rest, erro);
+    caixa.append(div);
+  }
+  $("painel-dimensoes").hidden = estado.campos.chapa.length === 0;
+  atualizarAjustes();
+}
+
+function aoEditarDimensao(grupo, campo, texto) {
+  const padrao = estado.padrao[grupo][campo];
+  const t = texto.trim();
+  const igual = t === "" ? padrao === null || padrao === undefined : numero(t) === padrao;
+  if (igual) delete estado.ajustes[grupo][campo];
+  else estado.ajustes[grupo][campo] = t;
+  atualizarAjustes();
+  agendarCalculo();
+}
+
+function atualizarAjustes() {
+  let n = 0;
+  for (const div of document.querySelectorAll(".dim")) {
+    const alterado = div.dataset.nome in estado.ajustes[div.dataset.grupo];
+    div.classList.toggle("alterado", alterado);
+    n += alterado ? 1 : 0;
+  }
+  const cont = $("contagem-ajustes");
+  cont.hidden = n === 0;
+  cont.textContent = `${n} alterad${n === 1 ? "a" : "as"}`;
+  $("btn-restaurar-tudo").disabled = n === 0;
+  atualizarSoma();
+}
+
+function valorChapa(campo) {
+  const aj = estado.ajustes.chapa;
+  return campo in aj ? numero(aj[campo]) : estado.padrao.chapa[campo] ?? null;
+}
+
+function atualizarSoma() {
+  const el = $("soma-cotas");
+  const [c, l, tam, vao, topo] = ["comprimento_chapa", "dist_L_ranhura", "comprimento_ranhura",
+    "dist_entre_ranhuras", "dist_ranhura_topo"].map(valorChapa);
+  el.className = "soma-cotas";
+  if ([c, l, topo].some((v) => v === null || Number.isNaN(v))) {
+    el.textContent = "";
+    return;
+  }
+  if (tam === null || vao === null || Number.isNaN(tam) || Number.isNaN(vao)) {
+    el.textContent = `pontas: ${fmt(l, 0)} … ${fmt(topo, 0)} (comprimento ${fmt(c, 0)}; ranhura ou vão deduzido)`;
+    return;
+  }
+  const soma = l + 2 * tam + vao + topo;
+  const fecha = Math.abs(soma - c) <= 0.5;
+  el.classList.add(fecha ? "ok" : "erro");
+  el.textContent = `${fmt(l, 0)} + 2×${fmt(tam, 0)} + ${fmt(vao, 0)} + ${fmt(topo, 0)} = ${fmt(soma, 1)} ${fecha ? "✓" : "≠"} ${fmt(c, 0)}`;
+}
+
+function restaurarTudo() {
+  estado.ajustes = { chapa: {}, motor: {} };
+  montarDimensoes("chapa");
+  montarDimensoes("motor");
   agendarCalculo();
 }
 
@@ -99,10 +219,12 @@ function lerCampos() {
     R_min: $("R_min").value.trim(),
     R_max: $("R_max").value.trim(),
     cota: $("cota").value.trim() || null,
+    ajustes: estado.ajustes,
   };
 }
 
 function marcarErros(erros) {
+  $("erro-dimensoes").textContent = erros["ajustes.chapa"] || erros["ajustes.motor"] || "";
   for (const div of document.querySelectorAll("#form-caso .campo")) {
     const msg = erros[div.dataset.campo];
     div.classList.toggle("invalido", Boolean(msg));
@@ -243,7 +365,11 @@ async function iniciar() {
   Desenho.iniciar();
   for (const id of ["cota", "caso_id", "R_min", "R_max"]) $(id).addEventListener("input", agendarCalculo);
   $("carcaca").addEventListener("change", aoTrocarCarcaca);
-  $("motor_id").addEventListener("change", agendarCalculo);
+  $("motor_id").addEventListener("change", aoTrocarMotor);
+  $("btn-restaurar-tudo").addEventListener("click", (ev) => {
+    ev.preventDefault();
+    restaurarTudo();
+  });
   $("form-caso").addEventListener("submit", (ev) => ev.preventDefault());
 
   try {
@@ -255,6 +381,7 @@ async function iniciar() {
     $("fixo-x-tubo").textContent = fmt(s.fixos.x_tubo, 0);
     $("fixo-y-piso").textContent = fmt(s.fixos.y_piso, 0);
     definirConexao("ok", "conectado");
+    estado.campos = await obter("/api/campos");
     preencherCarcacas(await obter("/api/carcacas"));
   } catch (e) {
     definirConexao("erro", "sem conexão");
