@@ -25,10 +25,10 @@
       <form id="form-caso" autocomplete="off" novalidate>
         <h2>Projeto</h2>
         <div class="campo" data-campo="cota">
-          <label for="cota">Cota 1646 — tubo de apoio → piso (mm)</label>
-          <input id="cota" name="cota" inputmode="decimal" placeholder="opcional: verificar uma cota">
+          <label for="cota">Altura (H) do centro do apoio (mm)</label>
+          <input id="cota" name="cota" inputmode="decimal" placeholder="opcional: verificar uma altura">
           <p class="erro-campo"></p>
-          <p class="dica">Definida no início de cada projeto. Vazia: só calcula a faixa admissível.</p>
+          <p class="dica">Centro do tubo de apoio → piso do banco de cilindros. Definida no início de cada projeto; vazia: só calcula a faixa admissível.</p>
         </div>
         <dl class="fixos">
           <div><dt>Centro dos raios → tubo (x)</dt><dd id="fixo-x-tubo">—</dd></div>
@@ -104,7 +104,7 @@
       <h2>Posições do motor</h2>
       <p class="dica">d = centro do motor medido da ponta baixa da chapa, subindo.</p>
       <table id="posicoes" class="tabela">
-        <thead><tr><th>cota</th><th>tensão</th><th>d</th><th>folga −</th><th>folga +</th><th></th></tr></thead>
+        <thead><tr><th>H</th><th>tensão</th><th>d</th><th>folga −</th><th>folga +</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
 

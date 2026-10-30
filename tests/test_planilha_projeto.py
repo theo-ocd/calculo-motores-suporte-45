@@ -47,8 +47,8 @@ def test_aba_do_caso_tem_resultado_e_graficos(projeto: Path) -> None:
     ws = load_workbook(projeto)["ALT-2110"]
     valores = {ws.cell(i, 1).value: ws.cell(i, 2).value for i in range(1, 60)}
     assert valores["status"] == "OK"
-    assert valores["cota 1646 recomendada (máx. folga mínima)"] == pytest.approx(1647.09, abs=0.01)
-    assert valores["faixa admissível da cota 1646"] == "1632.07 a 1661.96"
+    assert valores["H recomendada (máx. folga mínima)"] == pytest.approx(1647.09, abs=0.01)
+    assert valores["faixa admissível de H"] == "1632.07 a 1661.96"
     assert valores["chapa"] == "CH-180"
     assert len(ws._charts) == 2
 

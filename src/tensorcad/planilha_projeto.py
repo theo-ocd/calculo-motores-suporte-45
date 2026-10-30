@@ -286,7 +286,7 @@ def _grafico_folgas(ws: Worksheet, r: ResultadoProjeto, cfg: ConfigProjeto, linh
     for c in cotas:
         p0, p3 = (posicao(r.entrada, cfg, R, c) for R in (r.entrada.R_min, r.entrada.R_max))
         linhas.append([c, p0.margem, p3.margem])
-    ws.cell(linha, 1, "Folga mínima × cota 1646").font = NEGRITO
+    ws.cell(linha, 1, "Folga mínima × altura H do apoio").font = NEGRITO
     ini = linha + 1
     ws.cell(ini, 1, "cota")
     ws.cell(ini, 2, "folga mín. 0 %")
@@ -297,9 +297,9 @@ def _grafico_folgas(ws: Worksheet, r: ResultadoProjeto, cfg: ConfigProjeto, linh
             c.number_format = FMT_MM
     fim = ini + len(linhas)
     graf = ScatterChart()
-    graf.title = "Folga mínima nas ranhuras × cota 1646"
+    graf.title = "Folga mínima nas ranhuras × altura H do apoio"
     graf.style = 13
-    graf.x_axis.title, graf.y_axis.title = "cota 1646 (mm)", "folga mínima (mm)"
+    graf.x_axis.title, graf.y_axis.title = "altura H do centro do apoio (mm)", "folga mínima (mm)"
     graf.x_axis.delete = graf.y_axis.delete = False
     xs = Reference(ws, min_col=1, min_row=ini + 1, max_row=fim)
     for j in (2, 3):
@@ -325,7 +325,7 @@ def escrever_aba_caso(ws: Worksheet, r: ResultadoProjeto, cfg: ConfigProjeto) ->
             ("carcaça", e.motor.carcaca),
             ("R_min (0 %)", e.R_min),
             ("R_max (3 %)", e.R_max),
-            ("cota 1646 informada", e.cota_informada),
+            ("altura H do apoio informada", e.cota_informada),
         ],
     )
     rh = e.ranhuras
@@ -354,8 +354,8 @@ def escrever_aba_caso(ws: Worksheet, r: ResultadoProjeto, cfg: ConfigProjeto) ->
         [
             ("status", r.status.value),
             ("mensagem", r.mensagem),
-            ("faixa admissível da cota 1646", _faixas_txt(r)),
-            ("cota 1646 recomendada (máx. folga mínima)", r.cota_recomendada),
+            ("faixa admissível de H", _faixas_txt(r)),
+            ("H recomendada (máx. folga mínima)", r.cota_recomendada),
             ("folga mínima na recomendada", r.margem_recomendada),
             ("ajuste dos oblongos na obra", "±50 mm"),
         ],
@@ -410,7 +410,7 @@ def _aba_projeto(ws: Worksheet, cfg: ConfigProjeto, resultados: Sequence[Resulta
     ws["A2"] = f"Gerado em {datetime.now():%Y-%m-%d %H:%M} — tensorcad {tensorcad.__version__}"
     ws["A4"], ws["B4"] = "centro dos raios → piso (y_piso)", cfg.y_piso
     ws["A5"], ws["B5"] = "centro dos raios → tubo de apoio (x_tubo)", cfg.x_tubo
-    ws["A6"] = "Cota 1646 = centro do tubo de apoio → piso do banco de cilindros."
+    ws["A6"] = "Altura H do apoio = centro do tubo de apoio → piso do banco de cilindros."
     ws["A7"] = "Convenções: O = centro dos raios; x+ esquerda; y+ baixo (ver docs/geometria.md)."
     cols = [
         "caso_id",

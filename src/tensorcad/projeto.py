@@ -231,11 +231,11 @@ def resolver_caso(e: EntradaCaso, cfg: ConfigProjeto) -> ResultadoProjeto:
         )
     cota, margem = otimo
     if faixas:
-        status, msg = Status.OK, f"cota admissível em {len(faixas)} faixa(s)"
+        status, msg = Status.OK, f"altura H admissível em {len(faixas)} faixa(s)"
     else:
         status = Status.FORA_RANHURA
         msg = (
-            f"nenhuma cota atende R_min e R_max: faltam {-margem:.2f} mm de folga "
+            f"nenhuma altura H atende R_min e R_max: faltam {-margem:.2f} mm de folga "
             f"em cada extremo (curso das ranhuras insuficiente)"
         )
     return ResultadoProjeto(
