@@ -6,9 +6,10 @@
 | F1 — modelo de dados | Concluída (PR #4) |
 | F2 — núcleo geométrico | Concluída (PR #6) |
 | F3 — ranhuras e limites | Concluída junto com dados/planilha (PR #8) |
-| F4 — processamento em lote | Em andamento (issue #9) |
+| F4 — processamento em lote | Concluída (PR #10) |
 | F5 — exportação CAD (.dxf/.lsp/.scr/.fas) | **Adiada** por decisão do usuário (2026-10-29) |
-| F6 — executável | **A reformular** (ver abaixo) |
+| F6 — protótipo 180, executável, tabela de chapas | Concluída (PRs #12, #14, #16) |
+| Interface web (W0–W8) | Planejada — [interface_web.md](interface_web.md), branch `feature/interface-web` |
 | F7 — release v0.1.0 | Pendente |
 
 ## F5 — adiada
