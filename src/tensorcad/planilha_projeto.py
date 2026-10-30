@@ -7,13 +7,14 @@ gráficos ao reabrir um xlsx).
 
 from __future__ import annotations
 
+import json
 import math
 import re
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.chart import Reference, ScatterChart, Series
@@ -22,6 +23,7 @@ from openpyxl.worksheet.hyperlink import Hyperlink
 from openpyxl.worksheet.worksheet import Worksheet
 
 import tensorcad
+from tensorcad import ajustes as ajustes_mod
 from tensorcad.loader import BaseDados, Padroes
 from tensorcad.planilha import CORES_STATUS, FMT_MM, _cor_status
 from tensorcad.projeto import (
@@ -49,6 +51,8 @@ class EntradaPlanilha:
     R_max: float
     cota_informada: float | None = None
     chapa_id: str | None = None
+    # ajustes de dimensões {"chapa": {...}, "motor": {...}} sobre o padrão (opcional)
+    ajustes: dict[str, Any] | None = None
 
 
 CAMPOS_ENTRADA = tuple(EntradaPlanilha.__dataclass_fields__)
@@ -73,11 +77,26 @@ def montar_entrada(ent: EntradaPlanilha, base: BaseDados, pad: Padroes) -> Entra
             raise ValueError(f"nenhuma chapa padrão cadastrada para a carcaça {motor.carcaca}")
     if ent.R_min > ent.R_max:
         raise ValueError(f"R_min ({ent.R_min}) > R_max ({ent.R_max})")
+    ranhuras = pad.ranhuras_de(chapa.chapa_id, motor.carcaca)
+    if ent.ajustes:
+        linha = next((x for x in pad.linhas.values() if x.chapa_id == chapa.chapa_id), None)
+        if linha is None:
+            raise ValueError(f"chapa {chapa.chapa_id} sem dimensões cadastradas para ajustes")
+        erros: dict[str, str] = {}
+        aj_chapa, aj_motor = ajustes_mod.ler(ent.ajustes, erros)
+        linha, motor = ajustes_mod.aplicar(linha, motor, aj_chapa, aj_motor, erros)
+        if erros:
+            raise ValueError(
+                f"ajustes inválidos em {ent.caso_id}: "
+                + "; ".join(f"{k}: {v}" for k, v in erros.items())
+            )
+        chapa, lista = linha.como_padrao()
+        ranhuras = {r.ranhura_n: r.como_ranhura(motor.carcaca) for r in lista}
     return EntradaCaso(
         ent.caso_id,
         motor,
         chapa,
-        pad.ranhuras_de(chapa.chapa_id, motor.carcaca),
+        ranhuras,
         ent.R_min,
         ent.R_max,
         ent.cota_informada,
@@ -312,7 +331,12 @@ def _grafico_folgas(ws: Worksheet, r: ResultadoProjeto, cfg: ConfigProjeto, linh
     return fim + 2
 
 
-def escrever_aba_caso(ws: Worksheet, r: ResultadoProjeto, cfg: ConfigProjeto) -> None:
+def escrever_aba_caso(
+    ws: Worksheet,
+    r: ResultadoProjeto,
+    cfg: ConfigProjeto,
+    ajustes: dict[str, Any] | None = None,
+) -> None:
     e = r.entrada
     ws["A1"] = f"Caso {e.caso_id}"
     ws["A1"].font = TITULO
@@ -346,6 +370,14 @@ def escrever_aba_caso(ws: Worksheet, r: ResultadoProjeto, cfg: ConfigProjeto) ->
             ("ranhura 2: d_ini", -rh[2].u_fim if 2 in rh else None),
         ],
     )
+    if ajustes:
+        pares = ajustes_mod.descrever(ajustes.get("chapa") or {}, ajustes.get("motor") or {})
+        lin = _bloco(
+            ws,
+            lin,
+            "Ajustes de dimensões (diferentes do padrão)",
+            [(rot, "vazio" if v is None else float(v)) for rot, v in pares],
+        )
     ini_resultado = lin
     lin = _bloco(
         ws,
@@ -493,19 +525,21 @@ def ler_entradas(caminho: Path) -> tuple[ConfigProjeto, list[EntradaPlanilha]]:
                 if d.get("cota_informada") is None
                 else float(d["cota_informada"]),
                 chapa_id=None if d.get("chapa_id") in (None, "") else str(d["chapa_id"]),
+                ajustes=json.loads(d["ajustes"]) if d.get("ajustes") else None,
             )
         )
     return cfg, entradas
 
 
 def gerar_projeto(
-    caminho: Path | str,
+    caminho: Path | str | BinaryIO,
     cfg: ConfigProjeto,
     entradas: Sequence[EntradaPlanilha],
     base: BaseDados,
     pad: Padroes,
-) -> Path:
-    """Gera a planilha completa do projeto (PROJETO + uma aba por caso + _entradas)."""
+) -> Path | BinaryIO:
+    """Gera a planilha completa do projeto (PROJETO + uma aba por caso + _entradas).
+    `caminho` pode ser um arquivo em memória (exportação pela interface)."""
     ids = [nome_aba(e.caso_id) for e in entradas]
     if len(set(ids)) != len(ids):
         raise ValueError("casos com nomes de aba repetidos")
@@ -513,14 +547,19 @@ def gerar_projeto(
     wb = Workbook()
     _aba_projeto(wb.active, cfg, resultados)
     wb.active.title = ABA_PROJETO
-    for r in resultados:
-        escrever_aba_caso(wb.create_sheet(nome_aba(r.entrada.caso_id)), r, cfg)
+    for e, r in zip(entradas, resultados, strict=True):
+        escrever_aba_caso(wb.create_sheet(nome_aba(r.entrada.caso_id)), r, cfg, e.ajustes)
     we = wb.create_sheet(ABA_ENTRADAS)
     we.append(["config", "nome", cfg.nome, "y_piso", cfg.y_piso, "x_tubo", cfg.x_tubo])
     we.append(list(CAMPOS_ENTRADA))
     for e in entradas:
-        we.append([asdict(e)[c] for c in CAMPOS_ENTRADA])
+        d = asdict(e)
+        d["ajustes"] = json.dumps(e.ajustes, ensure_ascii=False) if e.ajustes else None
+        we.append([d[c] for c in CAMPOS_ENTRADA])
     we.sheet_state = "hidden"
+    if not isinstance(caminho, (str, Path)):
+        wb.save(caminho)
+        return caminho
     caminho = Path(caminho)
     caminho.parent.mkdir(parents=True, exist_ok=True)
     wb.save(caminho)
