@@ -199,6 +199,7 @@ const Projeto = (() => {
       R2_min: num(c.R2_min),
       R2_max: num(c.R2_max),
       ajustes: { chapa: grupo(c.ajustes?.chapa), motor: grupo(c.ajustes?.motor) },
+      g_manual: Array.isArray(c.g_manual) && c.g_manual.some((v) => v !== null) ? c.g_manual : null,
     }));
   }
   function serializar() {
@@ -230,6 +231,9 @@ const Projeto = (() => {
       R2_min: texto(c.R2_min),
       R2_max: texto(c.R2_max),
       ajustes: { chapa: grupo(c.ajustes?.chapa), motor: grupo(c.ajustes?.motor) },
+      g_manual: Array.isArray(c.g_manual)
+        ? [0, 1].map((k) => (c.g_manual[k] === null || c.g_manual[k] === undefined ? null : Number(c.g_manual[k])))
+        : null,
       _status: "",
     }));
   }
@@ -340,6 +344,7 @@ const Projeto = (() => {
       if (h && !p.horizontal.comprimento_tubo) continue;
       const corpo = h
         ? { ...c, banco_duplo: banco(c), altura_tubo: p.horizontal.altura_tubo || null,
+            g_manual: p.horizontal.altura_tubo ? c.g_manual || null : null,
             comprimento_tubo: p.horizontal.comprimento_tubo, invertido: p.horizontal.invertido }
         : { ...c, banco_duplo: banco(c), cota: p.cota || null };
       try {
@@ -419,8 +424,21 @@ const Projeto = (() => {
     }
   }
 
+  // ajuste manual de g do caso ativo (tubo horizontal): [g 0 %, g 3 %], null = calculado
+  const gManual = () => {
+    const g = ativo().g_manual;
+    return Array.isArray(g) ? [...g] : [null, null];
+  };
+  function definirGManual(g) {
+    ativo().g_manual = g.some((v) => v !== null) ? g : null;
+    agendarRascunho();
+  }
+
   return {
     iniciar,
+    aviso,
+    gManual,
+    definirGManual,
     lerFormulario,
     errosLocais,
     definirStatus,

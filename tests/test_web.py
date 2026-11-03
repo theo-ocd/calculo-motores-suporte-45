@@ -698,6 +698,22 @@ def test_tubo_horizontal_calcula_e_desenha(url: str) -> None:
 
             wb = load_workbook(io.BytesIO(Path(dl.value.path()).read_bytes()))
             assert "th-1" in wb.sheetnames and "_entradas_horizontal" in wb.sheetnames
+            # ajuste manual de g com a altura fixa: ±1 mm, digitado e "auto"
+            pg.fill("#altura-tubo", "1295")
+            pg.wait_for_selector("#g-manual-0", timeout=20_000)
+            pg.fill("#g-manual-0", "65")
+            pg.press("#g-manual-0", "Enter")
+            pg.wait_for_selector("#posicoes-th tr.manual", timeout=20_000)
+            assert pg.input_value("#g-manual-0") == "65,0"
+            pg.click("[data-g='0-mais']")
+            pg.wait_for_function("document.querySelector('#g-manual-0').value === '66,0'")
+            assert pg.evaluate("Projeto.gManual()") == [66, None]
+            pg.click("[data-g='0-auto']")
+            pg.wait_for_function("!document.querySelector('#posicoes-th tr.manual')")
+            assert pg.evaluate("Projeto.gManual()") == [None, None]
+            # clicar na cota g do desenho leva ao ajuste
+            pg.click(".alvo[data-id='cota-g']", force=True)
+            assert pg.evaluate("document.activeElement.id") == "g-manual-0"
             # voltar ao 45° mantém a 250 desabilitada lá
             pg.check("#layout-45")
             assert pg.locator("#carcaca option[value='250']").is_disabled()

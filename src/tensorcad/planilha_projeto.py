@@ -77,6 +77,8 @@ class EntradaHorizontal:
     invertido: bool = False
     # tensionamento para banco duplo {"R2_min", "R2_max", "deslocamento_y"} (opcional)
     banco_duplo: dict[str, Any] | None = None
+    # ajuste manual de g [0 %, 3 %] com a altura informada (cada um número ou None)
+    g_manual: list[float | None] | None = None
 
 
 def resolver_horizontal(
@@ -101,8 +103,15 @@ def resolver_horizontal(
             float(ent.banco_duplo["R2_max"]),
             float(ent.banco_duplo.get("deslocamento_y", bd.DESLOCAMENTO_Y_PADRAO)),
         )
+    g_manual = None if not ent.g_manual else (ent.g_manual[0], ent.g_manual[1])
     e = th.EntradaTH(
-        ent.caso_id, base.motores[ent.motor_id], ent.R_min, ent.R_max, ent.altura_informada, b2
+        ent.caso_id,
+        base.motores[ent.motor_id],
+        ent.R_min,
+        ent.R_max,
+        ent.altura_informada,
+        b2,
+        g_manual,
     )
     return th.resolver(par, e)
 
@@ -757,6 +766,12 @@ def escrever_aba_horizontal(ws: Worksheet, r: th.ResultadoTH) -> None:
             ("R_max (3 %)", e.R_max),
             ("comprimento do tubo", par.comprimento_tubo),
             ("altura do tubo informada", e.altura_informada),
+            (
+                "g manual (0 % / 3 %)",
+                "—"
+                if not e.g_manual
+                else " / ".join("auto" if v is None else f"{v:g}" for v in e.g_manual),
+            ),
         ],
     )
     lin = _bloco(
