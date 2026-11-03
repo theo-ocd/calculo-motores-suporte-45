@@ -87,16 +87,39 @@ testes, pendências) para conferência.
   de motores, e não das chapas do 45°. Hoje a 250 aparece como "a preencher" por falta da
   chapa 45°.
 
-### T2: Núcleo geométrico do tubo horizontal (funções puras)
-- Centro do motor em função de (x ao longo do tubo, g entre porcas), da altura do tubo
-  e das dimensões da carcaça.
-- Para R_min e R_max: trecho de cada arco que atende g (30–150) e x (limite do tubo),
-  com status novo `FORA_PORCAS` quando nenhum ponto atende.
-- **Altura do tubo**, no mesmo padrão do H do 45°: faixa admissível, altura recomendada
-  (máxima folga mínima) e verificação da altura informada. Em cada tensão: g e x
-  recomendados.
-- **Conferência:** carcaça 250 com altura 1375 e g = 65 → centro do motor 910 abaixo da
-  laje; raio com x = 248.
+### T2: Núcleo geométrico do tubo horizontal (funções puras) — feita
+- `src/tensorcad/tubo_horizontal.py`: pilha, y do motor, curso em x, raio, posição
+  (g, x) sobre cada arco, faixa admissível e altura recomendada. Os parâmetros vêm de
+  `data/padrao/tubo_horizontal.csv` (`loader.carregar_parametros_th`). O comprimento do
+  tubo é obrigatório.
+- **Curso em x:** 0 ≤ x ≤ x_max = comprimento/2 − (A + 75)/2, medido da linha de centro.
+  O motor **nunca troca de lado**: x ≥ 0, sempre afastado de O1 (P19, usuário).
+- **Posição em cada tensão:** sobre o arco R, escolhe g e x que maximizam a menor
+  **folga relativa**, em que cada folga é dividida pela metade do seu curso: g − 30 e
+  150 − g por 60, x e x_max − x por x_max/2.
+- **Altura do tubo:** a faixa admissível são as alturas em que 0 % e 3 % têm folgas ≥ 0.
+  A recomendada maximiza a menor folga relativa. Assim a passagem de 0 % a 3 % se divide
+  entre g e x na proporção dos cursos, e não fica só em x (P19, usuário).
+- **Status:** `FORA_PORCAS` quando nenhuma altura atende (g ou x fora do curso);
+  `INCOMPATIVEL` se a chapa (A + 75) não cabe no tubo; `SEM_SOLUCAO` se o arco não é
+  alcançável.
+- Motor invertido já entra no núcleo (`invertido=True`: a pilha desce do fundo do tubo).
+  A T3 cuida da interface e da conferência.
+- Ainda sem interface: a tela do tubo horizontal continua avisando "T2" até a entrega
+  de resultados (T6).
+
+Conferência (carcaça 250M: H 250, A 406; tubo de 2000; R 1839 / 1894, sendo 1894 um valor
+de teste para 3 %):
+
+| item | valor |
+|---|---|
+| pilha (tubo 80 + 2×27,5 + chapa 15 + H 250) | 400 |
+| centro do motor com altura 1375 e g = 65 | 910 abaixo da laje |
+| curso em x (0 a x_max) | 0 – 759,5 |
+| faixa admissível da altura do tubo | 1107,93 – 1562,24 |
+| altura recomendada / menor folga em mm | **1386,96** / 52,68 |
+| na recomendada, 0 % → 3 % | g 97,32 → 82,68, x 333,41 → 426,09 (g e x simétricos nos seus cursos) |
+| altura 1375 informada | OK: g 94,40 → 79,97, x 351,90 → 443,23 |
 
 ### T3: Motor invertido (switch)
 - A pilha vai para baixo a partir do fundo do tubo e a altura recomendada muda; só um

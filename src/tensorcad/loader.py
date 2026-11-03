@@ -386,3 +386,41 @@ def carregar_padroes(diretorio: Path | str, *, estrito: bool = True) -> Padroes:
         pad.linhas.pop(carc, None)
     pad.ranhuras = [r for r in pad.ranhuras if r.chapa_id in pad.chapas]
     return pad
+
+
+# --------------------------------------------------------------------------- tubo horizontal
+
+ARQ_TUBO_HORIZONTAL = "tubo_horizontal.csv"
+# colunas da tabela que viram campos de ParametrosTH (as demais são do projeto)
+CAMPOS_TH = (
+    "espessura_tubo",
+    "espessura_porca",
+    "espessura_chapa",
+    "g_min",
+    "g_max",
+    "acrescimo_furacao",
+)
+
+
+def carregar_parametros_th(diretorio: Path | str) -> dict[str, float]:
+    """Parâmetros fixos do layout tubo horizontal (data/padrao/tubo_horizontal.csv).
+
+    Devolve só os valores preenchidos de CAMPOS_TH; vazios (TODO) ficam no padrão do
+    núcleo. Valor não numérico ou negativo é erro.
+    """
+    caminho = Path(diretorio) / ARQ_TUBO_HORIZONTAL
+    with caminho.open(encoding="utf-8", newline="") as f:
+        linhas = list(csv.DictReader(f, delimiter=";"))
+    out: dict[str, float] = {}
+    for r in linhas:
+        nome, valor = r["parametro"].strip(), (r["valor"] or "").strip()
+        if nome not in CAMPOS_TH or not valor:
+            continue
+        try:
+            x = float(valor.replace(",", "."))
+        except ValueError as exc:
+            raise ValueError(f"{caminho.name}: {nome} = {valor!r} não é número") from exc
+        if x < 0:
+            raise ValueError(f"{caminho.name}: {nome} não pode ser negativo")
+        out[nome] = x
+    return out
