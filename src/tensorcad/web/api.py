@@ -478,23 +478,33 @@ def validar_projeto(corpo: Any) -> dict[str, Any]:
     return corpo
 
 
+def _vazio(caso: Any) -> bool:
+    """Caso sem R_min nem R_max: fica fora da exportação (ex.: caso-modelo de um layout)."""
+    c = caso if isinstance(caso, dict) else {}
+    return all(c.get(k) in (None, "") for k in ("R_min", "R_max"))
+
+
 def exportar(ctx: Contexto, corpo: Any) -> tuple[bytes, str]:
     """Planilha do projeto (.xlsx, uma aba por caso) a partir do projeto da interface.
 
-    Exporta os casos do tubo inclinado 45°; o bloco "horizontal" entra na T6."""
+    Exporta os casos dos dois layouts (tubo inclinado 45° e tubo horizontal); casos sem
+    R_min e R_max são ignorados."""
     import io
 
-    from tensorcad.planilha_projeto import EntradaPlanilha, gerar_projeto
+    from tensorcad.planilha_projeto import EntradaHorizontal, EntradaPlanilha, gerar_projeto
 
     projeto = validar_projeto(corpo)
     erros: dict[str, str] = {}
     entradas = []
+    bd_ativo = bool(projeto.get("banco_duplo"))
     for i, caso in enumerate(projeto["casos"]):
+        if _vazio(caso):
+            continue
         dados = {
             **caso,
             "cota": projeto.get("cota"),
             "banco_duplo": {
-                "ativo": bool(projeto.get("banco_duplo")),
+                "ativo": bd_ativo,
                 "R2_min": caso.get("R2_min"),
                 "R2_max": caso.get("R2_max"),
             },
@@ -522,11 +532,53 @@ def exportar(ctx: Contexto, corpo: Any) -> tuple[bytes, str]:
                 },
             )
         )
+    horizontais = []
+    h = projeto.get("horizontal") or {}
+    for i, caso in enumerate(h.get("casos") or []):
+        if _vazio(caso):
+            continue
+        dados = {
+            **caso,
+            "altura_tubo": h.get("altura_tubo"),
+            "comprimento_tubo": h.get("comprimento_tubo"),
+            "invertido": bool(h.get("invertido")),
+            "banco_duplo": {
+                "ativo": bd_ativo,
+                "R2_min": caso.get("R2_min"),
+                "R2_max": caso.get("R2_max"),
+            },
+        }
+        try:
+            r = calcular_horizontal(ctx, dados)
+        except ErroEntrada as exc:
+            erros.update({f"horizontal.casos[{i}].{k}": v for k, v in exc.erros.items()})
+            continue
+        horizontais.append(
+            EntradaHorizontal(
+                caso_id=str(caso["caso_id"]).strip(),
+                motor_id=r["motor"]["motor_id"],
+                R_min=r["R_min"],
+                R_max=r["R_max"],
+                comprimento_tubo=r["comprimento_tubo"],
+                altura_informada=r["altura_informada"],
+                invertido=r["invertido"],
+                banco_duplo=r["banco_duplo"],
+            )
+        )
+    if not erros and not entradas and not horizontais:
+        erros["casos"] = "nenhum caso preenchido (R_min e R_max) para exportar"
+    nomes = [e.caso_id.lower() for e in [*entradas, *horizontais]]
+    if not erros and len(set(nomes)) != len(nomes):
+        erros["casos"] = "o mesmo nome de caso aparece nos dois layouts"
     if erros:
         raise ErroEntrada(erros)
     nome = str(projeto.get("nome") or "PROJETO").strip() or "PROJETO"
     cfg = ConfigProjeto(nome=nome, y_piso=ctx.y_piso, x_tubo=ctx.x_tubo)
     buf = io.BytesIO()
-    gerar_projeto(buf, cfg, entradas, ctx.base, ctx.padroes)
+    try:
+        fixos = carregar_parametros_th(ctx.dir_padroes)
+    except FileNotFoundError:
+        fixos = {}
+    gerar_projeto(buf, cfg, entradas, ctx.base, ctx.padroes, horizontais, fixos)
     arquivo = re.sub(r"[^\w\-. ]", "_", nome).strip() or "projeto"
     return buf.getvalue(), f"{arquivo}.xlsx"

@@ -431,6 +431,43 @@ function mostrarResultadoHorizontal(r) {
   linhaResumo(resumo, "Altura do tubo recomendada", fmt(r.altura_recomendada), true);
   linhaResumo(resumo, "Folga mínima na recomendada", fmt(r.margem_recomendada));
   linhaResumo(resumo, "Curso em x (0 a)", fmt(r.x_max));
+  if (r.em_informada) {
+    const m = Math.min(...r.em_informada.map((p) => p.margem ?? -Infinity));
+    linhaResumo(resumo, `Folga mínima com altura ${fmt(r.altura_informada)}`, fmt(m));
+  }
+  const tbody = $("posicoes-th").querySelector("tbody");
+  tbody.replaceChildren();
+  for (const [rotulo, par] of [["rec", r.em_recomendada], ["inf", r.em_informada]]) {
+    if (!par) continue;
+    par.forEach((p, i) => {
+      const tr = document.createElement("tr");
+      tr.dataset.tipo = rotulo;
+      const celulas = [fmt(p.altura_tubo, 0), i === 0 ? "0" : "3", fmt(p.g, 1), fmt(p.x, 1),
+        fmt(p.folga_g, 1), fmt(p.folga_x, 1), p.folga_R2 === null ? "—" : fmt(p.folga_R2, 1)];
+      celulas.forEach((t, j) => {
+        const td = document.createElement("td");
+        td.textContent = t;
+        if (j === 0) {
+          const tag = document.createElement("span");
+          tag.className = "tag";
+          tag.textContent = rotulo;
+          tag.title = rotulo === "rec" ? "altura recomendada" : "altura informada";
+          td.prepend(tag);
+        }
+        const v = [null, null, null, null, p.folga_g, p.folga_x, p.folga_R2][j];
+        if (typeof v === "number" && v < 0) td.classList.add("neg");
+        tr.append(td);
+      });
+      const td = document.createElement("td");
+      const ponto = document.createElement("span");
+      ponto.className = "ponto";
+      ponto.dataset.status = p.status;
+      ponto.title = [p.status, ...p.mensagens].join("\n");
+      td.append(ponto);
+      tr.append(td);
+      tbody.append(tr);
+    });
+  }
   $("posicoes").querySelector("tbody").replaceChildren();
   $("chapa-info").replaceChildren();
   linhaResumo($("chapa-info"), "Motor", `${r.motor.motor_id} · ${r.invertido ? "invertido" : "normal"}`);
@@ -447,6 +484,7 @@ function mostrarVazio(texto) {
   $("resumo").replaceChildren();
   $("chapa-info").replaceChildren();
   $("posicoes").querySelector("tbody").replaceChildren();
+  $("posicoes-th").querySelector("tbody").replaceChildren();
   mostrarBanco2(null);
 }
 

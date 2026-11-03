@@ -179,10 +179,20 @@ Conferência (250M, tubo de 2000, R1 1839 / 1894):
   fica calculável) e continua dependendo da chapa no 45°.
 - **Conferência:** prints (normal 250M, invertido 180L, banco duplo R2349) no PR.
 
-### T6: Resultados, planilha e .json
-- Painel de resultados próprio (g, x, folgas e status por tensão). A aba do caso no
-  `.xlsx` informa o layout, e o índice do projeto também.
-- **Conferência:** exportar um projeto com casos dos dois layouts.
+### T6: Resultados, planilha e .json — feita
+- Painel do tubo horizontal: status, faixa admissível, altura recomendada, folga mínima
+  (recomendada e informada) e curso em x. Tabela de posições (recomendada e informada,
+  0 % e 3 %) com g, x e as folgas em g, em x e até o arco R2.
+- A lista de casos atualiza o status dos outros casos do horizontal.
+- `.xlsx` com os **dois layouts** no mesmo arquivo:
+  - aba por caso do horizontal: entradas, pilha e limites, banco duplo, resultado e
+    posições;
+  - tabela "Layout tubo horizontal" no índice PROJETO;
+  - aba oculta `_entradas_horizontal`, preservada pelo `adicionar_caso` da CLI.
+- Casos sem R_min e R_max ficam fora da exportação, nos dois layouts. Nome de caso
+  repetido entre layouts é recusado.
+- **Conferência:** exportar um projeto com casos dos dois layouts. Depois do merge sai a
+  pré-release `0.6.<PR>` para teste, antes do tutorial (T8).
 
 ### T7: Release da versão executável 1.0
 - Teste ponta a ponta do .exe no Windows sem Python, com os dois layouts.
@@ -211,6 +221,6 @@ Conferência (250M, tubo de 2000, R1 1839 / 1894):
 
 ## Ordem
 
-`T0 → T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8`. A T1 pode correr em paralelo à T0, porque
-não depende das cotas. Se preferir, a T8 pode vir antes da T7, para o tutorial já entrar na
-release 1.0.
+`T0 → T1 → T2 → T3 → T4 → T5 → T6 → pré-release 0.6.PR → T8 → T7 (v1.0)`. Decisão do
+usuário: o tutorial (T8) entra antes da release 1.0, e as pré-releases para teste levam a
+versão `0.<T>.<PR>` (ex.: 0.8.36).
