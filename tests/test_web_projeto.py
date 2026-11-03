@@ -99,6 +99,8 @@ def test_ajustes_ficam_no_arquivo(ctx, tmp_path: Path) -> None:
         ({"casos": []}, "casos", "ao menos um"),
         ({"casos": [{"caso_id": "a"}, {"caso_id": "A"}]}, "casos", "repetidos"),
         ({"casos": [{"caso_id": ""}]}, "casos", "nome"),
+        ({"layout": "vertical"}, "layout", "desconhecida"),
+        ({"horizontal": []}, "horizontal", "objeto"),
         (
             {
                 "casos": [
@@ -147,3 +149,29 @@ def test_post_exportar_devolve_xlsx(ctx) -> None:
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+def test_layout_horizontal_nao_muda_exportacao_45(ctx) -> None:
+    """T1: o bloco do tubo horizontal fica no .json; a planilha segue com os casos 45°."""
+    base, _ = api.exportar(ctx, PROJ)
+    com_h, _ = api.exportar(
+        ctx,
+        {
+            **PROJ,
+            "layout": "horizontal",
+            "horizontal": {
+                "altura_tubo": 1375,
+                "comprimento_tubo": 2000,
+                "invertido": True,
+                "casos": [{"caso_id": "th-1", "carcaca": "250"}],
+            },
+        },
+    )
+    import io
+
+    from openpyxl import load_workbook
+
+    def abas(b: bytes) -> list[str]:
+        return load_workbook(io.BytesIO(b)).sheetnames
+
+    assert abas(com_h) == abas(base)

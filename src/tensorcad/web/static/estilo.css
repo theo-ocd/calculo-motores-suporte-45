@@ -300,3 +300,11 @@ select option { color: var(--txt); }
 .switch input:checked + .trilho::after { transform: translateX(16px); background: var(--txt); }
 .switch input:focus-visible + .trilho { outline: 2px solid var(--acento); outline-offset: 2px; }
 .ponto[data-status="AVISO"] { background: var(--alerta); }
+
+/* opção de layout (T1): cada layout mostra só os seus campos */
+body[data-layout="horizontal"] .so-45 { display: none !important; }
+body:not([data-layout="horizontal"]) .so-horizontal { display: none !important; }
+.seletor-layout { border: 1px solid var(--borda); border-radius: var(--raio); margin: 0 0 12px; padding: 6px 10px 8px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.seletor-layout legend { color: var(--txt-2); font-size: 12px; padding: 0 4px; }
+.seletor-layout label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.seletor-layout input { accent-color: var(--acento); }

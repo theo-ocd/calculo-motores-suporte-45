@@ -345,6 +345,8 @@ def calcular(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
 
 FORMATO_PROJETO = "tensorcad-projeto"
 VERSAO_PROJETO = 1
+# opções de layout do projeto (T1); arquivos sem o campo são do tubo inclinado 45°
+LAYOUTS = ("inclinado_45", "horizontal")
 MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
@@ -366,13 +368,20 @@ def validar_projeto(corpo: Any) -> dict[str, Any]:
             erros["casos"] = "todo caso precisa de um nome"
         elif len({n.lower() for n in nomes}) != len(nomes):
             erros["casos"] = "nomes de caso repetidos"
+    if corpo.get("layout", LAYOUTS[0]) not in LAYOUTS:
+        erros["layout"] = f"opção de layout desconhecida (use {' ou '.join(LAYOUTS)})"
+    horizontal = corpo.get("horizontal")
+    if horizontal is not None and not isinstance(horizontal, dict):
+        erros["horizontal"] = "esperado um objeto"
     if erros:
         raise ErroEntrada(erros)
     return corpo
 
 
 def exportar(ctx: Contexto, corpo: Any) -> tuple[bytes, str]:
-    """Planilha do projeto (.xlsx, uma aba por caso) a partir do projeto da interface."""
+    """Planilha do projeto (.xlsx, uma aba por caso) a partir do projeto da interface.
+
+    Exporta os casos do tubo inclinado 45°; o bloco "horizontal" entra na T6."""
     import io
 
     from tensorcad.planilha_projeto import EntradaPlanilha, gerar_projeto

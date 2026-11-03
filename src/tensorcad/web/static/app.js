@@ -286,6 +286,14 @@ function agendarCalculo() {
 }
 
 async function calcular() {
+  if (Projeto.layout() === "horizontal") {
+    // T1: só o seletor e os dados; o cálculo do tubo horizontal entra na T2
+    if (estado.controle) estado.controle.abort(); // descarta um cálculo 45° em andamento
+    Projeto.definirStatus("");
+    marcarErros(Projeto.errosLocais());
+    mostrarVazio("tubo horizontal: cálculo na próxima entrega (T2)");
+    return;
+  }
   const campos = lerCampos();
   if (!campos.R_min || !campos.R_max || !campos.carcaca) {
     Projeto.definirStatus("");
