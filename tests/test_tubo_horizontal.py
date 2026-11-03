@@ -117,3 +117,39 @@ def test_motor_nao_troca_de_lado(par, motores) -> None:
     p = th.posicao(par, motores["IEC-250M-4P"], 1650, 1375)
     assert p.status is Status.FORA_PORCAS
     assert p.x < 0 and any("lado de O1" in m for m in p.mensagens)
+
+
+# --------------------------------------------------------------------------- T3: invertido
+
+
+def test_invertido_desenho_de_referencia(motores) -> None:
+    """Desenho do invertido (carcaça 180): centro 2242 − 767 = 1475 abaixo da laje, x = 93."""
+    inv = th.ParametrosTH(comprimento_tubo=2000, invertido=True)
+    m = motores["IEC-180L-4P"]
+    assert th.raio(inv, 93, 1475) == pytest.approx(math.hypot(558, 2242))
+    # fundo da chapa 170 + 1120 = 1290 abaixo da laje: altura + 2 porcas + g + chapa = 1290
+    altura, g = 1155.0, 65.0  # altura + g = 1220
+    assert altura + 2 * inv.espessura_porca + g + inv.espessura_chapa == 1290
+    assert th.y_motor(inv, m, altura, g) == 1290 + m.H == 1470  # desenho: 1475 (Δ 5)
+
+
+def test_invertido_e_normal_mesmas_posicoes_alturas_diferentes(motores) -> None:
+    m = motores["IEC-180L-4P"]
+    e = th.EntradaTH("C", m, 2310.4, 2379.7)
+    nor = th.resolver(th.ParametrosTH(comprimento_tubo=2000), e)
+    inv = th.resolver(th.ParametrosTH(comprimento_tubo=2000, invertido=True), e)
+    assert nor.status is inv.status is Status.OK
+    # o centro do motor é o mesmo; muda onde fica o tubo
+    for pn, pi in zip(nor.em_recomendada, inv.em_recomendada, strict=True):
+        assert (pn.x, pn.y_motor) == pytest.approx((pi.x, pi.y_motor), abs=0.05)
+        k_n = th.pilha(nor.parametros, m)
+        k_i = th.pilha(inv.parametros, m)
+        assert nor.altura_recomendada - inv.altura_recomendada == pytest.approx(
+            k_n + pn.g + k_i + pi.g, abs=0.05
+        )
+    assert inv.altura_recomendada == pytest.approx(1067.28, abs=0.05)
+    assert nor.altura_recomendada == pytest.approx(1827.28, abs=0.05)
+    # tensionar (0 % → 3 %): no normal g diminui, no invertido g aumenta
+    n0, n3 = nor.em_recomendada
+    i0, i3 = inv.em_recomendada
+    assert n3.g < n0.g and i3.g > i0.g
