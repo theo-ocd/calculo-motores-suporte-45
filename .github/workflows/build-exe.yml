@@ -2,6 +2,11 @@ name: Executável Windows
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Publicar release com esta tag (ex.: v0.6.37); vazio = só build"
+        required: false
+        default: ""
   push:
     tags: ["v*"]
     branches: [develop]
@@ -74,13 +79,15 @@ jobs:
             if (-not (Test-Path $f)) { throw "faltou $f" }
           }
       - name: Publicar a release da tag (v*)
-        # Tag vX.Y.Z: release com o .exe testado acima; versões 0.x saem como pré-release.
-        # A tag precisa bater com a versão do pacote; as notas vêm de docs/notas_release/<tag>.md.
-        if: startsWith(github.ref, 'refs/tags/v')
+        # Tag vX.Y.Z (push da tag ou execução manual com release_tag): release com o .exe
+        # testado acima; versões 0.x saem como pré-release. A tag precisa bater com a versão
+        # do pacote; as notas vêm de docs/notas_release/<tag>.md. Na execução manual a tag é
+        # criada no commit do build.
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != ''
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
           $versao = (Select-String -Path src/tensorcad/__init__.py -Pattern '__version__ = "(.+)"').Matches[0].Groups[1].Value
           if ("v$versao" -ne $env:TAG) { throw "tag $env:TAG diferente da versão do pacote ($versao)" }
@@ -90,12 +97,14 @@ jobs:
           Add-Content $notas "`n`nCommit: $env:GITHUB_SHA`n`nSHA-256 do tensorcad.exe: $sha"
           $pre = @()
           if ($versao.StartsWith("0.")) { $pre = @("--prerelease") }
-          gh release create $env:TAG dist/tensorcad.exe docs/executavel.md --verify-tag --title "tensorcad $versao" --notes-file $notas @pre
+          $alvo = @("--verify-tag")
+          if ($env:GITHUB_REF -notlike "refs/tags/*") { $alvo = @("--target", $env:GITHUB_SHA) }
+          gh release create $env:TAG dist/tensorcad.exe docs/executavel.md --title "tensorcad $versao" --notes-file $notas @alvo @pre
           if ($LASTEXITCODE) { throw "falha ao criar a release $env:TAG" }
           exit 0
       - name: Publicar na pré-release exe-dev
         # Anexos de release não contam na cota de artefatos do Actions.
-        if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && !startsWith(github.ref, 'refs/tags/')
+        if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && !startsWith(github.ref, 'refs/tags/') && inputs.release_tag == ''
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -116,9 +125,9 @@ jobs:
           if ($LASTEXITCODE) { throw "falha ao enviar o .exe" }
           exit 0
       - uses: actions/upload-artifact@v4
-        # Em PRs e tags, falta de cota de armazenamento da conta não reprova o build já
-        # testado (o .exe fica na release); em execução manual o artefato é obrigatório.
-        continue-on-error: ${{ github.event_name != 'workflow_dispatch' }}
+        # A falta de cota de armazenamento da conta não reprova o build já testado: o .exe
+        # fica na pré-release exe-dev ou na release da tag.
+        continue-on-error: true
         with:
           name: tensorcad-exe
           path: |
