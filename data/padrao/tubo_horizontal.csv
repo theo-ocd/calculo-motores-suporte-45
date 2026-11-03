@@ -1,5 +1,5 @@
 parametro;valor;unidade;origem;observacao
-altura_tubo;1375;mm;MEDIDO;fixo de projeto: topo da laje → ponto mais baixo do tubo de sustentação (motor normal), valor do desenho de referência
+altura_tubo;1375;mm;MEDIDO;topo da laje → ponto mais baixo do tubo (desenho de referência). No cálculo é entrada opcional, como o H do 45°: o programa recomenda a altura
 espessura_tubo;80;mm;MEDIDO;altura do tubo de sustentação, vale só para este caso (confirmar para outros projetos)
 espessura_porca;27.5;mm;MEDIDO;sempre 27,5, entram 2 porcas na pilha
 espessura_chapa;15;mm;MEDIDO;chapa do motor
@@ -7,4 +7,3 @@ g_min;30;mm;MEDIDO;distância entre porcas do tubo e da chapa deve ser maior que
 g_max;150;mm;MEDIDO;e menor que este valor
 acrescimo_furacao;75;mm;MEDIDO;furação da chapa = furação do motor (A, padrão WEG) + 75
 comprimento_tubo;;mm;TODO;informado por projeto, curso máximo em x = comprimento_tubo / 2
-altura_tubo_invertido;;mm;TODO;fixo de projeto com motor invertido (ponto do tubo usado como referência a confirmar)

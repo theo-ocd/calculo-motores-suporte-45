@@ -18,14 +18,14 @@ Os IDs P1–P7 abaixo devem ficar sincronizados com o CSV (verificado em teste).
 | P8 | Banco duplo: O2 fica 500 mm acima de O | Banco duplo — posição de O2 | RESOLVIDO (acima) |
 | P9 | Banco duplo: raios R2_min/R2_max do banco 2 | Banco duplo — R2_min/R2_max | RESOLVIDO (independentes do banco 1, por caso) |
 | P10 | Banco duplo: critério de posição do motor único | Banco duplo — status e H recomendada | RESOLVIDO (≥ R1 de O1 e ≤ R2 de O2 a 0 % e 3 %, obrigatório: FORA_TENSIONAMENTO) |
-| P11 | Tubo horizontal: origem e definição das cotas 1375, 65, 927, 1699, (248) e, invertido, 1120, 170, 2242, 93 | Tubo horizontal — referencial e dados | PARCIAL (cotas confirmadas, ver P16 e P17) |
+| P11 | Tubo horizontal: origem e definição das cotas 1375, 65, 927, 1699, (248) e, invertido, 1120, 170, 2242, 93 | Tubo horizontal — referencial e dados | RESOLVIDO (cotas confirmadas) |
 | P12 | Tubo horizontal: qual movimento faz o tensionamento de 0 % a 3 % (x ao longo do tubo, y nas barras roscadas ou ambos) | Tubo horizontal — graus de liberdade | RESOLVIDO (x e y ajustam juntos, fixo: altura do tubo) |
 | P13 | Tubo horizontal: distância entre porcas g (30 a 150 mm) — entre quais faces e se depende de espessura de porca e chapa | Tubo horizontal — status FORA_PORCAS | RESOLVIDO (pilha: tubo + 2 porcas de 27,5 + g + chapa de 15 + H) |
-| P14 | Tubo horizontal: limites de x ao longo do tubo e dimensões por carcaça (altura do motor sobre a chapa, normal e invertido) | Tubo horizontal — tabela por carcaça | PARCIAL (H pelo padrão WEG, curso x = comprimento do tubo / 2, informado, ver P18) |
+| P14 | Tubo horizontal: limites de x ao longo do tubo e dimensões por carcaça (altura do motor sobre a chapa, normal e invertido) | Tubo horizontal — tabela por carcaça | RESOLVIDO (H pelo padrão WEG, curso em x pelo comprimento do tubo informado) |
 | P15 | Tubo horizontal: R1839 e R2349 são os arcos do banco 1 e do banco 2 (banco duplo)? | Tubo horizontal — banco duplo | RESOLVIDO (sim, só neste caso) |
-| P16 | Tubo horizontal: com g = 65 e H = 250 o centro do motor fica 910 abaixo da laje e o desenho mostra 927 (com H = 225 daria 935) — qual carcaça está no desenho? | Tubo horizontal — caso de referência | ABERTO |
-| P17 | Tubo horizontal invertido: qual ponto do tubo é o fixo de projeto e de onde se mede 1120 (fundo da laje → fundo da chapa?) | Tubo horizontal — motor invertido | ABERTO |
-| P18 | Tubo horizontal: x medido de onde (linha de centro?) e interferência = chapa com A + 75 dentro do comprimento do tubo? | Tubo horizontal — limites em x | ABERTO |
+| P16 | Tubo horizontal: com g = 65 e H = 250 o centro do motor fica 910 abaixo da laje e o desenho mostra 927 (com H = 225 daria 935) — qual carcaça está no desenho? | Tubo horizontal — caso de referência | RESOLVIDO (carcaça 250, chapa do desenho 15 mm alta: vale 910) |
+| P17 | Tubo horizontal invertido: qual ponto do tubo é o fixo de projeto e de onde se mede 1120 (fundo da laje → fundo da chapa?) | Tubo horizontal — motor invertido | RESOLVIDO (altura do tubo recomendada pelo cálculo, mesmo ponto de referência, invertido com carcaça 180) |
+| P18 | Tubo horizontal: x medido de onde (linha de centro?) e interferência = chapa com A + 75 dentro do comprimento do tubo? | Tubo horizontal — limites em x | RESOLVIDO (x da linha de centro, chapa A + 75 dentro do curso do tubo) |
 
 Pendência do repositório (fora do CSV): licença (LICENSE provisório, TODO).
 
@@ -117,4 +117,5 @@ Atrás do switch: desligado, nada muda. Detalhes em docs/banco_duplo.md.
 
 ## Layout tubo horizontal (branch feature/tubo-horizontal)
 
-Roteiro em docs/tubo_horizontal.md. T0: definições confirmadas. P16 a P18 ainda precisam de resposta antes da T2.
+Roteiro em docs/tubo_horizontal.md. T0: definições confirmadas e P11–P18 respondidas. A altura do tubo funciona como o H do
+45°: entrada opcional, com faixa admissível e altura recomendada pelo cálculo.

@@ -79,13 +79,15 @@ Pilha vertical, do tubo ao centro do motor (motor normal, acima do tubo):
                   │ espessura_porca      27,5
  topo do tubo ────┤
                   │ espessura_tubo       80
- ponto mais baixo ┘  ← altura_tubo (1375) abaixo do topo da laje
+ ponto mais baixo ┘  ← altura_tubo abaixo do topo da laje (entrada opcional; o cálculo recomenda)
 ```
 
 Centro do motor abaixo do topo da laje:
 `altura_tubo − espessura_tubo − 2·espessura_porca − g − espessura_chapa − H`.
-Com o motor invertido, a pilha vai para baixo a partir do fundo do tubo (a confirmar).
+Com o motor invertido, a pilha vai para baixo a partir do fundo do tubo:
+`altura_tubo + 2·espessura_porca + g + espessura_chapa + H`.
 
-Em x, o motor desloca junto com a chapa ao longo do tubo. A chapa ocupa
-`A + acrescimo_furacao` e o curso máximo é `comprimento_tubo / 2`.
+Em x, medido da linha de centro, o motor desloca junto com a chapa ao longo do tubo. A
+chapa ocupa `A + acrescimo_furacao` e precisa caber no curso:
+`|x| + (A + acrescimo_furacao)/2 ≤ comprimento_tubo / 2`.
 
