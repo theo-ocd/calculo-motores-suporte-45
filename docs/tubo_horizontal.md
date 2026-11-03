@@ -121,10 +121,25 @@ de teste para 3 %):
 | na recomendada, 0 % → 3 % | g 97,32 → 82,68, x 333,41 → 426,09 (g e x simétricos nos seus cursos) |
 | altura 1375 informada | OK: g 94,40 → 79,97, x 351,90 → 443,23 |
 
-### T3: Motor invertido (switch)
-- A pilha vai para baixo a partir do fundo do tubo e a altura recomendada muda; só um
-  modo vale de cada vez.
-- **Conferência:** carcaça 180 invertida conferida com o desenho (1120 / 2242 / 93).
+### T3: Motor invertido (switch) — feita
+- Switch por projeto (`horizontal.invertido` no .json, desde a T1); só um modo vale de
+  cada vez. Núcleo: `ParametrosTH(invertido=True)`.
+- Pilha invertida, descendo do **fundo** do tubo (o mesmo ponto de referência da altura):
+  `y_motor = altura_tubo + 2·27,5 + g + 15 + H`. A espessura do tubo não entra.
+- Com o mesmo raio, o centro do motor recomendado é o mesmo do motor normal; muda a
+  altura do tubo. Exemplo 180L, tubo de 2000, R 2310,4 / 2379,7: recomendada **1067,28**
+  invertido × 1827,28 normal.
+- Tensionar (0 % → 3 %): no normal **g diminui**, porque o motor desce afastando-se de
+  O1; no invertido **g aumenta**, e o motor também desce.
+- Interface: dica no switch explicando os dois modos. O cálculo na tela entra na T6.
+
+Conferência com o desenho do invertido (carcaça 180, H 180):
+
+| item | desenho | calculado |
+|---|---|---|
+| centro do motor abaixo da laje | 2242 − 767 = 1475 | 1470, com o fundo da chapa a 170 + 1120 = 1290 (Δ 5) |
+| raio a O1 com x = 93 | — | √(558² + 2242²) = 2310,4 |
+| altura do tubo + g | — | 1290 − 55 − 15 = 1220 (ex.: 1155 + 65) |
 
 ### T4: Tensionamento para banco duplo no tubo horizontal
 - Reaproveita O1/O2 e R1/R2: o motor fica a ≥ R1 de O1 e ≤ R2 de O2 a 0 % e 3 %.
