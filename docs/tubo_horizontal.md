@@ -162,21 +162,55 @@ Conferência (250M, tubo de 2000, R1 1839 / 1894):
 | 2280 / 2340 | OK | 1107,93 – 1349,5 | 1312,82 | 0,00 / 5,39 |
 | 2200 / 2260 | FORA_TENSIONAMENTO | — | 1064,16 | −15,61 / −16,90 |
 
-### T5: Desenho 2D do tubo horizontal
-- Camadas: tubo, barras roscadas e porcas com a cota g, chapa, motor (normal ou invertido),
-  arcos e O1/O2.
-- **Conferência:** prints lado a lado com os desenhos enviados.
+### T5: Desenho 2D do tubo horizontal — feita
+- `src/tensorcad/desenho_th.py` (puro), no mesmo formato de primitivas do 45°. Vista do
+  CAD com origem em O1; linha de centro em X = 465 e topo da laje em Y = −767.
+- Camadas:
+  - construção: O1, arcos R_min/R_max, raios e linha de centro;
+  - tensionamento banco duplo: O2, cota de 500, arcos R2 e raios de O2;
+  - estrutura: laje e tubo (comprimento × espessura);
+  - chapa: porcas do tubo e da chapa, barras roscadas a ±(A + 75)/2 e chapa de 15;
+  - motor: 0 % e 3 %, normal ou invertido;
+  - cotas: 465, 767, altura do tubo, g e x.
+- API `POST /api/calcular_horizontal`. O desenho aparece na tela do tubo horizontal com
+  status, faixa admissível, altura recomendada, folga mínima e curso em x. O painel
+  completo (g e x por tensão) e o .xlsx ficam para a T6.
+- A lista de carcaças no tubo horizontal passa a depender só do catálogo de motores (a 250
+  fica calculável) e continua dependendo da chapa no 45°.
+- **Conferência:** prints (normal 250M, invertido 180L, banco duplo R2349) no PR.
 
 ### T6: Resultados, planilha e .json
-- Painel de resultados próprio (g, x, folgas e status). A aba do caso no `.xlsx` informa o
-  layout, e o índice do projeto também.
+- Painel de resultados próprio (g, x, folgas e status por tensão). A aba do caso no
+  `.xlsx` informa o layout, e o índice do projeto também.
 - **Conferência:** exportar um projeto com casos dos dois layouts.
 
-### T7: Executável e teste ponta a ponta
-- Pré-release `exe-dev`, testado no Windows sem Python.
-- **Conferência:** .exe enviado no chat.
+### T7: Release da versão executável 1.0
+- Teste ponta a ponta do .exe no Windows sem Python, com os dois layouts.
+- **Release `v1.0`** (não pré-release): tag `v1.0`, com o `tensorcad.exe` e um
+  **`LEIA-ME.md`** para ficar ao lado do executável. O LEIA-ME traz:
+  - o que a ferramenta faz e os requisitos (Windows, sem instalação);
+  - o passo a passo: abrir o .exe, escolher a opção de layout, preencher o projeto e os
+    casos, ler os resultados, salvar e abrir o .json, exportar o .xlsx e limpar a memória;
+  - as saídas: status (OK / FORA_RANHURA / FORA_PORCAS / FORA_TENSIONAMENTO /
+    SEM_SOLUCAO / INCOMPATIVEL), faixa admissível, altura recomendada, folgas, desenho e
+    planilha (abas e colunas);
+  - onde ficam os dados (tabelas) e como avisar problemas.
+- **Conferência:** .exe e LEIA-ME enviados no chat; release publicada.
+
+### T8: Botão de tutorial interativo
+- Botão **tutorial** na barra superior. Ele inicia um passo a passo na própria página:
+  um retângulo de destaque ("highlight") sobre cada etapa, com uma legenda explicativa e
+  os botões anterior / próximo / sair.
+- Etapas propostas: opção de layout → projeto (altura ou H) → casos em memória → caso
+  ativo (carcaça, motor, R) → dimensões ou parâmetros do tubo → banco duplo → desenho
+  (camadas, zoom, dica ao passar o mouse) → resultado → salvar / exportar / limpar.
+- As etapas mudam conforme o layout ativo e pulam elementos ocultos. O progresso não é
+  salvo; o tutorial pode ser reaberto a qualquer momento.
+- Sem bibliotecas externas (HTML/CSS/JS puro, como o resto da interface).
+- **Conferência:** prints de cada etapa e teste de navegador percorrendo o tutorial.
 
 ## Ordem
 
-`T0 → T1 → T2 → T3 → T4 → T5 → T6 → T7`. A T1 pode correr em paralelo à T0, porque não
-depende das cotas.
+`T0 → T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8`. A T1 pode correr em paralelo à T0, porque
+não depende das cotas. Se preferir, a T8 pode vir antes da T7, para o tutorial já entrar na
+release 1.0.

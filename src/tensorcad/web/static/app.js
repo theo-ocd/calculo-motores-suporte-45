@@ -39,6 +39,32 @@ function definirConexao(est, texto) {
 
 // ------------------------------------------------------------------ carcaças e motores
 
+// tubo horizontal: a carcaça só depende de haver motor (a chapa é a do 45°)
+const layoutH = () => typeof Projeto !== "undefined" && Projeto.layout() === "horizontal";
+const carcacaCalculavel = (c) => (layoutH() ? c.calculavel_horizontal : c.calculavel);
+const statusCarcaca = (c) => (layoutH() ? c.status_horizontal : c.status);
+const detalheCarcaca = (c) => (layoutH() ? c.detalhe_horizontal : c.detalhe);
+
+function atualizarOpcoesCarcaca() {
+  const sel = $("carcaca");
+  for (const op of sel.options) {
+    const c = estado.carcacas.find((x) => x.carcaca === op.value);
+    if (!c) continue;
+    op.disabled = !carcacaCalculavel(c);
+    op.dataset.status = statusCarcaca(c);
+    op.textContent = `● ${c.carcaca} — ${ROTULO[statusCarcaca(c)] || statusCarcaca(c)}`;
+  }
+  for (const li of $("lista-carcacas").children) {
+    const c = estado.carcacas.find((x) => x.carcaca === li.dataset.carcaca);
+    if (!c) continue;
+    li.dataset.status = statusCarcaca(c);
+    li.title = detalheCarcaca(c);
+    const chip = li.querySelector(".chip");
+    chip.dataset.status = statusCarcaca(c);
+    chip.textContent = ROTULO[statusCarcaca(c)] || statusCarcaca(c);
+  }
+}
+
 function preencherCarcacas(lista) {
   estado.carcacas = lista;
   const ul = $("lista-carcacas");
@@ -58,7 +84,7 @@ function preencherCarcacas(lista) {
     chip.textContent = ROTULO[c.status] || c.status;
     li.append(nome, chip);
     li.addEventListener("click", () => {
-      if (!c.calculavel) return;
+      if (!carcacaCalculavel(c)) return;
       sel.value = c.carcaca;
       aoTrocarCarcaca();
     });
@@ -71,7 +97,8 @@ function preencherCarcacas(lista) {
     op.disabled = !c.calculavel;
     sel.append(op);
   }
-  const primeira = lista.find((c) => c.calculavel);
+  atualizarOpcoesCarcaca();
+  const primeira = lista.find((c) => carcacaCalculavel(c));
   sel.disabled = !primeira;
   if (primeira) sel.value = primeira.carcaca;
   aoTrocarCarcaca();
@@ -83,8 +110,8 @@ function carcacaAtual() {
 
 function aoTrocarCarcaca(_ev = null, { manterAjustes = false, motorId = null } = {}) {
   const c = carcacaAtual();
-  $("carcaca").dataset.status = c ? c.status : "";
-  $("carcaca-detalhe").textContent = c ? c.detalhe : "";
+  $("carcaca").dataset.status = c ? statusCarcaca(c) : "";
+  $("carcaca-detalhe").textContent = c ? detalheCarcaca(c) : "";
   for (const li of $("lista-carcacas").children) li.classList.toggle("ativa", c && li.dataset.carcaca === c.carcaca);
   const selM = $("motor_id");
   selM.replaceChildren();
@@ -286,14 +313,7 @@ function agendarCalculo() {
 }
 
 async function calcular() {
-  if (Projeto.layout() === "horizontal") {
-    // T1: só o seletor e os dados; o cálculo do tubo horizontal entra na T2
-    if (estado.controle) estado.controle.abort(); // descarta um cálculo 45° em andamento
-    Projeto.definirStatus("");
-    marcarErros(Projeto.errosLocais());
-    mostrarVazio("tubo horizontal: cálculo na próxima entrega (T2)");
-    return;
-  }
+  if (Projeto.layout() === "horizontal") return calcularHorizontal();
   const campos = lerCampos();
   if (!campos.R_min || !campos.R_max || !campos.carcaca) {
     Projeto.definirStatus("");
@@ -338,6 +358,83 @@ function linhaResumo(dl, rotulo, valor, destaque = false) {
   if (destaque) dd.classList.add("destaque");
   div.append(dt, dd);
   dl.append(div);
+}
+
+// ------------------------------------------------------------------ tubo horizontal (T5)
+
+function camposHorizontal() {
+  const c = lerCampos();
+  return {
+    caso_id: c.caso_id,
+    carcaca: c.carcaca,
+    motor_id: c.motor_id,
+    R_min: c.R_min,
+    R_max: c.R_max,
+    banco_duplo: c.banco_duplo,
+    altura_tubo: $("altura-tubo").value.trim() || null,
+    comprimento_tubo: $("comprimento-tubo").value.trim(),
+    invertido: $("motor-invertido").checked,
+  };
+}
+
+async function calcularHorizontal() {
+  const campos = camposHorizontal();
+  if (!campos.R_min || !campos.R_max || !campos.carcaca || !campos.comprimento_tubo) {
+    if (estado.controle) estado.controle.abort();
+    Projeto.definirStatus("");
+    marcarErros(Projeto.errosLocais());
+    mostrarVazio("preencha Rmin, Rmax e o comprimento do tubo");
+    return;
+  }
+  if (estado.controle) estado.controle.abort();
+  estado.controle = new AbortController();
+  $("status").classList.add("calculando");
+  try {
+    const r = await obter("/api/calcular_horizontal", {
+      method: "POST",
+      body: JSON.stringify(campos),
+      signal: estado.controle.signal,
+    });
+    if (Projeto.layout() !== "horizontal") return; // trocou de layout durante o cálculo
+    marcarErros(Projeto.errosLocais());
+    Projeto.definirStatus(r.status);
+    mostrarResultadoHorizontal(r);
+    const chave = `h:${campos.carcaca}:${campos.invertido}`;
+    const trocou = estado.ultimaCarcaca !== chave;
+    estado.ultimaCarcaca = chave;
+    Desenho.desenhar(r.desenho, { reajustar: trocou });
+    $("info-desenho").textContent = r.desenho
+      ? `desenho com altura do tubo = ${fmt(r.desenho.altura)} (${r.altura_informada !== null ? "informada" : "recomendada"})`
+      : "";
+  } catch (e) {
+    if (e.name === "AbortError") return;
+    Projeto.definirStatus("ERRO");
+    marcarErros({ ...(e.campos || {}), ...Projeto.errosLocais() });
+    mostrarVazio(Object.keys(e.campos || {}).length ? "corrija os campos destacados" : `Erro: ${e.message}`);
+  } finally {
+    $("status").classList.remove("calculando");
+  }
+}
+
+function mostrarResultadoHorizontal(r) {
+  // T5: status, faixa e altura recomendada; o painel completo (g, x por tensão) entra na T6
+  const st = $("status");
+  st.dataset.status = r.status;
+  st.textContent = r.status.replace("_", " ");
+  $("mensagem").textContent = r.mensagem;
+  const resumo = $("resumo");
+  resumo.replaceChildren();
+  const faixas = r.faixas_altura.length
+    ? r.faixas_altura.map(([a, b]) => `${fmt(a)} a ${fmt(b)}`).join("; ")
+    : "nenhuma";
+  linhaResumo(resumo, "Faixa admissível da altura do tubo", faixas);
+  linhaResumo(resumo, "Altura do tubo recomendada", fmt(r.altura_recomendada), true);
+  linhaResumo(resumo, "Folga mínima na recomendada", fmt(r.margem_recomendada));
+  linhaResumo(resumo, "Curso em x (0 a)", fmt(r.x_max));
+  $("posicoes").querySelector("tbody").replaceChildren();
+  $("chapa-info").replaceChildren();
+  linhaResumo($("chapa-info"), "Motor", `${r.motor.motor_id} · ${r.invertido ? "invertido" : "normal"}`);
+  mostrarBanco2(null);
 }
 
 function mostrarVazio(texto) {

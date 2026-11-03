@@ -308,3 +308,12 @@ body:not([data-layout="horizontal"]) .so-horizontal { display: none !important; 
 .seletor-layout legend { color: var(--txt-2); font-size: 12px; padding: 0 4px; }
 .seletor-layout label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 .seletor-layout input { accent-color: var(--acento); }
+
+/* desenho do tubo horizontal (T5) */
+#mundo #el-laje { stroke: #b08454; stroke-dasharray: 14 6; }
+#mundo #el-eixo-centro { stroke: #7f9aa1; stroke-dasharray: 18 5 3 5; }
+#mundo #el-tubo { stroke: #9fb4ba; fill: rgba(159, 180, 186, .10); }
+#mundo .chapa .el[id^="porca"] { stroke: var(--chapa); fill: rgba(230, 238, 240, .18); stroke-width: 1; }
+#mundo .chapa .el[id^="barra"] { stroke: #9fb4ba; stroke-width: 2; }
+#mundo .chapa .el[id*="-3"] { stroke: var(--m3); stroke-dasharray: 5 3; fill: none; }
+#mundo .chapa .el[data-status="FORA_PORCAS"], #mundo .chapa .el[data-status="FORA_TENSIONAMENTO"] { stroke: var(--alerta); }

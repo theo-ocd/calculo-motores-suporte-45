@@ -54,7 +54,7 @@
             <label for="altura-tubo">Altura do tubo (mm)</label>
             <input id="altura-tubo" inputmode="decimal" placeholder="opcional: verificar uma altura">
             <p class="erro-campo"></p>
-            <p class="dica">Topo da laje → ponto mais baixo do tubo de sustentação. Vazia: o cálculo recomenda (a partir da T2).</p>
+            <p class="dica">Topo da laje → ponto mais baixo do tubo de sustentação. Vazia: o cálculo recomenda a altura.</p>
           </div>
           <div class="campo" data-campo="comprimento_tubo">
             <label for="comprimento-tubo">Comprimento do tubo (mm)</label>
@@ -197,14 +197,14 @@
       <p id="mensagem" class="mensagem"></p>
       <dl id="resumo" class="resumo"></dl>
 
-      <h2>Posições do motor</h2>
-      <p class="dica">d = centro do motor medido da ponta baixa da chapa, subindo.</p>
-      <table id="posicoes" class="tabela">
+      <h2 class="so-45">Posições do motor</h2>
+      <p class="dica so-45">d = centro do motor medido da ponta baixa da chapa, subindo.</p>
+      <table id="posicoes" class="tabela so-45">
         <thead><tr><th>H</th><th>tensão</th><th>d</th><th>folga −</th><th>folga +</th><th></th></tr></thead>
         <tbody></tbody>
       </table>
 
-      <section id="resultado-banco2" class="so-banco2" hidden>
+      <section id="resultado-banco2" class="so-banco2 so-45" hidden>
         <h2>Tensionamento para banco duplo</h2>
         <p id="banco2-mensagem" class="mensagem"></p>
         <table id="banco2" class="tabela">

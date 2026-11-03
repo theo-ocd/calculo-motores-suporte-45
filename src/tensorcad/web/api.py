@@ -10,8 +10,9 @@ from typing import Any
 
 import tensorcad
 from tensorcad import ajustes as ajustes_mod
-from tensorcad import banco_duplo, desenho
-from tensorcad.loader import BaseDados, Padroes
+from tensorcad import banco_duplo, desenho, desenho_th
+from tensorcad import tubo_horizontal as th
+from tensorcad.loader import BaseDados, Padroes, carregar_parametros_th
 from tensorcad.models import Origem
 from tensorcad.projeto import (
     X_TUBO_PADRAO,
@@ -131,6 +132,12 @@ def carcacas(ctx: Contexto) -> list[dict[str, Any]]:
                 "detalhe": detalhe,
                 "motores": lista,
                 "calculavel": status != ERRO,
+                # tubo horizontal: só depende de haver motor (não usa a chapa do 45°)
+                "status_horizontal": OK if lista else ERRO,
+                "detalhe_horizontal": (
+                    f"{len(lista)} motor(es) no catálogo" if lista else "nenhum motor cadastrado"
+                ),
+                "calculavel_horizontal": bool(lista),
                 "dimensoes_chapa": (
                     {c: getattr(linha, c) for c, _, _ in CAMPOS_CHAPA} if linha else None
                 ),
@@ -338,6 +345,99 @@ def calcular(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
         "desenho": desenho.gerar(r, cfg, av),
         "ajustes_aplicados": {"chapa": aj_chapa, "motor": aj_motor},
         "dimensoes_chapa": {c: getattr(linha, c) for c, _, _ in CAMPOS_CHAPA},
+    }
+
+
+# --------------------------------------------------------------------------- tubo horizontal
+
+
+def _posicao_th(p: th.PosicaoTH) -> dict[str, Any]:
+    return {
+        "R": p.R,
+        "altura_tubo": p.altura_tubo,
+        "status": p.status.value,
+        "g": p.g,
+        "x": p.x,
+        "y_motor": p.y_motor,
+        "folga_g": p.folga_g,
+        "folga_x": p.folga_x,
+        "folga_rel": p.folga_rel,
+        "margem": p.margem,
+        "R2": p.R2,
+        "dist_O2": p.dist_O2,
+        "folga_R2": p.folga_R2,
+        "mensagens": list(p.mensagens),
+    }
+
+
+def _par_th(par: tuple[th.PosicaoTH, th.PosicaoTH] | None) -> list[dict[str, Any]] | None:
+    return None if par is None else [_posicao_th(p) for p in par]
+
+
+def calcular_horizontal(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
+    """Layout tubo horizontal. Entradas: carcaca, motor_id (opcional), R_min, R_max,
+    comprimento_tubo, altura_tubo (opcional), invertido, banco_duplo (opcional), caso_id."""
+    if not isinstance(corpo, dict):
+        raise ErroEntrada({"(corpo)": "esperado um objeto JSON"})
+    erros: dict[str, str] = {}
+    carc = str(corpo.get("carcaca") or "").strip()
+    info = {c["carcaca"]: c for c in carcacas(ctx)}.get(carc)
+    if not carc:
+        erros["carcaca"] = "obrigatório"
+    elif info is None or not info["calculavel_horizontal"]:
+        erros["carcaca"] = f"carcaça {carc} sem motor no catálogo"
+    r_min = _num(corpo, "R_min", erros, obrigatorio=True, positivo=True)
+    r_max = _num(corpo, "R_max", erros, obrigatorio=True, positivo=True)
+    if r_min is not None and r_max is not None and r_min > r_max:
+        erros["R_max"] = "R_max deve ser maior ou igual a R_min"
+    comp = _num(corpo, "comprimento_tubo", erros, obrigatorio=True, positivo=True)
+    altura = _num(corpo, "altura_tubo", erros, obrigatorio=False)
+    bd = _ler_banco_duplo(ctx, corpo.get("banco_duplo"), erros)
+    motor = None
+    if info is not None and info["calculavel_horizontal"]:
+        ids = [m["motor_id"] for m in info["motores"]]
+        motor_id = str(corpo.get("motor_id") or ids[0])
+        if motor_id not in ids:
+            erros["motor_id"] = f"motor {motor_id} não pertence à carcaça {carc}"
+        else:
+            motor = ctx.base.motores[motor_id]
+    if erros:
+        raise ErroEntrada(erros)
+    assert motor is not None and r_min is not None and r_max is not None and comp is not None
+    try:
+        fixos = carregar_parametros_th(ctx.dir_padroes)
+    except FileNotFoundError:
+        fixos = {}
+    par = th.ParametrosTH(
+        comprimento_tubo=comp,
+        invertido=bool(corpo.get("invertido")),
+        x_linha=ctx.x_tubo,
+        y_laje=ctx.y_piso,
+        **fixos,
+    )
+    e = th.EntradaTH(str(corpo.get("caso_id") or "caso"), motor, r_min, r_max, altura, bd)
+    r = th.resolver(par, e)
+    return {
+        "layout": "horizontal",
+        "caso_id": e.caso_id,
+        "status": r.status.value,
+        "mensagem": r.mensagem,
+        "motor": {"motor_id": motor.motor_id, "carcaca": motor.carcaca, "H": motor.H, "A": motor.A},
+        "invertido": par.invertido,
+        "comprimento_tubo": par.comprimento_tubo,
+        "x_max": r.x_max,
+        "R_min": r_min,
+        "R_max": r_max,
+        "altura_informada": altura,
+        "faixas_altura": [list(f) for f in r.faixas_altura],
+        "altura_recomendada": r.altura_recomendada,
+        "margem_recomendada": r.margem_recomendada,
+        "em_recomendada": _par_th(r.em_recomendada),
+        "em_informada": _par_th(r.em_informada),
+        "banco_duplo": None
+        if bd is None
+        else {"R2_min": bd.R2_min, "R2_max": bd.R2_max, "deslocamento_y": bd.deslocamento_y},
+        "desenho": desenho_th.gerar(r),
     }
 
 

@@ -17,7 +17,7 @@ const Projeto = (() => {
 
   const copia = (o) => JSON.parse(JSON.stringify(o));
   const texto = (v) => (v === null || v === undefined ? "" : String(v));
-  const primeiraCarcaca = () => (estado.carcacas.find((c) => c.calculavel) || {}).carcaca || "";
+  const primeiraCarcaca = () => (estado.carcacas.find((c) => carcacaCalculavel(c)) || {}).carcaca || "";
 
   function casoVazio(nome) {
     return { caso_id: nome, carcaca: primeiraCarcaca(), motor_id: null, R_min: "", R_max: "",
@@ -98,7 +98,7 @@ const Projeto = (() => {
     $("R_max").value = texto(c.R_max);
     $("R2_min").value = texto(c.R2_min);
     $("R2_max").value = texto(c.R2_max);
-    const info = estado.carcacas.find((x) => x.carcaca === c.carcaca && x.calculavel);
+    const info = estado.carcacas.find((x) => x.carcaca === c.carcaca && carcacaCalculavel(x));
     $("carcaca").value = info ? c.carcaca : primeiraCarcaca();
     estado.ajustes = info ? copia(c.ajustes || { chapa: {}, motor: {} }) : { chapa: {}, motor: {} };
     aoTrocarCarcaca(null, { manterAjustes: true, motorId: c.motor_id });
@@ -357,6 +357,7 @@ const Projeto = (() => {
     document.body.dataset.layout = p.layout;
     for (const r of document.querySelectorAll("input[name='layout']")) r.checked = r.value === p.layout;
     $("nome-layout").textContent = NOMES_LAYOUT[p.layout];
+    atualizarOpcoesCarcaca();
   }
   function trocarLayout(layout) {
     if (!LAYOUTS.includes(layout) || layout === p.layout) return;
