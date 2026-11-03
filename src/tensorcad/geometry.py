@@ -16,6 +16,7 @@ class Status(StrEnum):
     SEM_SOLUCAO = "SEM_SOLUCAO"
     FORA_RANHURA = "FORA_RANHURA"
     FORA_TENSIONAMENTO = "FORA_TENSIONAMENTO"  # banco duplo: sem trecho entre R1 e R2
+    FORA_PORCAS = "FORA_PORCAS"  # tubo horizontal: g ou x fora do curso
     INCOMPATIVEL = "INCOMPATIVEL"
 
 

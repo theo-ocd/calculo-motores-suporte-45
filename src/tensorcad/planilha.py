@@ -64,6 +64,7 @@ CORES_STATUS = {
     "OK": VERDE,
     "FORA_RANHURA": AMARELO,
     "FORA_TENSIONAMENTO": AMARELO,
+    "FORA_PORCAS": AMARELO,
     "SEM_SOLUCAO": VERMELHO,
     "INCOMPATIVEL": VERMELHO,
 }
@@ -214,7 +215,7 @@ def _aba_leiame(ws: Worksheet, versao_dados: str) -> None:
         ("Abas", True),
         (", ".join(ABAS), False),
         ("resultados e varredura_dy são calculadas pelo núcleo (não digitar).", False),
-        ("Cores: OK verde, FORA_RANHURA/FORA_TENSIONAMENTO amarelo,", False),
+        ("Cores: OK verde, FORA_RANHURA/FORA_TENSIONAMENTO/FORA_PORCAS amarelo,", False),
         ("SEM_SOLUCAO/INCOMPATIVEL vermelho;", False),
         ("origem HIPOTESE/TODO em laranja.", False),
     ]
