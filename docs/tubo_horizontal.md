@@ -141,10 +141,26 @@ Conferência com o desenho do invertido (carcaça 180, H 180):
 | raio a O1 com x = 93 | — | √(558² + 2242²) = 2310,4 |
 | altura do tubo + g | — | 1290 − 55 − 15 = 1220 (ex.: 1155 + 65) |
 
-### T4: Tensionamento para banco duplo no tubo horizontal
-- Reaproveita O1/O2 e R1/R2: o motor fica a ≥ R1 de O1 e ≤ R2 de O2 a 0 % e 3 %.
-- Status `FORA_TENSIONAMENTO` e restrição na recomendação, como no 45°.
-- **Conferência:** caso com R1839 / R2349 (se forem os dois bancos).
+### T4: Tensionamento para banco duplo no tubo horizontal — feita
+- Mesmas regras do 45°: O2 fica 500 acima de O1, e R2_min e R2_max são entradas por
+  caso, independentes de R1. Em cada tensão, o motor fica sobre o arco R1 (distância a O1
+  = R1) e precisa ficar a **≤ R2 de O2**. É obrigatório.
+- Núcleo: `EntradaTH(banco2=ConfigBancoDuplo(...))`. A condição entra na escolha de (g, x)
+  e da altura recomendada como restrição: a folga positiva não muda nada e só a falta
+  pesa. Cada posição informa R2, |C − O2| e folga_R2.
+- Status `FORA_TENSIONAMENTO` quando g e x admitem alguma altura, mas nenhuma atende R2.
+- O tubo horizontal usa o mesmo switch e os mesmos campos R2 da interface. O cálculo na
+  tela entra na T6.
+
+Conferência (250M, tubo de 2000, R1 1839 / 1894):
+
+| R2_min / R2_max | status | faixa de altura | altura recomendada | folga_R2 0 % / 3 % |
+|---|---|---|---|---|
+| sem banco duplo | OK | 1107,93 – 1562,24 | 1386,96 | — |
+| 2349 / 2420 (R2349 do desenho) | OK | 1107,93 – 1562,24 | 1386,96 | 49,31 / 72,98 |
+| 2300 / 2380 | OK | 1107,93 – 1441,1 | 1386,96 | 0,31 / 32,98 |
+| 2280 / 2340 | OK | 1107,93 – 1349,5 | 1312,82 | 0,00 / 5,39 |
+| 2200 / 2260 | FORA_TENSIONAMENTO | — | 1064,16 | −15,61 / −16,90 |
 
 ### T5: Desenho 2D do tubo horizontal
 - Camadas: tubo, barras roscadas e porcas com a cota g, chapa, motor (normal ou invertido),

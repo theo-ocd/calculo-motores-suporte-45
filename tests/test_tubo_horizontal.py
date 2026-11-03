@@ -153,3 +153,57 @@ def test_invertido_e_normal_mesmas_posicoes_alturas_diferentes(motores) -> None:
     n0, n3 = nor.em_recomendada
     i0, i3 = inv.em_recomendada
     assert n3.g < n0.g and i3.g > i0.g
+
+
+# --------------------------------------------------------------------------- T4: banco duplo
+
+
+def _ref(motores, b2=None):
+    from tensorcad.banco_duplo import ConfigBancoDuplo
+
+    par = th.ParametrosTH(comprimento_tubo=2000)
+    cfg = None if b2 is None else ConfigBancoDuplo(*b2)
+    return par, th.resolver(par, th.EntradaTH("REF", motores["IEC-250M-4P"], 1839, 1894, 1375, cfg))
+
+
+def test_banco_duplo_folgado_nao_muda_nada(motores) -> None:
+    _, sem = _ref(motores)
+    par, com = _ref(motores, (2349, 2420))  # R2349 do desenho
+    assert com.status is Status.OK
+    assert com.altura_recomendada == pytest.approx(sem.altura_recomendada, abs=1e-3)
+    assert [v for f in com.faixas_altura for v in f] == pytest.approx(
+        [v for f in sem.faixas_altura for v in f], abs=1e-3
+    )
+    for p in com.em_recomendada:
+        assert p.folga_R2 == pytest.approx(
+            p.R2 - th.raio_o2(par, com.entrada.banco2, p.x, p.y_motor)
+        )
+        assert p.folga_R2 > 0 and th.raio(par, p.x, p.y_motor) == pytest.approx(p.R)
+
+
+def test_banco_duplo_corta_faixa_e_desloca_recomendada(motores) -> None:
+    _, r = _ref(motores, (2300, 2380))
+    ((lo, hi),) = r.faixas_altura
+    assert lo == pytest.approx(1107.93, abs=0.05) and hi == pytest.approx(1441.1, abs=0.1)
+    _, r = _ref(motores, (2280, 2340))
+    assert r.status is Status.OK
+    assert r.altura_recomendada == pytest.approx(1312.82, abs=0.1)
+    assert min(p.folga_R2 for p in r.em_recomendada) == pytest.approx(0, abs=0.05)
+    assert all(p.status is Status.OK for p in r.em_recomendada)
+
+
+def test_banco_duplo_sem_altura_fica_fora_tensionamento(motores) -> None:
+    _, r = _ref(motores, (2200, 2260))
+    assert r.status is Status.FORA_TENSIONAMENTO and r.faixas_altura == ()
+    assert "tensionamento para banco duplo" in r.mensagem
+    assert all(p.folga_R2 < 0 for p in r.em_recomendada)
+    i0, _ = r.em_informada
+    assert any("O2" in m for m in i0.mensagens)
+
+
+def test_o2_fica_500_acima_de_o1(motores) -> None:
+    from tensorcad.banco_duplo import ConfigBancoDuplo
+
+    par = th.ParametrosTH(comprimento_tubo=2000)
+    # motor na vertical de O1 a 1000 abaixo dele: 1500 de O2
+    assert th.raio_o2(par, ConfigBancoDuplo(1, 1), -465, 1000 - 767) == pytest.approx(1500)
