@@ -26,7 +26,7 @@ Os IDs P1–P7 abaixo devem ficar sincronizados com o CSV (verificado em teste).
 | P16 | Tubo horizontal: com g = 65 e H = 250 o centro do motor fica 910 abaixo da laje e o desenho mostra 927 (com H = 225 daria 935) — qual carcaça está no desenho? | Tubo horizontal — caso de referência | RESOLVIDO (carcaça 250, chapa do desenho 15 mm alta: vale 910) |
 | P17 | Tubo horizontal invertido: qual ponto do tubo é o fixo de projeto e de onde se mede 1120 (fundo da laje → fundo da chapa?) | Tubo horizontal — motor invertido | RESOLVIDO (altura do tubo recomendada pelo cálculo, mesmo ponto de referência, invertido com carcaça 180) |
 | P18 | Tubo horizontal: x medido de onde (linha de centro?) e interferência = chapa com A + 75 dentro do comprimento do tubo? | Tubo horizontal — limites em x | RESOLVIDO (x da linha de centro, chapa A + 75 dentro do curso do tubo) |
-| P19 | Tubo horizontal: desempate da altura recomendada — com g no meio (90), centrar no tubo o curso em x entre 0 % e 3 % (suposição) | Tubo horizontal — altura recomendada | ABERTO |
+| P19 | Tubo horizontal: critério da altura recomendada e da posição (g, x) em cada tensão | Tubo horizontal — altura recomendada | RESOLVIDO (x ≥ 0 sem trocar de lado, folga relativa divide o tensionamento entre g e x) |
 
 Pendência do repositório (fora do CSV): licença (LICENSE provisório, TODO).
 

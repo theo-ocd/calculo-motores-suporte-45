@@ -10,14 +10,17 @@ Referencial (docs/tubo_horizontal.md): origem em O1 (centro dos raios do banco 1
 - Distância a O1: R = √((x_linha + x)² + (y_laje + y_motor)²).
 
 Para cada R (0 % e 3 %), x e g ajustam juntos: o motor fica num ponto do arco R com
-g_min ≤ g ≤ g_max e |x| + (A + acréscimo)/2 ≤ comprimento_tubo/2. A folga de uma posição
-é a menor entre g − g_min, g_max − g e a sobra em x. Como no H do 45°, a altura do tubo
-é entrada opcional (verificação); o cálculo devolve a faixa admissível e a altura
-recomendada (máxima folga mínima entre 0 % e 3 %).
+g_min ≤ g ≤ g_max e 0 ≤ x ≤ x_max, onde x_max = comprimento_tubo/2 − (A + acréscimo)/2.
+O motor nunca troca de lado: x ≥ 0, ou seja, sempre afastado de O1 em relação à linha de
+centro (P19).
 
-Desempate: como x e g ajustam juntos, a folga em g chega ao máximo (g no meio do curso)
-numa faixa larga de alturas. Nela, a recomendada é a que maximiza a menor folga em x,
-ou seja, centraliza no tubo o curso do motor entre 0 % e 3 %.
+Folga relativa (P19): cada folga é dividida pela metade do seu curso, ou seja,
+(g − g_min)/m_g, (g_max − g)/m_g, x/m_x e (x_max − x)/m_x, com m_g = (g_max − g_min)/2 e
+m_x = x_max/2. A posição em cada arco e a altura recomendada maximizam a menor folga
+relativa. Assim a passagem de 0 % a 3 % se divide entre g e x, na proporção dos cursos,
+em vez de ficar só em x. As folgas em mm (folga_g, folga_x) continuam no resultado. Como
+no H do 45°, a altura do tubo é entrada opcional (verificação); o cálculo devolve a
+faixa admissível (folgas ≥ 0) e a altura recomendada.
 """
 
 from __future__ import annotations
@@ -70,7 +73,8 @@ class PosicaoTH:
     x: float | None = None
     y_motor: float | None = None  # centro do motor abaixo do topo da laje
     folga_g: float | None = None  # min(g − g_min, g_max − g)
-    folga_x: float | None = None  # sobra do curso em x
+    folga_x: float | None = None  # min(x, x_max − x)
+    folga_rel: float | None = None  # menor folga relativa (1 = meio dos dois cursos)
     mensagens: tuple[str, ...] = ()
 
     @property
@@ -94,7 +98,7 @@ class ResultadoTH:
     x_max: float  # |x| máximo pela interferência da chapa
     faixas_altura: tuple[tuple[float, float], ...]
     altura_recomendada: float | None
-    margem_recomendada: float | None
+    margem_recomendada: float | None  # menor folga em mm na altura recomendada
     status: Status
     mensagem: str
     em_recomendada: tuple[PosicaoTH, PosicaoTH] | None
@@ -187,52 +191,61 @@ def _faixas(f: Callable[[float], float], lo: float, hi: float) -> list[tuple[flo
     return out
 
 
-def _margem_em(par: ParametrosTH, motor: Motor, R: float, altura: float, g: float) -> float:
+def _folgas(par: ParametrosTH, motor: Motor, g: float, x: float) -> tuple[float, float, float]:
+    """(folga_g, folga_x, folga relativa) em mm, mm e fração do meio curso."""
+    xm = x_max(par, motor)
+    m_g, m_x = (par.g_max - par.g_min) / 2, xm / 2
+    fg = min(g - par.g_min, par.g_max - g)
+    fx = min(x, xm - x)
+    return fg, fx, min(fg / m_g, fx / m_x)
+
+
+def _rel_em(par: ParametrosTH, motor: Motor, R: float, altura: float, g: float) -> float:
     x = x_no_arco(par, R, y_motor(par, motor, altura, g))
     if x is None:
         return -math.inf
-    return min(g - par.g_min, par.g_max - g, x_max(par, motor) - abs(x))
+    return _folgas(par, motor, g, x)[2]
 
 
 def posicao(par: ParametrosTH, motor: Motor, R: float, altura: float) -> PosicaoTH:
     """Melhor posição (g, x) sobre o arco R com o tubo na altura dada."""
     # g fora de [g_min, g_max] também é avaliado, para medir quanto falta
     lo, hi = par.g_min - 100, par.g_max + 100
-    g, m = _maximo(lambda gg: _margem_em(par, motor, R, altura, gg), lo, hi, passo=2.0)
+    g, m = _maximo(lambda gg: _rel_em(par, motor, R, altura, gg), lo, hi, passo=2.0)
     if m == -math.inf:
         return PosicaoTH(R, altura, Status.SEM_SOLUCAO, mensagens=("arco R fora do alcance",))
     y = y_motor(par, motor, altura, g)
     x = x_no_arco(par, R, y)
     assert x is not None
-    folga_g = min(g - par.g_min, par.g_max - g)
-    folga_x = x_max(par, motor) - abs(x)
+    folga_g, folga_x, rel = _folgas(par, motor, g, x)
     msgs = []
     if folga_g < 0:
         msgs.append(f"g = {g:.2f} fora de {par.g_min:g}–{par.g_max:g}")
-    if folga_x < 0:
-        msgs.append(f"x = {x:.2f} além do curso (±{x_max(par, motor):.2f})")
+    if x < 0:
+        msgs.append(f"x = {x:.2f}: motor do lado de O1 (deve ficar ≥ 0)")
+    elif folga_x < 0:
+        msgs.append(f"x = {x:.2f} além do curso (0–{x_max(par, motor):.2f})")
     status = Status.FORA_PORCAS if msgs else Status.OK
-    return PosicaoTH(R, altura, status, g, x, y, folga_g, folga_x, tuple(msgs))
+    return PosicaoTH(R, altura, status, g, x, y, folga_g, folga_x, rel, tuple(msgs))
 
 
-def _avaliacao(par: ParametrosTH, e: EntradaTH, altura: float) -> tuple[float, float]:
-    """(folga mínima, menor folga em x) entre 0 % e 3 %; a 2ª desempata a recomendação."""
-    ms, xs = [], []
+def _avaliacao(par: ParametrosTH, e: EntradaTH, altura: float) -> float:
+    """Menor folga relativa entre 0 % e 3 %."""
+    rs = []
     for R in (e.R_min, e.R_max):
         p = posicao(par, e.motor, R, altura)
-        if p.margem is None or p.folga_x is None:
-            return -math.inf, -math.inf
-        ms.append(p.margem)
-        xs.append(p.folga_x)
-    return min(ms), min(xs)
+        if p.folga_rel is None:
+            return -math.inf
+        rs.append(p.folga_rel)
+    return min(rs)
 
 
 def dominio_altura(par: ParametrosTH, e: EntradaTH) -> tuple[float, float]:
     """Faixa de alturas do tubo em que os arcos podem ser alcançados com g e x no curso."""
     xm = max(0.0, x_max(par, e.motor))
-    h_min = max(0.0, par.x_linha - xm)
+    # x de 0 a x_max: distância horizontal a O1 de x_linha a x_linha + x_max
     v_lo = min(math.sqrt(max(0.0, R * R - (par.x_linha + xm) ** 2)) for R in (e.R_min, e.R_max))
-    v_hi = max(math.sqrt(max(0.0, R * R - h_min**2)) for R in (e.R_min, e.R_max))
+    v_hi = max(math.sqrt(max(0.0, R * R - par.x_linha**2)) for R in (e.R_min, e.R_max))
     k = pilha(par, e.motor)
     # y_motor = v − y_laje; altura = y_motor ± (k + g)
     y_lo, y_hi = v_lo - par.y_laje, v_hi - par.y_laje
@@ -251,18 +264,22 @@ def resolver(par: ParametrosTH, e: EntradaTH) -> ResultadoTH:
         return posicao(par, e.motor, e.R_min, altura), posicao(par, e.motor, e.R_max, altura)
 
     informada = nas(e.altura_informada)
-    if xm < 0:
+    if xm <= 0:
         msg = (
             f"a chapa (A {e.motor.A:g} + {par.acrescimo_furacao:g}) não cabe no curso do tubo "
             f"({par.comprimento_tubo:g} / 2)"
         )
         return ResultadoTH(e, par, xm, (), None, None, Status.INCOMPATIVEL, msg, None, informada)
     lo, hi = dominio_altura(par, e)
-    altura, (margem, _) = _maximo(lambda a: _avaliacao(par, e, a), lo, hi)
-    if margem == -math.inf:
+    f = lambda a: _avaliacao(par, e, a)  # noqa: E731
+    altura, rel = _maximo(f, lo, hi)
+    if rel == -math.inf:
         msg = "sem solução geométrica para R_min/R_max"
         return ResultadoTH(e, par, xm, (), None, None, Status.SEM_SOLUCAO, msg, None, informada)
-    faixas = tuple(_faixas(lambda a: _avaliacao(par, e, a)[0], lo, hi))
+    rec = nas(altura)
+    assert rec is not None
+    margem = min(p.margem for p in rec if p.margem is not None)
+    faixas = tuple(_faixas(f, lo, hi))
     if faixas:
         status, msg = Status.OK, f"altura do tubo admissível em {len(faixas)} faixa(s)"
     else:
@@ -271,4 +288,4 @@ def resolver(par: ParametrosTH, e: EntradaTH) -> ResultadoTH:
             "nenhuma altura do tubo atende R_min e R_max com g entre "
             f"{par.g_min:g} e {par.g_max:g} e x no curso: faltam {-margem:.2f} mm"
         )
-    return ResultadoTH(e, par, xm, faixas, altura, margem, status, msg, nas(altura), informada)
+    return ResultadoTH(e, par, xm, faixas, altura, margem, status, msg, rec, informada)

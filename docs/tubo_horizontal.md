@@ -92,13 +92,14 @@ testes, pendências) para conferência.
   (g, x) sobre cada arco, faixa admissível e altura recomendada. Os parâmetros vêm de
   `data/padrao/tubo_horizontal.csv` (`loader.carregar_parametros_th`). O comprimento do
   tubo é obrigatório.
-- **Posição em cada tensão:** sobre o arco R, escolhe g e x para maximizar a menor folga
-  entre g − 30, 150 − g e a sobra em x (|x| + (A + 75)/2 ≤ comprimento/2). O motor fica do
-  lado de x ≥ −465, entre O1 e além da linha de centro.
-- **Altura do tubo:** a faixa admissível são as alturas em que 0 % e 3 % têm folga ≥ 0. A
-  recomendada maximiza a folga mínima. Desempate (suposição P19): como x e g ajustam
-  juntos, a folga em g chega a 60 (g = 90) numa faixa larga; nela vale a altura que
-  maximiza a menor folga em x, centrando no tubo o curso entre 0 % e 3 %.
+- **Curso em x:** 0 ≤ x ≤ x_max = comprimento/2 − (A + 75)/2, medido da linha de centro.
+  O motor **nunca troca de lado**: x ≥ 0, sempre afastado de O1 (P19, usuário).
+- **Posição em cada tensão:** sobre o arco R, escolhe g e x que maximizam a menor
+  **folga relativa**, em que cada folga é dividida pela metade do seu curso: g − 30 e
+  150 − g por 60, x e x_max − x por x_max/2.
+- **Altura do tubo:** a faixa admissível são as alturas em que 0 % e 3 % têm folgas ≥ 0.
+  A recomendada maximiza a menor folga relativa. Assim a passagem de 0 % a 3 % se divide
+  entre g e x na proporção dos cursos, e não fica só em x (P19, usuário).
 - **Status:** `FORA_PORCAS` quando nenhuma altura atende (g ou x fora do curso);
   `INCOMPATIVEL` se a chapa (A + 75) não cabe no tubo; `SEM_SOLUCAO` se o arco não é
   alcançável.
@@ -114,10 +115,11 @@ de teste para 3 %):
 |---|---|
 | pilha (tubo 80 + 2×27,5 + chapa 15 + H 250) | 400 |
 | centro do motor com altura 1375 e g = 65 | 910 abaixo da laje |
-| curso em x: 1000 − (406 + 75)/2 | ±759,5 |
-| faixa admissível da altura do tubo | 1107,93 – 1622,00 |
-| altura recomendada / folga mínima | 1527,49 / 60 (g = 90 a 0 % e 3 %, x = ∓110,38) |
-| altura 1375 informada | OK: g = 90, x = 342,97 (0 %) e 461,35 (3 %) |
+| curso em x (0 a x_max) | 0 – 759,5 |
+| faixa admissível da altura do tubo | 1107,93 – 1562,24 |
+| altura recomendada / menor folga em mm | **1386,96** / 52,68 |
+| na recomendada, 0 % → 3 % | g 97,32 → 82,68, x 333,41 → 426,09 (g e x simétricos nos seus cursos) |
+| altura 1375 informada | OK: g 94,40 → 79,97, x 351,90 → 443,23 |
 
 ### T3: Motor invertido (switch)
 - A pilha vai para baixo a partir do fundo do tubo e a altura recomendada muda; só um

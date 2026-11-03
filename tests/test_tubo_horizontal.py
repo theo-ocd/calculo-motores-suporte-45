@@ -56,10 +56,13 @@ def test_posicao_sobre_o_arco(par, motores) -> None:
     m = motores["IEC-250M-4P"]
     p = th.posicao(par, m, 1839, 1375)
     assert p.status is Status.OK
-    assert p.g == pytest.approx(90, abs=1e-3)  # meio do curso das porcas
     assert th.raio(par, p.x, p.y_motor) == pytest.approx(1839)
-    assert p.folga_g == pytest.approx(60, abs=1e-3)
-    assert p.folga_x == pytest.approx(th.x_max(par, m) - abs(p.x))
+    xm = th.x_max(par, m)
+    assert p.folga_g == pytest.approx(min(p.g - 30, 150 - p.g))
+    assert p.folga_x == pytest.approx(min(p.x, xm - p.x))
+    # folgas relativas equilibradas: g e x no mesmo ponto proporcional do curso
+    assert p.folga_rel == pytest.approx(p.folga_g / 60, abs=1e-4)
+    assert p.folga_rel == pytest.approx(p.folga_x / (xm / 2), abs=1e-4)
 
 
 def test_resolver_referencia_250(par, motores) -> None:
@@ -67,12 +70,15 @@ def test_resolver_referencia_250(par, motores) -> None:
     r = th.resolver(par, e)
     assert r.status is Status.OK
     ((lo, hi),) = r.faixas_altura
-    assert lo == pytest.approx(1107.93, abs=0.01) and hi == pytest.approx(1622.0, abs=0.01)
-    assert r.margem_recomendada == pytest.approx(60, abs=1e-3)
-    # desempate: curso em x centrado no tubo entre 0 % e 3 %
+    assert lo == pytest.approx(1107.93, abs=0.01) and hi == pytest.approx(1562.24, abs=0.01)
+    assert r.altura_recomendada == pytest.approx(1386.96, abs=0.05)
+    assert r.margem_recomendada == pytest.approx(52.68, abs=0.01)
+    # P19: de 0 % a 3 % o tensionamento usa g e x, simétricos nos seus cursos
     p0, p3 = r.em_recomendada
-    assert p0.x == pytest.approx(-p3.x, abs=0.05)
-    assert r.altura_recomendada == pytest.approx(1527.49, abs=0.05)
+    xm = th.x_max(par, e.motor)
+    assert p0.g - 90 == pytest.approx(90 - p3.g, abs=0.05) and p3.g < p0.g
+    assert p0.x == pytest.approx(xm - p3.x, abs=0.05) and p3.x > p0.x
+    assert p0.x > 0 and p3.x > 0  # motor sempre do mesmo lado
     i0, i3 = r.em_informada
     assert (i0.altura_tubo, i3.altura_tubo) == (1375, 1375)
     assert i0.status is Status.OK and i3.x > i0.x  # 3 % mais longe de O1
@@ -100,7 +106,14 @@ def test_invertido_resolve(motores) -> None:
     assert r.status is Status.OK
     for p in r.em_recomendada:
         assert th.raio(par, p.x, p.y_motor) == pytest.approx(p.R)
-        assert par.g_min <= p.g <= par.g_max
+        assert par.g_min <= p.g <= par.g_max and p.x >= 0
     # altura do tubo fica acima do motor: y_motor = altura + pilha + g
     p0 = r.em_recomendada[0]
     assert p0.y_motor == pytest.approx(r.altura_recomendada + 250 + p0.g)
+
+
+def test_motor_nao_troca_de_lado(par, motores) -> None:
+    # R 1650 com o tubo em 1375: mesmo com g = 150 o ponto do arco fica com x < 0
+    p = th.posicao(par, motores["IEC-250M-4P"], 1650, 1375)
+    assert p.status is Status.FORA_PORCAS
+    assert p.x < 0 and any("lado de O1" in m for m in p.mensagens)
