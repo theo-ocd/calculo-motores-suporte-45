@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tensorcad"
-version = "0.0.1"
+version = "0.6.37"
 description = "Cálculo da posição de motor sobre chapa-guia inclinada (base tensora) e exportação para AutoCAD."
 readme = "README.md"
 requires-python = ">=3.11"
