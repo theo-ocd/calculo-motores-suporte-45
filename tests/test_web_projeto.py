@@ -175,3 +175,85 @@ def test_layout_horizontal_nao_muda_exportacao_45(ctx) -> None:
         return load_workbook(io.BytesIO(b)).sheetnames
 
     assert abas(com_h) == abas(base)
+
+
+def _proj_com_horizontal(**h):
+    return {
+        **PROJ,
+        "casos": [{**c, "R2_min": 2600, "R2_max": 2680} for c in PROJ["casos"]],
+        "banco_duplo": True,
+        "horizontal": {
+            "altura_tubo": None,
+            "comprimento_tubo": 2000,
+            "invertido": False,
+            "casos": [
+                {
+                    "caso_id": "TH",
+                    "carcaca": "250",
+                    "R_min": 1839,
+                    "R_max": 1894,
+                    "R2_min": 2349,
+                    "R2_max": 2420,
+                },
+                {"caso_id": "th-vazio", "carcaca": "250"},
+            ],
+            **h,
+        },
+    }
+
+
+def test_exportar_dois_layouts(ctx, tmp_path: Path) -> None:
+    import io
+
+    from openpyxl import load_workbook
+
+    from tensorcad.planilha_projeto import ler_entradas_horizontais
+
+    proj = _proj_com_horizontal()
+    proj["casos"] = [*proj["casos"], {"caso_id": "vazio45", "carcaca": "180"}]
+    dados, _ = api.exportar(ctx, proj)
+    wb = load_workbook(io.BytesIO(dados))
+    # casos sem R ficam de fora, nos dois layouts
+    assert wb.sheetnames == ["PROJETO", "REF", "AJ", "TH", "_entradas", "_entradas_horizontal"]
+    ws = wb["TH"]
+    pares = {ws.cell(r, 1).value: ws.cell(r, 2).value for r in range(1, ws.max_row + 1)}
+    assert pares["layout"] == "tubo horizontal" and pares["status"] == "OK"
+    assert pares["altura do tubo recomendada"] == pytest.approx(1386.96, abs=0.05)
+    assert pares["R2_min (0 %) a partir de O2"] == 2349
+    # índice: tabela do tubo horizontal abaixo da do 45°
+    idx = [c.value for c in wb["PROJETO"]["A"]]
+    assert "Layout tubo horizontal" in idx and "TH" in idx
+    arq = tmp_path / "p.xlsx"
+    arq.write_bytes(dados)
+    (e,) = ler_entradas_horizontais(arq)
+    assert (e.caso_id, e.motor_id, e.comprimento_tubo) == ("TH", "IEC-250M-4P", 2000)
+    assert e.banco_duplo["R2_min"] == 2349
+
+
+def test_exportar_horizontal_valida(ctx) -> None:
+    proj = _proj_com_horizontal(comprimento_tubo=None)
+    with pytest.raises(api.ErroEntrada) as exc:
+        api.exportar(ctx, proj)
+    assert exc.value.erros == {"horizontal.casos[0].comprimento_tubo": "obrigatório"}
+    proj = _proj_com_horizontal()
+    proj["horizontal"]["casos"][0]["caso_id"] = "ref"
+    with pytest.raises(api.ErroEntrada) as exc:
+        api.exportar(ctx, proj)
+    assert "dois layouts" in exc.value.erros["casos"]
+    vazio = {**PROJ, "casos": [{"caso_id": "a", "carcaca": "180"}]}
+    with pytest.raises(api.ErroEntrada) as exc:
+        api.exportar(ctx, vazio)
+    assert "nenhum caso" in exc.value.erros["casos"]
+
+
+def test_adicionar_caso_preserva_horizontais(ctx, tmp_path: Path) -> None:
+    from tensorcad.planilha_projeto import (
+        EntradaPlanilha,
+        adicionar_caso,
+        ler_entradas_horizontais,
+    )
+
+    arq = tmp_path / "p.xlsx"
+    arq.write_bytes(api.exportar(ctx, _proj_com_horizontal())[0])
+    adicionar_caso(arq, EntradaPlanilha("NOVO", "IEC-180L-4P", 2086, 2161), ctx.base, ctx.padroes)
+    assert [e.caso_id for e in ler_entradas_horizontais(arq)] == ["TH"]

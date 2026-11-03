@@ -611,10 +611,10 @@ def test_opcao_de_layout_no_navegador(url: str, tmp_path: Path) -> None:
             assert pg.input_value("#caso_id") == "th-2"
             assert pg.locator("#lista-casos li").count() == 2
 
-            # exportar no horizontal: aviso, sem download
-            pg.click("#btn-exportar")
-            pg.wait_for_selector("#aviso[data-tipo='erro']")
-            assert "T6" in pg.inner_text("#aviso")
+            # exportar no horizontal: casos vazios do horizontal ficam de fora (T6)
+            with pg.expect_download() as dl:
+                pg.click("#btn-exportar")
+            assert dl.value.suggested_filename.endswith(".xlsx")
 
             # voltar ao 45°: o caso REF continua lá e calcula
             pg.check("#layout-45")
@@ -687,6 +687,17 @@ def test_tubo_horizontal_calcula_e_desenha(url: str) -> None:
             pg.fill("#R2_min", "2349")
             pg.fill("#R2_max", "2420")
             pg.wait_for_selector("#el-O2", timeout=20_000)
+            # painel de posições do horizontal (T6) e exportação com aba do caso
+            pg.wait_for_function("document.querySelectorAll('#posicoes-th tbody tr').length === 4")
+            assert pg.locator("#posicoes").is_hidden()
+            with pg.expect_download() as dl:
+                pg.click("#btn-exportar")
+            import io
+
+            from openpyxl import load_workbook
+
+            wb = load_workbook(io.BytesIO(Path(dl.value.path()).read_bytes()))
+            assert "th-1" in wb.sheetnames and "_entradas_horizontal" in wb.sheetnames
             # voltar ao 45° mantém a 250 desabilitada lá
             pg.check("#layout-45")
             assert pg.locator("#carcaca option[value='250']").is_disabled()

@@ -25,6 +25,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 import tensorcad
 from tensorcad import ajustes as ajustes_mod
 from tensorcad import banco_duplo as bd
+from tensorcad import tubo_horizontal as th
 from tensorcad.loader import BaseDados, Padroes
 from tensorcad.planilha import CORES_STATUS, FMT_MM, _cor_status
 from tensorcad.projeto import (
@@ -37,6 +38,7 @@ from tensorcad.projeto import (
 
 ABA_PROJETO = "PROJETO"
 ABA_ENTRADAS = "_entradas"
+ABA_ENTRADAS_TH = "_entradas_horizontal"  # casos do layout tubo horizontal (T6)
 TITULO = Font(bold=True, size=14)
 NEGRITO = Font(bold=True)
 CINZA = PatternFill("solid", fgColor="D9D9D9")
@@ -59,6 +61,49 @@ class EntradaPlanilha:
 
 
 CAMPOS_ENTRADA = tuple(EntradaPlanilha.__dataclass_fields__)
+
+
+@dataclass(frozen=True)
+class EntradaHorizontal:
+    """Caso do layout tubo horizontal (serializável)."""
+
+    caso_id: str
+    motor_id: str
+    R_min: float
+    R_max: float
+    comprimento_tubo: float
+    altura_informada: float | None = None
+    invertido: bool = False
+    # tensionamento para banco duplo {"R2_min", "R2_max", "deslocamento_y"} (opcional)
+    banco_duplo: dict[str, Any] | None = None
+
+
+def resolver_horizontal(
+    ent: EntradaHorizontal,
+    base: BaseDados,
+    cfg: ConfigProjeto,
+    fixos: dict[str, float] | None = None,
+) -> th.ResultadoTH:
+    if ent.motor_id not in base.motores:
+        raise ValueError(f"motor '{ent.motor_id}' não cadastrado")
+    par = th.ParametrosTH(
+        comprimento_tubo=ent.comprimento_tubo,
+        invertido=ent.invertido,
+        x_linha=cfg.x_tubo,
+        y_laje=cfg.y_piso,
+        **(fixos or {}),
+    )
+    b2 = None
+    if ent.banco_duplo:
+        b2 = bd.ConfigBancoDuplo(
+            float(ent.banco_duplo["R2_min"]),
+            float(ent.banco_duplo["R2_max"]),
+            float(ent.banco_duplo.get("deslocamento_y", bd.DESLOCAMENTO_Y_PADRAO)),
+        )
+    e = th.EntradaTH(
+        ent.caso_id, base.motores[ent.motor_id], ent.R_min, ent.R_max, ent.altura_informada, b2
+    )
+    return th.resolver(par, e)
 
 
 def nome_aba(caso_id: str) -> str:
@@ -469,7 +514,12 @@ def escrever_aba_caso(
 # --------------------------------------------------------------------------- projeto
 
 
-def _aba_projeto(ws: Worksheet, cfg: ConfigProjeto, resultados: Sequence[ResultadoProjeto]) -> None:
+def _aba_projeto(
+    ws: Worksheet,
+    cfg: ConfigProjeto,
+    resultados: Sequence[ResultadoProjeto],
+    horizontais: Sequence[th.ResultadoTH] = (),
+) -> None:
     ws["A1"] = f"Projeto {cfg.nome}"
     ws["A1"].font = TITULO
     ws["A2"] = f"Gerado em {datetime.now():%Y-%m-%d %H:%M} — tensorcad {tensorcad.__version__}"
@@ -522,10 +572,173 @@ def _aba_projeto(ws: Worksheet, cfg: ConfigProjeto, resultados: Sequence[Resulta
                 c.font = Font(color="0563C1", underline="single")
     if tab:
         _cor_status(ws, f"G{ini + 1}:G{ini + n}")
+    if horizontais:
+        _indice_horizontal(ws, ini + n + 3, horizontais)
     ws.column_dimensions["A"].width = 44
     for col in "BCDEFGHIJ":
         ws.column_dimensions[col].width = 16
     ws.column_dimensions["K"].width = 70
+
+
+def _faixas_th(r: th.ResultadoTH) -> str:
+    if not r.faixas_altura:
+        return "nenhuma"
+    return "; ".join(f"{a:.2f} a {b:.2f}" for a, b in r.faixas_altura)
+
+
+def _indice_horizontal(ws: Worksheet, ini: int, resultados: Sequence[th.ResultadoTH]) -> None:
+    """Tabela dos casos do layout tubo horizontal no índice do projeto."""
+    ws.cell(ini, 1, "Layout tubo horizontal").font = NEGRITO
+    cols = [
+        "caso_id",
+        "motor",
+        "motor invertido",
+        "R_min",
+        "R_max",
+        "altura informada",
+        "status",
+        "altura recomendada",
+        "folga_min",
+        "faixa da altura",
+        "mensagem",
+    ]
+    for j, c in enumerate(cols, start=1):
+        ws.cell(ini + 1, j, c).font = NEGRITO
+    for i, r in enumerate(resultados, start=ini + 2):
+        e = r.entrada
+        lin = [
+            e.caso_id,
+            e.motor.motor_id,
+            "sim" if r.parametros.invertido else "não",
+            e.R_min,
+            e.R_max,
+            e.altura_informada,
+            r.status.value,
+            r.altura_recomendada,
+            r.margem_recomendada,
+            _faixas_th(r),
+            r.mensagem,
+        ]
+        for j, v in enumerate(lin, start=1):
+            c = ws.cell(i, j, v)
+            if isinstance(v, float):
+                c.number_format = FMT_MM
+            if j == 1:
+                c.hyperlink = Hyperlink(ref=c.coordinate, location=f"'{nome_aba(v)}'!A1")
+                c.font = Font(color="0563C1", underline="single")
+    _cor_status(ws, f"G{ini + 2}:G{ini + 1 + len(resultados)}")
+
+
+def escrever_aba_horizontal(ws: Worksheet, r: th.ResultadoTH) -> None:
+    """Aba de um caso do layout tubo horizontal."""
+    e, par = r.entrada, r.parametros
+    ws["A1"] = f"Caso {e.caso_id} — layout tubo horizontal"
+    ws["A1"].font = TITULO
+    lin = _bloco(
+        ws,
+        3,
+        "Entradas",
+        [
+            ("layout", "tubo horizontal"),
+            ("motor", e.motor.motor_id),
+            ("carcaça", e.motor.carcaca),
+            ("motor invertido", "sim" if par.invertido else "não"),
+            ("R_min (0 %)", e.R_min),
+            ("R_max (3 %)", e.R_max),
+            ("comprimento do tubo", par.comprimento_tubo),
+            ("altura do tubo informada", e.altura_informada),
+        ],
+    )
+    lin = _bloco(
+        ws,
+        lin,
+        "Pilha e limites",
+        [
+            ("H do motor (WEG)", float(e.motor.H)),
+            ("A do motor (furação)", float(e.motor.A)),
+            ("espessura do tubo", par.espessura_tubo),
+            ("porca (×2)", par.espessura_porca),
+            ("chapa", par.espessura_chapa),
+            ("pilha sem g (tubo → centro do motor)", th.pilha(par, e.motor)),
+            ("g (distância entre porcas)", f"{par.g_min:g} a {par.g_max:g}"),
+            ("curso em x (da linha de centro)", f"0 a {r.x_max:.2f}"),
+            ("O1 → linha de centro (x) / → laje (y)", f"{par.x_linha:g} / {par.y_laje:g}"),
+        ],
+    )
+    if e.banco2 is not None:
+        lin = _bloco(
+            ws,
+            lin,
+            "Tensionamento para banco duplo",
+            [
+                ("O1 → O2 (acima)", e.banco2.deslocamento_y),
+                ("R2_min (0 %) a partir de O2", e.banco2.R2_min),
+                ("R2_max (3 %) a partir de O2", e.banco2.R2_max),
+            ],
+        )
+    ini_resultado = lin
+    lin = _bloco(
+        ws,
+        lin,
+        "Resultado",
+        [
+            ("status", r.status.value),
+            ("mensagem", r.mensagem),
+            ("faixa admissível da altura do tubo", _faixas_th(r)),
+            ("altura do tubo recomendada", r.altura_recomendada),
+            ("folga mínima na recomendada (mm)", r.margem_recomendada),
+        ],
+    )
+    cor = CORES_STATUS.get(r.status.value)
+    if cor:
+        ws[f"B{ini_resultado + 1}"].fill = cor
+    ws.cell(lin, 1, "Posições (x da linha de centro; y do motor abaixo da laje)").font = NEGRITO
+    cols = [
+        "altura de",
+        "tensão",
+        "R",
+        "altura do tubo",
+        "g",
+        "x",
+        "y_motor",
+        "folga_g",
+        "folga_x",
+        "folga_R2",
+        "status",
+        "mensagem",
+    ]
+    for j, c in enumerate(cols, start=1):
+        ws.cell(lin + 1, j, c).font = NEGRITO
+    linhas = []
+    for rotulo, par_pos in (("recomendada", r.em_recomendada), ("informada", r.em_informada)):
+        for tensao, p in zip(("0 %", "3 %"), par_pos or (), strict=False):
+            linhas.append(
+                [
+                    rotulo,
+                    tensao,
+                    p.R,
+                    p.altura_tubo,
+                    p.g,
+                    p.x,
+                    p.y_motor,
+                    p.folga_g,
+                    p.folga_x,
+                    p.folga_R2,
+                    p.status.value,
+                    "; ".join(p.mensagens),
+                ]
+            )
+    for i, valores in enumerate(linhas, start=lin + 2):
+        for j, v in enumerate(valores, start=1):
+            c = ws.cell(i, j, v)
+            if isinstance(v, float):
+                c.number_format = FMT_MM
+    if linhas:
+        _cor_status(ws, f"K{lin + 2}:K{lin + 1 + len(linhas)}")
+    ws.column_dimensions["A"].width = 44
+    ws.column_dimensions["B"].width = 22
+    for col in "CDEFGHIJK":
+        ws.column_dimensions[col].width = 12
 
 
 def ler_entradas(caminho: Path) -> tuple[ConfigProjeto, list[EntradaPlanilha]]:
@@ -571,20 +784,27 @@ def gerar_projeto(
     entradas: Sequence[EntradaPlanilha],
     base: BaseDados,
     pad: Padroes,
+    horizontais: Sequence[EntradaHorizontal] = (),
+    fixos_th: dict[str, float] | None = None,
 ) -> Path | BinaryIO:
     """Gera a planilha completa do projeto (PROJETO + uma aba por caso + _entradas).
-    `caminho` pode ser um arquivo em memória (exportação pela interface)."""
-    ids = [nome_aba(e.caso_id) for e in entradas]
+    `caminho` pode ser um arquivo em memória (exportação pela interface). Os casos do
+    layout tubo horizontal (`horizontais`) ganham aba própria, tabela no índice e a aba
+    oculta _entradas_horizontal."""
+    ids = [nome_aba(e.caso_id) for e in [*entradas, *horizontais]]
     if len(set(ids)) != len(ids):
         raise ValueError("casos com nomes de aba repetidos")
     resolvidos = [resolver_entrada(e, base, pad, cfg) for e in entradas]
     resultados = [r for r, _ in resolvidos]
+    res_th = [resolver_horizontal(e, base, cfg, fixos_th) for e in horizontais]
     wb = Workbook()
-    _aba_projeto(wb.active, cfg, resultados)
+    _aba_projeto(wb.active, cfg, resultados, res_th)
     wb.active.title = ABA_PROJETO
     for e, (r, banco) in zip(entradas, resolvidos, strict=True):
         aba = wb.create_sheet(nome_aba(r.entrada.caso_id))
         escrever_aba_caso(aba, r, cfg, e.ajustes, banco)
+    for rt in res_th:
+        escrever_aba_horizontal(wb.create_sheet(nome_aba(rt.entrada.caso_id)), rt)
     we = wb.create_sheet(ABA_ENTRADAS)
     we.append(["config", "nome", cfg.nome, "y_piso", cfg.y_piso, "x_tubo", cfg.x_tubo])
     we.append(list(CAMPOS_ENTRADA))
@@ -594,6 +814,12 @@ def gerar_projeto(
         d["banco_duplo"] = json.dumps(e.banco_duplo) if e.banco_duplo else None
         we.append([d[c] for c in CAMPOS_ENTRADA])
     we.sheet_state = "hidden"
+    if horizontais:
+        wh = wb.create_sheet(ABA_ENTRADAS_TH)
+        wh.append(["caso_json"])
+        for e in horizontais:
+            wh.append([json.dumps(asdict(e), ensure_ascii=False)])
+        wh.sheet_state = "hidden"
     if not isinstance(caminho, (str, Path)):
         wb.save(caminho)
         return caminho
@@ -601,6 +827,18 @@ def gerar_projeto(
     caminho.parent.mkdir(parents=True, exist_ok=True)
     wb.save(caminho)
     return caminho
+
+
+def ler_entradas_horizontais(caminho: Path) -> list[EntradaHorizontal]:
+    """Casos do tubo horizontal gravados na aba oculta (vazio se não houver)."""
+    wb = load_workbook(caminho, read_only=True, data_only=True)
+    try:
+        if ABA_ENTRADAS_TH not in wb.sheetnames:
+            return []
+        linhas = list(wb[ABA_ENTRADAS_TH].iter_rows(min_row=2, values_only=True))
+    finally:
+        wb.close()
+    return [EntradaHorizontal(**json.loads(lin[0])) for lin in linhas if lin and lin[0]]
 
 
 def adicionar_caso(
@@ -627,7 +865,8 @@ def adicionar_caso(
             raise ValueError(f"caso '{entrada.caso_id}' já existe no projeto (use substituir)")
         entradas = [e for e in entradas if nome_aba(e.caso_id) != novo]
     montar_entrada(entrada, base, pad)  # valida antes de gravar
-    return gerar_projeto(caminho, cfg, [*entradas, entrada], base, pad)
+    horizontais = ler_entradas_horizontais(caminho) if caminho.exists() else []
+    return gerar_projeto(caminho, cfg, [*entradas, entrada], base, pad, horizontais)
 
 
 def status_do_caso(caminho: Path | str, caso_id: str) -> str:

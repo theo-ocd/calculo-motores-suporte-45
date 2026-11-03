@@ -317,3 +317,5 @@ body:not([data-layout="horizontal"]) .so-horizontal { display: none !important; 
 #mundo .chapa .el[id^="barra"] { stroke: #9fb4ba; stroke-width: 2; }
 #mundo .chapa .el[id*="-3"] { stroke: var(--m3); stroke-dasharray: 5 3; fill: none; }
 #mundo .chapa .el[data-status="FORA_PORCAS"], #mundo .chapa .el[data-status="FORA_TENSIONAMENTO"] { stroke: var(--alerta); }
+#posicoes-th { font-size: 12px; }
+#posicoes-th td, #posicoes-th th { padding-left: 3px; padding-right: 3px; }

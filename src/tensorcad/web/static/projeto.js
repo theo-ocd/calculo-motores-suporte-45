@@ -306,10 +306,6 @@ const Projeto = (() => {
 
   async function exportar() {
     lerFormulario();
-    if (p.layout === "horizontal") {
-      aviso("Exportação do tubo horizontal ainda não disponível (entrega T6). Troque para o tubo inclinado 45° para exportar.", "erro", 7000);
-      return;
-    }
     try {
       const r = await fetch("/api/exportar", {
         method: "POST",
@@ -319,29 +315,37 @@ const Projeto = (() => {
       if (!r.ok) {
         const d = await r.json();
         const linhas = Object.entries(d.erros || {}).map(([k, v]) => {
-          const m = /^casos\[(\d+)\]\.(.*)$/.exec(k);
-          return m ? `${L().casos[Number(m[1])].caso_id}: ${m[2]} — ${v}` : `${k}: ${v}`;
+          const m = /^(horizontal\.)?casos\[(\d+)\]\.(.*)$/.exec(k);
+          if (!m) return `${k}: ${v}`;
+          const lista = m[1] ? p.horizontal.casos : p.casos;
+          const onde = m[1] ? "tubo horizontal" : "45°";
+          return `${lista[Number(m[2])].caso_id} (${onde}): ${m[3]} — ${v}`;
         });
         aviso(`Exportação recusada:\n${linhas.join("\n") || d.erro}`, "erro", 9000);
         return;
       }
       baixar(await r.blob(), `${nomeArquivo()}.xlsx`);
-      aviso(`planilha exportada: ${nomeArquivo()}.xlsx (${L().casos.length} caso(s), uma aba cada)`);
+      aviso(`planilha exportada: ${nomeArquivo()}.xlsx (uma aba por caso preenchido, nos dois layouts)`);
     } catch (e) {
       aviso(`Erro ao exportar: ${e.message}`, "erro", 7000);
     }
   }
 
   async function atualizarStatusTodos() {
-    if (p.layout === "horizontal") return renderLista(); // cálculo do tubo horizontal: T2
-    const cota = p.cota;
+    const h = p.layout === "horizontal";
+    const banco = (c) => ({ ativo: p.banco_duplo && Boolean(c.R2_min || c.R2_max), R2_min: c.R2_min, R2_max: c.R2_max });
     for (const [i, c] of L().casos.entries()) {
       if (i === L().ativo) continue;
       if (!c.R_min || !c.R_max) continue;
+      if (h && !p.horizontal.comprimento_tubo) continue;
+      const corpo = h
+        ? { ...c, banco_duplo: banco(c), altura_tubo: p.horizontal.altura_tubo || null,
+            comprimento_tubo: p.horizontal.comprimento_tubo, invertido: p.horizontal.invertido }
+        : { ...c, banco_duplo: banco(c), cota: p.cota || null };
       try {
-        const r = await obter("/api/calcular", {
+        const r = await obter(h ? "/api/calcular_horizontal" : "/api/calcular", {
           method: "POST",
-          body: JSON.stringify({ ...c, cota: cota || null }),
+          body: JSON.stringify(corpo),
         });
         c._status = r.status;
       } catch (_e) {
