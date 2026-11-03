@@ -31,3 +31,8 @@ Especificação detalhada e hipóteses: [f6_especificacao.md](f6_especificacao.m
 
 Pontos em aberto antes de implementar: identificação de cada cota verde do desenho
 de referência e as regras de inferência (padrão de chapa por carcaça).
+
+## Layout tubo horizontal
+
+Segunda opção de layout, ao lado do tubo inclinado 45°, que é mantido. Roteiro e entregas
+T0–T7 em [tubo_horizontal.md](tubo_horizontal.md).

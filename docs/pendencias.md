@@ -18,6 +18,11 @@ Os IDs P1–P7 abaixo devem ficar sincronizados com o CSV (verificado em teste).
 | P8 | Banco duplo: O2 fica 500 mm acima de O | Banco duplo — posição de O2 | RESOLVIDO (acima) |
 | P9 | Banco duplo: raios R2_min/R2_max do banco 2 | Banco duplo — R2_min/R2_max | RESOLVIDO (independentes do banco 1, por caso) |
 | P10 | Banco duplo: critério de posição do motor único | Banco duplo — status e H recomendada | RESOLVIDO (≥ R1 de O1 e ≤ R2 de O2 a 0 % e 3 %, obrigatório: FORA_TENSIONAMENTO) |
+| P11 | Tubo horizontal: origem e definição das cotas 1375, 65, 927, 1699, (248) e, invertido, 1120, 170, 2242, 93 | Tubo horizontal — referencial e dados | ABERTO |
+| P12 | Tubo horizontal: qual movimento faz o tensionamento de 0 % a 3 % (x ao longo do tubo, y nas barras roscadas ou ambos) | Tubo horizontal — graus de liberdade | ABERTO |
+| P13 | Tubo horizontal: distância entre porcas g (30 a 150 mm) — entre quais faces e se depende de espessura de porca e chapa | Tubo horizontal — status FORA_PORCAS | ABERTO |
+| P14 | Tubo horizontal: limites de x ao longo do tubo e dimensões por carcaça (altura do motor sobre a chapa, normal e invertido) | Tubo horizontal — tabela por carcaça | ABERTO |
+| P15 | Tubo horizontal: R1839 e R2349 são os arcos do banco 1 e do banco 2 (banco duplo)? | Tubo horizontal — banco duplo | ABERTO |
 
 Pendência do repositório (fora do CSV): licença (LICENSE provisório, TODO).
 
@@ -106,3 +111,7 @@ Atrás do switch: desligado, nada muda. Detalhes em docs/banco_duplo.md.
 - Suposição: o curso (mm ao longo da chapa) é tratado como mais uma folga na maximização da
   folga mínima.
 - O centro dos raios O passa a se chamar O1 no desenho e na interface.
+
+## Layout tubo horizontal (branch feature/tubo-horizontal)
+
+Roteiro em docs/tubo_horizontal.md. Antes do cálculo (T2), a T0 precisa resolver P11 a P15.
