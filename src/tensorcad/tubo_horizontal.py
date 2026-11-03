@@ -21,6 +21,13 @@ relativa. Assim a passagem de 0 % a 3 % se divide entre g e x, na proporção do
 em vez de ficar só em x. As folgas em mm (folga_g, folga_x) continuam no resultado. Como
 no H do 45°, a altura do tubo é entrada opcional (verificação); o cálculo devolve a
 faixa admissível (folgas ≥ 0) e a altura recomendada.
+
+Tensionamento para banco duplo (T4), opcional por caso: O2 fica `deslocamento_y` acima de
+O1 e, em cada tensão, o centro deve ficar a ≤ R2 de O2 (a distância a O1 é R1, sobre o
+arco). É obrigatório: a posição e a altura recomendada só aceitam pontos com
+folga_R2 = R2 − |C − O2| ≥ 0. A folga positiva não muda a escolha; só a negativa pesa
+(dividida pelo meio curso de g). Sem altura que atenda, e com g e x atendidos, o caso fica
+FORA_TENSIONAMENTO.
 """
 
 from __future__ import annotations
@@ -30,6 +37,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from tensorcad.banco_duplo import ConfigBancoDuplo
 from tensorcad.geometry import Status
 from tensorcad.models import Motor
 
@@ -62,6 +70,7 @@ class EntradaTH:
     R_min: float
     R_max: float
     altura_informada: float | None = None
+    banco2: ConfigBancoDuplo | None = None  # tensionamento para banco duplo (opcional)
 
 
 @dataclass(frozen=True)
@@ -76,6 +85,9 @@ class PosicaoTH:
     folga_x: float | None = None  # min(x, x_max − x)
     folga_rel: float | None = None  # menor folga relativa (1 = meio dos dois cursos)
     mensagens: tuple[str, ...] = ()
+    R2: float | None = None  # banco duplo: raio de O2 nesta tensão
+    dist_O2: float | None = None
+    folga_R2: float | None = None  # R2 − |C − O2| (≥ 0 atende)
 
     @property
     def margem(self) -> float | None:
@@ -127,6 +139,11 @@ def x_max(par: ParametrosTH, motor: Motor) -> float:
 
 def raio(par: ParametrosTH, x: float, y: float) -> float:
     return math.hypot(par.x_linha + x, par.y_laje + y)
+
+
+def raio_o2(par: ParametrosTH, b2: ConfigBancoDuplo, x: float, y: float) -> float:
+    """Distância do centro do motor a O2 (deslocamento_y acima de O1, mesmo x)."""
+    return math.hypot(par.x_linha + x, par.y_laje + b2.deslocamento_y + y)
 
 
 def x_no_arco(par: ParametrosTH, R: float, y: float) -> float | None:
@@ -200,24 +217,45 @@ def _folgas(par: ParametrosTH, motor: Motor, g: float, x: float) -> tuple[float,
     return fg, fx, min(fg / m_g, fx / m_x)
 
 
-def _rel_em(par: ParametrosTH, motor: Motor, R: float, altura: float, g: float) -> float:
-    x = x_no_arco(par, R, y_motor(par, motor, altura, g))
+Banco2 = tuple[ConfigBancoDuplo, float] | None  # (configuração, R2 desta tensão)
+
+
+def _rel_em(
+    par: ParametrosTH, motor: Motor, R: float, altura: float, g: float, b2: Banco2 = None
+) -> float:
+    y = y_motor(par, motor, altura, g)
+    x = x_no_arco(par, R, y)
     if x is None:
         return -math.inf
-    return _folgas(par, motor, g, x)[2]
+    rel = _folgas(par, motor, g, x)[2]
+    if b2 is not None:
+        folga_r2 = b2[1] - raio_o2(par, b2[0], x, y)
+        if folga_r2 < 0:  # só a falta pesa (restrição obrigatória)
+            rel = min(rel, folga_r2 / ((par.g_max - par.g_min) / 2))
+    return rel
 
 
-def posicao(par: ParametrosTH, motor: Motor, R: float, altura: float) -> PosicaoTH:
-    """Melhor posição (g, x) sobre o arco R com o tubo na altura dada."""
+def posicao(
+    par: ParametrosTH, motor: Motor, R: float, altura: float, b2: Banco2 = None
+) -> PosicaoTH:
+    """Melhor posição (g, x) sobre o arco R com o tubo na altura dada.
+
+    `b2` = (banco duplo, R2 desta tensão): exige |C − O2| ≤ R2."""
     # g fora de [g_min, g_max] também é avaliado, para medir quanto falta
     lo, hi = par.g_min - 100, par.g_max + 100
-    g, m = _maximo(lambda gg: _rel_em(par, motor, R, altura, gg), lo, hi, passo=2.0)
+    g, m = _maximo(lambda gg: _rel_em(par, motor, R, altura, gg, b2), lo, hi, passo=2.0)
     if m == -math.inf:
         return PosicaoTH(R, altura, Status.SEM_SOLUCAO, mensagens=("arco R fora do alcance",))
     y = y_motor(par, motor, altura, g)
     x = x_no_arco(par, R, y)
     assert x is not None
     folga_g, folga_x, rel = _folgas(par, motor, g, x)
+    R2 = dist = folga_r2 = None
+    if b2 is not None:
+        R2, dist = b2[1], raio_o2(par, b2[0], x, y)
+        folga_r2 = R2 - dist
+        if folga_r2 < 0:
+            rel = min(rel, folga_r2 / ((par.g_max - par.g_min) / 2))
     msgs = []
     if folga_g < 0:
         msgs.append(f"g = {g:.2f} fora de {par.g_min:g}–{par.g_max:g}")
@@ -226,14 +264,30 @@ def posicao(par: ParametrosTH, motor: Motor, R: float, altura: float) -> Posicao
     elif folga_x < 0:
         msgs.append(f"x = {x:.2f} além do curso (0–{x_max(par, motor):.2f})")
     status = Status.FORA_PORCAS if msgs else Status.OK
-    return PosicaoTH(R, altura, status, g, x, y, folga_g, folga_x, rel, tuple(msgs))
+    if folga_r2 is not None and folga_r2 < 0:
+        msgs.append(
+            f"tensionamento para banco duplo: |C−O2| = {dist:.2f} passa {-folga_r2:.2f} de R2"
+        )
+        if status is Status.OK:
+            status = Status.FORA_TENSIONAMENTO
+    return PosicaoTH(
+        R, altura, status, g, x, y, folga_g, folga_x, rel, tuple(msgs), R2, dist, folga_r2
+    )
 
 
-def _avaliacao(par: ParametrosTH, e: EntradaTH, altura: float) -> float:
+def _tensoes(e: EntradaTH, com_banco2: bool = True) -> tuple[tuple[float, Banco2], ...]:
+    """(R1, banco 2) de 0 % e 3 %."""
+    b = e.banco2 if com_banco2 else None
+    if b is None:
+        return (e.R_min, None), (e.R_max, None)
+    return (e.R_min, (b, b.R2_min)), (e.R_max, (b, b.R2_max))
+
+
+def _avaliacao(par: ParametrosTH, e: EntradaTH, altura: float, com_banco2: bool = True) -> float:
     """Menor folga relativa entre 0 % e 3 %."""
     rs = []
-    for R in (e.R_min, e.R_max):
-        p = posicao(par, e.motor, R, altura)
+    for R, b2 in _tensoes(e, com_banco2):
+        p = posicao(par, e.motor, R, altura, b2)
         if p.folga_rel is None:
             return -math.inf
         rs.append(p.folga_rel)
@@ -261,7 +315,8 @@ def resolver(par: ParametrosTH, e: EntradaTH) -> ResultadoTH:
     def nas(altura: float | None) -> tuple[PosicaoTH, PosicaoTH] | None:
         if altura is None:
             return None
-        return posicao(par, e.motor, e.R_min, altura), posicao(par, e.motor, e.R_max, altura)
+        (r0, b0), (r3, b3) = _tensoes(e)
+        return posicao(par, e.motor, r0, altura, b0), posicao(par, e.motor, r3, altura, b3)
 
     informada = nas(e.altura_informada)
     if xm <= 0:
@@ -282,6 +337,13 @@ def resolver(par: ParametrosTH, e: EntradaTH) -> ResultadoTH:
     faixas = tuple(_faixas(f, lo, hi))
     if faixas:
         status, msg = Status.OK, f"altura do tubo admissível em {len(faixas)} faixa(s)"
+    elif e.banco2 is not None and _faixas(lambda a: _avaliacao(par, e, a, False), lo, hi):
+        status = Status.FORA_TENSIONAMENTO
+        pior = min((p.folga_R2 for p in rec if p.folga_R2 is not None), default=0.0)
+        msg = (
+            "nenhuma altura do tubo atende o tensionamento para banco duplo: na recomendada, "
+            f"o motor passa {-pior:.2f} mm do arco R2 de O2"
+        )
     else:
         status = Status.FORA_PORCAS
         msg = (
