@@ -59,3 +59,33 @@ preencher. O programa as ignora e mostra um aviso.
 Medidas do desenho da chapa: a partir da ponta baixa L, 110 | ranhura 155 | 124 | ranhura
 155 | 91, total 635. dx 358,44 e dy 45 foram validados pelas folgas 16 (topo, 0 %) e 41
 (base, 3 %) do desenho em H = 1646. A largura da ranhura ainda está pendente.
+
+## tubo_horizontal.csv (layout tubo horizontal, T0)
+
+São parâmetros do layout, um por linha (`parametro;valor;unidade;origem;observacao`), e não
+dependem da carcaça. Os dados por carcaça vêm do catálogo de motores (padrão WEG):
+**H** (centro do motor → base dos pés) e **A** (furação transversal ao eixo).
+
+Pilha vertical, do tubo ao centro do motor (motor normal, acima do tubo):
+
+```
+ centro do motor ─┐
+                  │ H                    (padrão WEG da carcaça)
+ base do motor ───┤
+                  │ espessura_chapa      15
+ ── chapa ────────┤
+                  │ espessura_porca      27,5
+                  │ g (entre porcas)     30 < g < 150
+                  │ espessura_porca      27,5
+ topo do tubo ────┤
+                  │ espessura_tubo       80
+ ponto mais baixo ┘  ← altura_tubo (1375) abaixo do topo da laje
+```
+
+Centro do motor abaixo do topo da laje:
+`altura_tubo − espessura_tubo − 2·espessura_porca − g − espessura_chapa − H`.
+Com o motor invertido, a pilha vai para baixo a partir do fundo do tubo (a confirmar).
+
+Em x, o motor desloca junto com a chapa ao longo do tubo. A chapa ocupa
+`A + acrescimo_furacao` e o curso máximo é `comprimento_tubo / 2`.
+

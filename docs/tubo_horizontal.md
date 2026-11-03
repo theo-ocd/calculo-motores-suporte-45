@@ -21,31 +21,52 @@ Criar uma segunda **opção de layout** no mesmo projeto, com o mesmo padrão de
 - O **tensionamento para banco duplo** (O1/O2, R1/R2, motor entre os arcos) funciona
   também no tubo horizontal, com o mesmo switch.
 
-## Leitura dos desenhos enviados (a confirmar na T0)
+## Definições (T0, respostas do usuário)
 
-| cota | motor normal | motor invertido | leitura proposta |
+Referencial: origem em **O1** (centro dos raios do banco 1), como no 45°. O topo da laje
+fica `y_piso` = 767 abaixo de O1 e a linha de centro fica `x_tubo` = 465 de O1. Esses
+valores são fixos, como nas outras vertentes.
+
+| item | definição |
+|---|---|
+| fixo de projeto | `altura_tubo`: topo da laje → **ponto mais baixo** do tubo de sustentação (1375 no desenho) |
+| tubo | `espessura_tubo` = 80 (só neste caso) |
+| pilha até o centro do motor | tubo (topo, ou fundo se invertido) + 2 porcas de 27,5 + **g** + chapa de 15 + **H** do motor |
+| H | altura do centro do motor sobre a base, no padrão WEG da carcaça (250M → 250) |
+| g | distância entre porcas, com **30 < g < 150**: é o ajuste em **y** |
+| x | deslocamento do conjunto (motor + chapa) ao longo do tubo: é o ajuste em **x** |
+| curso em x | `comprimento_tubo / 2`, informado no projeto |
+| interferência | furação da chapa = furação do motor (A) + 75 |
+| tensionamento | **x e y** ajustam juntos (0 % → 3 %); para cada R existe um trecho do arco que atende g e x |
+| motor invertido | switch: a pilha vai para baixo a partir do fundo do tubo, e a altura ideal muda |
+| banco duplo | igual ao 45°: neste caso, R1839 é o banco 1 (O1) e R2349 é o banco 2 (O2) |
+
+Centro do motor (motor normal), medido para baixo a partir do topo da laje:
+
+    y_motor = altura_tubo − espessura_tubo − 2·27,5 − g − 15 − H
+
+### Conferência com os desenhos
+
+| verificação | desenho | calculado | nota |
 |---|---|---|---|
-| altura ideal do tubo | 1375 | 1120 (+170?) | piso (topo da laje) → centro do tubo de sustentação |
-| distância entre porcas | 65 | — | folga vertical entre a porca do tubo e a porca da chapa (30–150) |
-| piso → centro do motor | 927 | 2242? | — |
-| O → centro do motor (y) | 1699 | — | vertical do centro dos raios ao motor |
-| linha de centro → motor (x) | (248) | 93 | deslocamento horizontal ao longo do tubo |
-| raios | R1839 / R2349 | — | arcos do banco 1 e do banco 2? |
-| laje | — | 170 | espessura da laje |
+| O1 → topo da laje | 1699 − 927 = 772 | 767 (fixo) | diferença de 5 |
+| centro do motor abaixo da laje, g = 65, H = 250 | 927 | **910** | diferença de 17 (P16) |
+| idem, com H = 225 | 927 | 935 | diferença de 8: o desenho parece ser de uma carcaça 225? |
+| raio a 0 %: √((465+248)² + 1699²) | R1839 | 1842,5 | ok (diferença de 3,5) |
+| invertido: centro abaixo da laje (2242 − 767) | 1475 | — | o fundo da chapa fica 170 + 1120 = 1290 abaixo da laje: centro 185 abaixo da chapa, perto de H = 180 (P17) |
+| invertido: raio √((465+93)² + 2242²) | — | 2310,4 | — |
 
 ## Entregas
 
 Cada entrega é pequena, tem testes e termina com um comentário no PR (o que foi feito,
 testes, pendências) para conferência.
 
-### T0: Definições e dados (só documentação e tabela, sem cálculo)
-- Confirmar as cotas da tabela acima e a origem de cada uma (O1, piso, tubo, chapa).
-- Definir os graus de liberdade: qual movimento faz o tensionamento de 0 % a 3 % (x, y
-  ou os dois) e qual fica fixo no projeto.
-- Criar `data/padrao/tubo_horizontal.csv` por carcaça: altura da chapa sobre o tubo,
-  altura do centro do motor sobre a chapa (normal e invertido), espessura das porcas e da
-  chapa, curso das barras roscadas e limites em x. O que não for conhecido fica TODO + aviso.
-- **Conferência:** tabela preenchida para a carcaça 180 e diagrama em LEIAME.
+### T0: Definições e dados (só documentação e tabela, sem cálculo) — esta entrega
+- Definições acima, a partir das respostas do usuário.
+- `data/padrao/tubo_horizontal.csv`: parâmetros do layout (tubo, porcas, chapa, limites de
+  g, acréscimo da furação). Os dados por carcaça (H, A) vêm do catálogo WEG de motores.
+- Diagrama da pilha em `data/padrao/LEIAME.md`.
+- **Conferência:** tabela de conferência acima e pendências P16–P18.
 
 ### T1: Seletor de layout no projeto (interface + .json)
 - O projeto ganha o campo `layout`: `inclinado_45` (padrão, para arquivos antigos) ou
