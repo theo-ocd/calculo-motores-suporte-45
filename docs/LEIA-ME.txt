@@ -1,0 +1,138 @@
+TENSORCAD - POSICAO DO MOTOR NA BASE TENSORA
+=============================================
+Leia-me de uso (versao de teste 0.6.x - layouts "tubo inclinado 45" e "tubo horizontal")
+
+Este arquivo fica ao lado do tensorcad.exe.
+
+
+1. O QUE A FERRAMENTA FAZ
+-------------------------
+Calcula onde o motor deve ficar na base de sustentacao para que a correia tenha o
+tensionamento certo, sem colidir com os limites da base:
+
+  - R_min = distancia entre eixos da polia do motor e da polia da maquina com
+    tensionamento 0 % (centro dos raios O1 -> centro do motor);
+  - R_max = a mesma distancia com tensionamento 3 %.
+
+Para cada caso, o programa diz se existe uma montagem possivel, qual a faixa
+admissivel da altura de montagem e qual a altura RECOMENDADA (a de maior folga), e
+desenha o conjunto. O resultado pode ser exportado para uma planilha .xlsx.
+
+
+2. REQUISITOS E INICIO
+----------------------
+  - Windows. Nao precisa instalar nada (nem Python) e nao precisa de internet.
+  - De dois cliques em tensorcad.exe. Abre uma janela preta (o servidor local) e o
+    navegador abre sozinho na pagina do programa.
+  - Mantenha a janela preta aberta enquanto usa. Para sair, feche a janela (ou Ctrl+C).
+  - Se o navegador nao abrir, copie o endereco mostrado na janela
+    (ex.: http://127.0.0.1:8765/) e cole no navegador.
+  - O programa so atende o proprio computador (127.0.0.1); nada sai da maquina.
+
+
+3. A TELA
+---------
+  Barra superior : + novo caso | abrir... | salvar .json | exportar .xlsx |
+                   limpar memoria | versao | estado da conexao
+  Painel esquerdo: projeto, casos em memoria, caso ativo, dimensoes, carcacas
+  Centro         : desenho 2D interativo
+  Painel direito : resultado, posicoes do motor, dados da chapa/motor
+
+  No desenho: role o mouse para aproximar/afastar, arraste para mover,
+  duplo clique (ou "ajustar") para enquadrar. Passe o mouse sobre um elemento para
+  ver os valores. As caixas de camadas (construcao, banco duplo, estrutura, chapa,
+  motor, cotas) mostram/ocultam partes do desenho.
+
+
+4. PASSO A PASSO
+----------------
+4.1 Escolha a OPCAO DE LAYOUT (topo do painel Projeto)
+    - "tubo inclinado 45": motor desliza sobre uma chapa inclinada com ranhuras;
+    - "tubo horizontal": motor fixo na horizontal sobre a chapa; o conjunto sobe e
+      desce pelas barras roscadas (distancia entre porcas g) e desloca em x ao longo
+      do tubo.
+    Cada layout tem a SUA lista de casos. Trocar de layout nao apaga nada.
+
+4.2 Preencha o PROJETO
+    - Nome do projeto (vira o nome dos arquivos salvos).
+    - Tubo inclinado 45: "Altura (H) do centro do apoio" (opcional). Vazia, o
+      programa so calcula a faixa admissivel e a H recomendada; preenchida, tambem
+      verifica essa altura.
+    - Tubo horizontal:
+        Altura do tubo (opcional): topo da laje -> TOPO do tubo (motor normal) ou
+                                    -> FUNDO do tubo (motor invertido).
+        Comprimento do tubo (obrigatorio): o curso em x e metade dele.
+        Motor invertido: liga quando o motor fica de cabeca para baixo, abaixo do tubo.
+    - Valores fixos (nao editaveis): centro dos raios O1 -> tubo/linha de centro (465)
+      e O1 -> piso/laje (767).
+    - "Tensionamento para banco duplo" (switch): liga o segundo centro de arcos O2,
+      540 mm acima de O1. Cada caso passa a pedir R2_min e R2_max (raios a partir de O2).
+
+4.3 Crie os CASOS
+    - "+ novo caso" (barra superior ou lista) adiciona um caso; "duplicar" copia o
+      caso ativo; "excluir" remove (pede confirmacao).
+    - Clique num caso da lista para voltar a ele. O ponto colorido mostra o status.
+    - Caso ativo: nome, carcaca, motor, R_min (0 %) e R_max (3 %) e, com banco duplo,
+      R2_min e R2_max.
+    - Tubo inclinado 45: o painel "Dimensoes" mostra as medidas padrao da chapa e do
+      motor da carcaca. Pode altera-las para simular; o que difere do padrao fica
+      destacado ("restaurar tudo" volta ao padrao).
+
+4.4 Leia o RESULTADO (calcula sozinho a cada alteracao)
+    - Status (ver secao 5) e mensagem.
+    - Faixa admissivel e altura recomendada (H no 45, altura do tubo no horizontal),
+      com a folga minima.
+    - Posicoes do motor a 0 % e a 3 %, na recomendada (rec) e na informada (inf):
+        45        : d (centro do motor ao longo da chapa) e folgas nas ranhuras;
+        horizontal: g (distancia entre porcas, 30 a 150), x (da linha de centro,
+                    sempre >= 0) e folgas em g, em x e ate o arco R2.
+    - Banco duplo: o centro do motor deve ficar a >= R1 de O1 e <= R2 de O2.
+
+4.5 SALVAR, ABRIR, EXPORTAR
+    - "salvar .json": guarda o projeto inteiro (os dois layouts). "abrir..." le de
+      volta. O navegador tambem guarda um rascunho automatico.
+    - "exportar .xlsx": planilha com uma aba por caso preenchido (dos dois layouts) e
+      o indice PROJETO. Casos sem R_min e R_max ficam de fora.
+    - "limpar memoria": apaga todos os casos do navegador (pede confirmacao). Salve
+      antes se quiser guardar.
+
+
+5. STATUS
+---------
+  OK                 montagem possivel; ha faixa admissivel.
+  FORA_RANHURA       (45) nenhuma H mantem o motor dentro das ranhuras em 0 % e 3 %.
+  FORA_PORCAS        (horizontal) nenhuma altura atende g entre 30 e 150 e x no curso
+                     do tubo (x >= 0, chapa de A + 75 dentro do comprimento/2).
+  FORA_TENSIONAMENTO (banco duplo) nao ha posicao com o motor a >= R1 de O1 e <= R2
+                     de O2 em 0 % e 3 %.
+  SEM_SOLUCAO        o motor nao alcanca o arco (raio pequeno/grande demais).
+  INCOMPATIVEL       motor e chapa nao combinam (ex.: chapa maior que o tubo).
+  Cores: OK verde; FORA_* amarelo; SEM_SOLUCAO/INCOMPATIVEL vermelho.
+  Carcacas: OK (dados completos), PARCIAL (dados a confirmar), ERRO (faltam dados).
+
+
+6. A PLANILHA .XLSX
+-------------------
+  PROJETO        indice com todos os casos (45 e, abaixo, tubo horizontal), status
+                 colorido e link para a aba de cada caso.
+  <caso>         entradas, dimensoes usadas, ajustes, banco duplo, resultado,
+                 tabela de posicoes e dois graficos: folga minima x altura e esboco
+                 da montagem (vista do desenho).
+  _entradas...   abas ocultas usadas pelo programa (nao editar).
+
+
+7. REGRAS DO TUBO HORIZONTAL (RESUMO)
+-------------------------------------
+  Pilha ate o centro do motor: face do tubo + 2 porcas (27,5) + g + chapa (15) + H do
+  motor (padrao WEG). Motor normal: sobe do topo do tubo. Invertido: desce do fundo.
+  Ao tensionar (0 % -> 3 %), g e x mudam juntos; no normal g diminui, no invertido
+  g aumenta. O motor nunca troca de lado da linha de centro.
+
+
+8. DADOS E PROBLEMAS
+--------------------
+  - Cadastros (motores, chapas, parametros) ficam na pasta "data" ao lado do .exe ou
+    embutidos no programa. A tabela de chapas por carcaca esta em data/padrao.
+  - Carcacas sem medidas da chapa aparecem como PARCIAL/ERRO no 45 (no horizontal so
+    precisam do motor no catalogo).
+  - Problemas ou sugestoes: anote o caso (salve o .json) e envie junto com um print.
