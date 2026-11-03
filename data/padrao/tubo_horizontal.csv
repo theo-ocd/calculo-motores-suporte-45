@@ -1,5 +1,5 @@
 parametro;valor;unidade;origem;observacao
-altura_tubo;1375;mm;MEDIDO;topo da laje → ponto mais baixo do tubo (desenho de referência). No cálculo é entrada opcional, como o H do 45°: o programa recomenda a altura
+altura_tubo;1295;mm;MEDIDO;topo da laje → topo do tubo (motor normal). No invertido mede-se até o fundo do tubo. Desenho de referência: 1375 até o fundo − 80 do tubo. No cálculo é entrada opcional, como o H do 45°: o programa recomenda a altura
 espessura_tubo;80;mm;MEDIDO;altura do tubo de sustentação, vale só para este caso (confirmar para outros projetos)
 espessura_porca;27.5;mm;MEDIDO;sempre 27,5, entram 2 porcas na pilha
 espessura_chapa;15;mm;MEDIDO;chapa do motor

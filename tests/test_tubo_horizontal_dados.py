@@ -22,7 +22,7 @@ def test_tabela_bem_formada() -> None:
 def test_valores_informados_pelo_usuario() -> None:
     v = {n: float(r["valor"]) for n, r in _tabela().items() if r["valor"]}
     assert v == {
-        "altura_tubo": 1375,
+        "altura_tubo": 1295,
         "espessura_tubo": 80,
         "espessura_porca": 27.5,
         "espessura_chapa": 15,
@@ -33,7 +33,8 @@ def test_valores_informados_pelo_usuario() -> None:
 
 
 def test_pilha_do_desenho_de_referencia() -> None:
-    # carcaça 250 (H = 250), altura 1375, g = 65: centro do motor 910 abaixo da laje (P16)
+    # carcaça 250 (H = 250), topo do tubo em 1295 (1375 até o fundo − 80), g = 65:
+    # centro do motor 910 abaixo da laje (P16)
     v = {n: float(r["valor"]) for n, r in _tabela().items() if r["valor"]}
-    y = v["altura_tubo"] - v["espessura_tubo"] - 2 * v["espessura_porca"] - 65
+    y = v["altura_tubo"] - 2 * v["espessura_porca"] - 65
     assert y - v["espessura_chapa"] - 250 == 910.0

@@ -96,7 +96,12 @@ def gerar(r: ResultadoTH) -> dict[str, Any] | None:
             p0=[0.0, 0.0],
             p1=_cad(par, p),
         )
-    fundo = altura + (pilha(par, m) + par.g_max + 200 if par.invertido else 0) + 150
+    fundo = (
+        altura
+        + par.espessura_tubo
+        + (pilha(par, m) + par.g_max + 200 if par.invertido else 0)
+        + 150
+    )
     add(
         "linha",
         "construcao",
@@ -176,7 +181,7 @@ def gerar(r: ResultadoTH) -> dict[str, Any] | None:
         "tubo",
         "tubo de sustentação",
         {"comprimento": par.comprimento_tubo, "espessura": par.espessura_tubo},
-        pts=retangulo(-meio, meio, altura, altura - par.espessura_tubo),
+        pts=retangulo(-meio, meio, *_faces_tubo(par, altura)),
     )
 
     # ---------------------------------------------------------------- chapa, porcas, motor
@@ -234,6 +239,14 @@ def gerar(r: ResultadoTH) -> dict[str, Any] | None:
     }
 
 
+def _faces_tubo(par, altura: float) -> tuple[float, float]:
+    """(topo, fundo) do tubo, em profundidade abaixo da laje. A altura do tubo é medida
+    até o topo (motor normal) ou até o fundo (invertido)."""
+    if par.invertido:
+        return altura - par.espessura_tubo, altura
+    return altura, altura + par.espessura_tubo
+
+
 def _cad(par, p: PosicaoTH) -> list[float]:
     assert p.x is not None and p.y_motor is not None
     return [par.x_linha + p.x, -(par.y_laje + p.y_motor)]
@@ -243,7 +256,7 @@ def _conjunto(add, retangulo, P, par, m, altura: float, k: str, p: PosicaoTH, va
     """Porcas, barras, chapa e motor de uma tensão (k = "0" ou "3")."""
     x, g, yc = p.x, p.g, p.y_motor
     s = 1.0 if par.invertido else -1.0  # sentido da pilha a partir do tubo (y abaixo da laje)
-    face = altura if par.invertido else altura - par.espessura_tubo  # face do tubo usada
+    face = altura  # face usada pela pilha: topo do tubo (normal) ou fundo (invertido)
     porca, ch = par.espessura_porca, par.espessura_chapa
     # pilha: face → porca → g → porca → chapa → motor
     y_p1 = (face, face + s * porca)
@@ -251,7 +264,7 @@ def _conjunto(add, retangulo, P, par, m, altura: float, k: str, p: PosicaoTH, va
     y_ch = (y_p2[1], y_p2[1] + s * ch)
     info = {"g": g, "x": x, "status": p.status.value, "folga_g": p.folga_g, "folga_x": p.folga_x}
     # a barra atravessa o tubo: começa na face oposta à pilha
-    y_barra = altura - par.espessura_tubo if par.invertido else altura
+    y_barra = altura - par.espessura_tubo if par.invertido else altura + par.espessura_tubo
     for lado, sx in (("e", -1.0), ("d", 1.0)):
         xr = x + sx * vao
         lp = LARGURA_PORCA / 2

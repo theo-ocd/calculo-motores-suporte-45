@@ -4,8 +4,9 @@ Referencial (docs/tubo_horizontal.md): origem em O1 (centro dos raios do banco 1
 - O topo da laje fica `y_laje` abaixo de O1; a linha de centro fica `x_linha` de O1.
 - x: deslocamento do conjunto (motor + chapa) ao longo do tubo, medido da linha de
   centro; positivo afastando-se de O1 (como a cota 248 do desenho).
+- altura_tubo: topo da laje → TOPO do tubo (motor normal) ou → FUNDO do tubo (invertido).
 - y_motor: centro do motor abaixo do topo da laje.
-    normal:    y_motor = altura_tubo − espessura_tubo − 2·porca − g − chapa − H
+    normal:    y_motor = altura_tubo − 2·porca − g − chapa − H
     invertido: y_motor = altura_tubo + 2·porca + g + chapa + H
 - Distância a O1: R = √((x_linha + x)² + (y_laje + y_motor)²).
 
@@ -121,9 +122,9 @@ class ResultadoTH:
 
 
 def pilha(par: ParametrosTH, motor: Motor) -> float:
-    """Distância fixa da pilha (sem g): do ponto do tubo usado ao centro do motor."""
-    base = 2 * par.espessura_porca + par.espessura_chapa + motor.H
-    return base if par.invertido else par.espessura_tubo + base
+    """Distância fixa da pilha (sem g): da face do tubo usada (topo no normal, fundo no
+    invertido — a mesma da altura do tubo) ao centro do motor."""
+    return 2 * par.espessura_porca + par.espessura_chapa + motor.H
 
 
 def y_motor(par: ParametrosTH, motor: Motor, altura_tubo: float, g: float) -> float:

@@ -37,8 +37,8 @@ def test_parametros_invalidos(tmp_path: Path) -> None:
 
 def test_pilha_de_referencia(par, motores) -> None:
     m = motores["IEC-250M-4P"]
-    assert th.pilha(par, m) == 80 + 55 + 15 + 250
-    assert th.y_motor(par, m, 1375, 65) == 910  # desenho de referência (P16)
+    assert th.pilha(par, m) == 55 + 15 + 250  # do topo do tubo (normal)
+    assert th.y_motor(par, m, 1295, 65) == 910  # desenho: 1375 até o fundo − 80 (P16)
     assert th.x_max(par, m) == 1000 - (406 + 75) / 2
     # raio com x = 248 (cota do desenho) e y = 910
     assert th.raio(par, 248, 910) == pytest.approx(math.hypot(713, 1677))
@@ -49,12 +49,12 @@ def test_invertido_desce_a_partir_do_fundo_do_tubo(par, motores) -> None:
     inv = th.ParametrosTH(comprimento_tubo=2000, invertido=True)
     assert th.pilha(inv, m) == 55 + 15 + 180
     assert th.y_motor(inv, m, 1100, 65) == 1100 + 250 + 65
-    assert th.y_motor(par, m, 1375, 65) == 1375 - 330 - 65
+    assert th.y_motor(par, m, 1295, 65) == 1295 - 250 - 65
 
 
 def test_posicao_sobre_o_arco(par, motores) -> None:
     m = motores["IEC-250M-4P"]
-    p = th.posicao(par, m, 1839, 1375)
+    p = th.posicao(par, m, 1839, 1295)
     assert p.status is Status.OK
     assert th.raio(par, p.x, p.y_motor) == pytest.approx(1839)
     xm = th.x_max(par, m)
@@ -66,12 +66,12 @@ def test_posicao_sobre_o_arco(par, motores) -> None:
 
 
 def test_resolver_referencia_250(par, motores) -> None:
-    e = th.EntradaTH("REF", motores["IEC-250M-4P"], 1839, 1894, 1375)
+    e = th.EntradaTH("REF", motores["IEC-250M-4P"], 1839, 1894, 1295)
     r = th.resolver(par, e)
     assert r.status is Status.OK
     ((lo, hi),) = r.faixas_altura
-    assert lo == pytest.approx(1107.93, abs=0.01) and hi == pytest.approx(1562.24, abs=0.01)
-    assert r.altura_recomendada == pytest.approx(1386.96, abs=0.05)
+    assert lo == pytest.approx(1027.93, abs=0.01) and hi == pytest.approx(1482.24, abs=0.01)
+    assert r.altura_recomendada == pytest.approx(1306.96, abs=0.05)
     assert r.margem_recomendada == pytest.approx(52.68, abs=0.01)
     # P19: de 0 % a 3 % o tensionamento usa g e x, simétricos nos seus cursos
     p0, p3 = r.em_recomendada
@@ -80,7 +80,7 @@ def test_resolver_referencia_250(par, motores) -> None:
     assert p0.x == pytest.approx(xm - p3.x, abs=0.05) and p3.x > p0.x
     assert p0.x > 0 and p3.x > 0  # motor sempre do mesmo lado
     i0, i3 = r.em_informada
-    assert (i0.altura_tubo, i3.altura_tubo) == (1375, 1375)
+    assert (i0.altura_tubo, i3.altura_tubo) == (1295, 1295)
     assert i0.status is Status.OK and i3.x > i0.x  # 3 % mais longe de O1
 
 
@@ -113,8 +113,8 @@ def test_invertido_resolve(motores) -> None:
 
 
 def test_motor_nao_troca_de_lado(par, motores) -> None:
-    # R 1650 com o tubo em 1375: mesmo com g = 150 o ponto do arco fica com x < 0
-    p = th.posicao(par, motores["IEC-250M-4P"], 1650, 1375)
+    # R 1650 com o topo do tubo em 1295: mesmo com g = 150 o ponto do arco fica com x < 0
+    p = th.posicao(par, motores["IEC-250M-4P"], 1650, 1295)
     assert p.status is Status.FORA_PORCAS
     assert p.x < 0 and any("lado de O1" in m for m in p.mensagens)
 
@@ -148,7 +148,7 @@ def test_invertido_e_normal_mesmas_posicoes_alturas_diferentes(motores) -> None:
             k_n + pn.g + k_i + pi.g, abs=0.05
         )
     assert inv.altura_recomendada == pytest.approx(1067.28, abs=0.05)
-    assert nor.altura_recomendada == pytest.approx(1827.28, abs=0.05)
+    assert nor.altura_recomendada == pytest.approx(1747.28, abs=0.05)
     # tensionar (0 % → 3 %): no normal g diminui, no invertido g aumenta
     n0, n3 = nor.em_recomendada
     i0, i3 = inv.em_recomendada
@@ -163,12 +163,12 @@ def _ref(motores, b2=None):
 
     par = th.ParametrosTH(comprimento_tubo=2000)
     cfg = None if b2 is None else ConfigBancoDuplo(*b2)
-    return par, th.resolver(par, th.EntradaTH("REF", motores["IEC-250M-4P"], 1839, 1894, 1375, cfg))
+    return par, th.resolver(par, th.EntradaTH("REF", motores["IEC-250M-4P"], 1839, 1894, 1295, cfg))
 
 
 def test_banco_duplo_folgado_nao_muda_nada(motores) -> None:
     _, sem = _ref(motores)
-    par, com = _ref(motores, (2349, 2420))  # R2349 do desenho
+    par, com = _ref(motores, (2400, 2470))  # R2 folgado
     assert com.status is Status.OK
     assert com.altura_recomendada == pytest.approx(sem.altura_recomendada, abs=1e-3)
     assert [v for f in com.faixas_altura for v in f] == pytest.approx(
@@ -182,18 +182,19 @@ def test_banco_duplo_folgado_nao_muda_nada(motores) -> None:
 
 
 def test_banco_duplo_corta_faixa_e_desloca_recomendada(motores) -> None:
-    _, r = _ref(motores, (2300, 2380))
+    _, r = _ref(motores, (2349, 2420))  # R2349 do desenho: corta a faixa
     ((lo, hi),) = r.faixas_altura
-    assert lo == pytest.approx(1107.93, abs=0.05) and hi == pytest.approx(1441.1, abs=0.1)
-    _, r = _ref(motores, (2280, 2340))
+    assert lo == pytest.approx(1027.93, abs=0.05) and hi == pytest.approx(1410.67, abs=0.1)
+    assert r.altura_recomendada == pytest.approx(1306.96, abs=0.05)
+    _, r = _ref(motores, (2300, 2380))
     assert r.status is Status.OK
-    assert r.altura_recomendada == pytest.approx(1312.82, abs=0.1)
+    assert r.altura_recomendada == pytest.approx(1173.43, abs=0.1)
     assert min(p.folga_R2 for p in r.em_recomendada) == pytest.approx(0, abs=0.05)
     assert all(p.status is Status.OK for p in r.em_recomendada)
 
 
 def test_banco_duplo_sem_altura_fica_fora_tensionamento(motores) -> None:
-    _, r = _ref(motores, (2200, 2260))
+    _, r = _ref(motores, (2240, 2300))
     assert r.status is Status.FORA_TENSIONAMENTO and r.faixas_altura == ()
     assert "tensionamento para banco duplo" in r.mensagem
     assert all(p.folga_R2 < 0 for p in r.em_recomendada)
@@ -201,9 +202,9 @@ def test_banco_duplo_sem_altura_fica_fora_tensionamento(motores) -> None:
     assert any("O2" in m for m in i0.mensagens)
 
 
-def test_o2_fica_500_acima_de_o1(motores) -> None:
+def test_o2_fica_540_acima_de_o1(motores) -> None:
     from tensorcad.banco_duplo import ConfigBancoDuplo
 
     par = th.ParametrosTH(comprimento_tubo=2000)
-    # motor na vertical de O1 a 1000 abaixo dele: 1500 de O2
-    assert th.raio_o2(par, ConfigBancoDuplo(1, 1), -465, 1000 - 767) == pytest.approx(1500)
+    # motor na vertical de O1 a 1000 abaixo dele: 1540 de O2 (540 acima de O1)
+    assert th.raio_o2(par, ConfigBancoDuplo(1, 1), -465, 1000 - 767) == pytest.approx(1540)

@@ -218,8 +218,13 @@ def test_exportar_dois_layouts(ctx, tmp_path: Path) -> None:
     ws = wb["TH"]
     pares = {ws.cell(r, 1).value: ws.cell(r, 2).value for r in range(1, ws.max_row + 1)}
     assert pares["layout"] == "tubo horizontal" and pares["status"] == "OK"
-    assert pares["altura do tubo recomendada"] == pytest.approx(1386.96, abs=0.05)
+    assert pares["altura do tubo recomendada"] == pytest.approx(1306.96, abs=0.05)
     assert pares["R2_min (0 %) a partir de O2"] == 2349
+    # gráficos como no 45°: folga × altura do tubo e esboço da vista
+    titulos = sorted(
+        "".join(r.t for p in g.title.tx.rich.p for r in (p.r or [])) for g in ws._charts
+    )
+    assert titulos == ["Esboço (vista do desenho, mm)", "Folga mínima (g, x e R2) × altura do tubo"]
     # índice: tabela do tubo horizontal abaixo da do 45°
     idx = [c.value for c in wb["PROJETO"]["A"]]
     assert "Layout tubo horizontal" in idx and "TH" in idx

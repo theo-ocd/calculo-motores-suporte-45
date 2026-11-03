@@ -23,7 +23,7 @@ def ctx() -> api.Contexto:
     )
 
 
-def _resolver(ctx, invertido=False, altura=1375.0, b2=None, motor="IEC-250M-4P", R=(1839, 1894)):
+def _resolver(ctx, invertido=False, altura=1295.0, b2=None, motor="IEC-250M-4P", R=(1839, 1894)):
     par = th.ParametrosTH(comprimento_tubo=2000, invertido=invertido)
     m = ctx.base.motores[motor]
     return th.resolver(par, th.EntradaTH("C", m, *R, altura, b2))
@@ -32,10 +32,10 @@ def _resolver(ctx, invertido=False, altura=1375.0, b2=None, motor="IEC-250M-4P",
 def test_pilha_no_desenho_normal(ctx) -> None:
     r = _resolver(ctx)
     d = desenho_th.gerar(r)
-    assert d["altura"] == 1375
+    assert d["altura"] == 1295
     ids = {p["id"]: p for p in d["primitivas"]}
     assert set(d["camadas"]) == {p["camada"] for p in d["primitivas"]} | {"banco2"}
-    # tubo: fundo 1375 e topo 1295 abaixo da laje (Y = −(767 + y))
+    # tubo: topo 1295 (altura, motor normal) e fundo 1375 abaixo da laje (Y = −(767 + y))
     ys = sorted({q[1] for q in ids["tubo"]["pts"]})
     assert ys == [-(767 + 1375), -(767 + 1295)]
     p0 = r.em_informada[0]
@@ -69,7 +69,7 @@ def test_desenho_recomendada_e_banco_duplo(ctx) -> None:
     d = desenho_th.gerar(r)
     assert d["altura"] == pytest.approx(r.altura_recomendada)
     ids = {p["id"]: p for p in d["primitivas"]}
-    assert ids["O2"]["c"] == [0.0, 500.0]
+    assert ids["O2"]["c"] == [0.0, 540.0]
     assert ids["raio2-0"]["status"] == "OK" and ids["arco-R2_min"]["r"] == 2349
 
 
@@ -77,7 +77,7 @@ def test_api_calcular_horizontal(ctx) -> None:
     corpo = {"carcaca": "250", "R_min": 1839, "R_max": 1894, "comprimento_tubo": 2000}
     r = api.calcular_horizontal(ctx, corpo)
     assert r["status"] == "OK" and r["layout"] == "horizontal"
-    assert r["altura_recomendada"] == pytest.approx(1386.96, abs=0.05)
+    assert r["altura_recomendada"] == pytest.approx(1306.96, abs=0.05)
     assert r["desenho"]["altura"] == pytest.approx(r["altura_recomendada"])
     assert len(r["em_recomendada"]) == 2 and r["em_informada"] is None
     inv = api.calcular_horizontal(ctx, {**corpo, "carcaca": "180", "invertido": True})

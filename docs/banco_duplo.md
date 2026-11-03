@@ -5,7 +5,7 @@ um switch no painel **Projeto** da interface web. Desligado, nada muda nos cálc
 
 O primeiro centro dos arcos passa a se chamar **O1**, no mesmo padrão de O2.
 
-- **O2**: segundo centro de arcos, **500 mm acima** de O1. É fixo, igual a x_tubo e y_piso
+- **O2**: segundo centro de arcos, **540 mm acima** de O1 (corrigido de 500 após o teste da 0.6.37). É fixo, igual a x_tubo e y_piso
   (`Contexto.dy_banco2`) — P8.
 - **Raios do banco 2**: R2_min (0 %) e R2_max (3 %), informados por caso e
   **independentes** do banco 1 — P9.
@@ -28,10 +28,12 @@ Referência: CH-180, R1 2086/2161 (sem H informada; sem banco duplo, a H recomen
 
 | R2_min / R2_max | status | faixa de H | H recomendada | folga mínima |
 |---|---|---|---|---|
-| 2620 / 2700 | OK | 1606,55–1661,47 | 1634,32 | 28,56 (ranhuras) |
-| 2570 / 2650 | OK | 1606,55–1661,47 | 1615,24 | 8,91 (curso a 0 %) |
-| 2563 / 2643 | OK | 1606,55–1630,71 | 1607,86 | 1,34 (curso) |
-| 2560 / 2640 | FORA_TENSIONAMENTO | — | 1604,70 | −1,90 (curso) |
+| 2660 / 2740 | OK | 1606,55–1661,47 | 1634,32 | 28,56 (ranhuras) |
+| 2610 / 2690 | OK | 1606,55–1661,47 | 1616,86 | 10,57 (curso a 0 %) |
+| 2603 / 2683 | OK | 1606,55–1658,19 | 1609,49 | 3,01 (curso) |
+| 2600 / 2680 | FORA_TENSIONAMENTO | — | 1606,33 | −0,23 (curso) |
+
+Com O2 a 540: sobre os arcos R1 em H = 1646, a distância a O2 é 2602,35 (0 %) e 2674,73 (3 %).
 
 
 
@@ -42,7 +44,7 @@ Referência: CH-180, R1 2086/2161 (sem H informada; sem banco duplo, a H recomen
 - API: `POST /api/calcular` aceita `banco_duplo: {ativo, R2_min, R2_max}` e devolve
   `banco_duplo`: por tensão, dist_O2, folga_R2, d_R1, d_R2, curso e dentro, além dos
   avisos. Em `/api/saude`, o valor sai em `fixos.dy_banco2`.
-- Desenho: camada **tensionamento banco duplo**, com o octógono O2, a cota de 500, os arcos R2_min/R2_max,
+- Desenho: camada **tensionamento banco duplo**, com o octógono O2, a cota de 540, os arcos R2_min/R2_max,
   os raios O2 → motor (amarelos sem trecho) e o trecho admissível do centro (traço grosso).
 - Projeto `.json`: `banco_duplo` (projeto) e `R2_min/R2_max` (por caso), campos
   opcionais. Arquivos antigos continuam abrindo.

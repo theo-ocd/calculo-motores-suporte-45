@@ -6,7 +6,7 @@ P4;Curso da ranhura (~49 mm) menor que o necessário R2086→R2161 (~83 mm);Proj
 P5;Catálogo de motores (AC, HD, L, massa) — fabricante a definir;Desenho e interferência;ABERTO
 P6;Coordenadas X_O_cad/Y_O_cad do centro do arco;Exportação CAD;ABERTO
 P7;Dimensões da chapa (espessura, comprimento, largura);Desenho CAD;ABERTO
-P8;Banco duplo: O2 fica 500 mm acima de O;Banco duplo — posição de O2;RESOLVIDO (acima)
+P8;Banco duplo: O2 fica acima de O1 (540 mm, corrigido de 500);Banco duplo — posição de O2;RESOLVIDO (acima)
 P9;Banco duplo: raios R2_min/R2_max do banco 2;Banco duplo — R2_min/R2_max;RESOLVIDO (independentes do banco 1, por caso)
 P10;Banco duplo: critério de posição do motor único;Banco duplo — status e H recomendada;RESOLVIDO (≥ R1 de O1 e ≤ R2 de O2 a 0 % e 3 %, obrigatório: FORA_TENSIONAMENTO)
 P11;Tubo horizontal: origem e definição das cotas 1375, 65, 927, 1699, (248) e, invertido, 1120, 170, 2242, 93;Tubo horizontal — referencial e dados;RESOLVIDO (cotas confirmadas)

@@ -15,7 +15,7 @@ Os IDs P1–P7 abaixo devem ficar sincronizados com o CSV (verificado em teste).
 | P5 | Catálogo de motores (AC, HD, L, massa) — fabricante a definir | Desenho e interferência | ABERTO |
 | P6 | Coordenadas X_O_cad/Y_O_cad do centro do arco | Exportação CAD | ABERTO |
 | P7 | Dimensões da chapa (espessura, comprimento, largura) | Desenho CAD | ABERTO |
-| P8 | Banco duplo: O2 fica 500 mm acima de O | Banco duplo — posição de O2 | RESOLVIDO (acima) |
+| P8 | Banco duplo: O2 fica acima de O1 (540 mm, corrigido de 500) | Banco duplo — posição de O2 | RESOLVIDO (acima) |
 | P9 | Banco duplo: raios R2_min/R2_max do banco 2 | Banco duplo — R2_min/R2_max | RESOLVIDO (independentes do banco 1, por caso) |
 | P10 | Banco duplo: critério de posição do motor único | Banco duplo — status e H recomendada | RESOLVIDO (≥ R1 de O1 e ≤ R2 de O2 a 0 % e 3 %, obrigatório: FORA_TENSIONAMENTO) |
 | P11 | Tubo horizontal: origem e definição das cotas 1375, 65, 927, 1699, (248) e, invertido, 1120, 170, 2242, 93 | Tubo horizontal — referencial e dados | RESOLVIDO (cotas confirmadas) |
@@ -106,7 +106,7 @@ Substitui S2, S3, S4 e S5 acima:
 
 Atrás do switch: desligado, nada muda. Detalhes em docs/banco_duplo.md.
 
-- O2 fica 500 mm **acima** de O (P8, confirmado).
+- O2 fica 540 mm **acima** de O1 (P8, confirmado; corrigido de 500 após o teste da 0.6.37).
 - R2_min e R2_max são entradas por caso, **independentes** do banco 1 (P9, confirmado).
 - Motor único: a 0 % e a 3 %, o centro deve ficar a ≥ R1 de O e ≤ R2 de O2 (P10,
   confirmado). Sem trecho entre os arcos, gera **aviso**.
