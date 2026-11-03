@@ -29,6 +29,7 @@ ROTAS_GET: dict[str, Rota] = {
 RotaPost = Callable[[api.Contexto, Any], Any]
 ROTAS_POST: dict[str, RotaPost] = {
     "/api/calcular": api.calcular,
+    "/api/calcular_horizontal": api.calcular_horizontal,
 }
 RotaArquivo = Callable[[api.Contexto, Any], tuple[bytes, str]]
 ROTAS_POST_ARQUIVO: dict[str, RotaArquivo] = {

@@ -600,9 +600,9 @@ def test_opcao_de_layout_no_navegador(url: str, tmp_path: Path) -> None:
             assert pg.locator("#painel-dimensoes").is_hidden()
             assert pg.locator("#lista-casos li").count() == 1
             assert pg.input_value("#caso_id") == "th-1"
-            pg.wait_for_selector("#status:has-text('T2')", timeout=10_000)
+            pg.wait_for_selector("#status:has-text('comprimento do tubo')", timeout=10_000)
             pg.wait_for_timeout(500)  # nenhum cálculo 45° atrasado sobrescreve a tela
-            assert "T2" in pg.inner_text("#status")
+            assert "comprimento do tubo" in pg.inner_text("#status")
             assert pg.get_attribute("#lista-casos li.ativo .ponto", "data-status") == ""
             pg.fill("#altura-tubo", "1375")
             pg.fill("#comprimento-tubo", "2000")
@@ -649,6 +649,47 @@ def test_opcao_de_layout_no_navegador(url: str, tmp_path: Path) -> None:
             pg.set_input_files("#arquivo-projeto", str(arq_antigo))
             pg.wait_for_function("document.querySelector('#layout-45').checked")
             assert pg.input_value("#caso_id") == "REF"
+            assert erros == []
+        finally:
+            nav.close()
+
+
+def test_tubo_horizontal_calcula_e_desenha(url: str) -> None:
+    sync = pytest.importorskip("playwright.sync_api")
+    with sync.sync_playwright() as p:
+        nav = _navegador(p)
+        try:
+            pg = nav.new_page(viewport={"width": 1500, "height": 1000})
+            erros: list[str] = []
+            pg.on("pageerror", lambda e: erros.append(str(e)))
+            pg.on("dialog", lambda d: d.accept())
+            pg.goto(url)
+            pg.wait_for_selector("#conexao[data-estado='ok']", timeout=10_000)
+            pg.evaluate("localStorage.clear()")
+            pg.click("#btn-limpar")
+            pg.check("#layout-horizontal")
+            # carcaça 250 não tem chapa 45°, mas no horizontal é calculável
+            assert not pg.locator("#carcaca option[value='250']").is_disabled()
+            pg.select_option("#carcaca", "250")
+            pg.fill("#comprimento-tubo", "2000")
+            pg.fill("#R_min", "1839")
+            pg.fill("#R_max", "1894")
+            pg.wait_for_selector("#status[data-status='OK']", timeout=20_000)
+            pg.wait_for_selector("#el-tubo")
+            for el in ("O1", "laje", "eixo-centro", "chapa-0", "motor-3", "cota-g", "cota-altura"):
+                assert pg.locator(f"#el-{el}").count() == 1, el
+            assert "1.386,96" in pg.inner_text("#resumo")
+            assert "recomendada" in pg.inner_text("#info-desenho")
+            # altura informada e banco duplo
+            pg.fill("#altura-tubo", "1375")
+            pg.wait_for_selector("#info-desenho:has-text('informada')", timeout=20_000)
+            pg.click("label[for='banco-duplo']")
+            pg.fill("#R2_min", "2349")
+            pg.fill("#R2_max", "2420")
+            pg.wait_for_selector("#el-O2", timeout=20_000)
+            # voltar ao 45° mantém a 250 desabilitada lá
+            pg.check("#layout-45")
+            assert pg.locator("#carcaca option[value='250']").is_disabled()
             assert erros == []
         finally:
             nav.close()
