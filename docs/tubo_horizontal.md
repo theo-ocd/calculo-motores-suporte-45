@@ -29,9 +29,9 @@ valores são fixos, como nas outras vertentes.
 
 | item | definição |
 |---|---|
-| altura do tubo | `altura_tubo`: topo da laje → **ponto mais baixo** do tubo de sustentação. Funciona como o H do 45°: **entrada opcional** (verificar um valor, ex.: 1375) e o cálculo devolve a **faixa admissível** e a **altura recomendada** (máxima folga mínima). Mesmo ponto de referência no motor normal e no invertido |
+| altura do tubo | `altura_tubo`: topo da laje → **topo** do tubo de sustentação com o motor normal, ou → **fundo** do tubo com o motor invertido (ajuste após a 0.6.37). Funciona como o H do 45°: **entrada opcional** (verificar um valor, ex.: 1375) e o cálculo devolve a **faixa admissível** e a **altura recomendada** (máxima folga mínima). No desenho de referência, 1375 até o fundo equivale a 1295 até o topo |
 | tubo | `espessura_tubo` = 80 (só neste caso) |
-| pilha até o centro do motor | tubo (topo, ou fundo se invertido) + 2 porcas de 27,5 + **g** + chapa de 15 + **H** do motor |
+| pilha até o centro do motor | face do tubo (topo no normal, fundo no invertido) + 2 porcas de 27,5 + **g** + chapa de 15 + **H** do motor |
 | H | altura do centro do motor sobre a base, no padrão WEG da carcaça (250M → 250) |
 | g | distância entre porcas, com **30 < g < 150**: é o ajuste em **y** |
 | x | deslocamento do conjunto (motor + chapa) ao longo do tubo: é o ajuste em **x** |
@@ -43,7 +43,7 @@ valores são fixos, como nas outras vertentes.
 
 Centro do motor, medido para baixo a partir do topo da laje:
 
-    normal:    y_motor = altura_tubo − espessura_tubo − 2·27,5 − g − 15 − H
+    normal:    y_motor = altura_tubo − 2·27,5 − g − 15 − H      (altura até o topo do tubo)
     invertido: y_motor = altura_tubo + 2·27,5 + g + 15 + H
 
 Limites em x, medido da linha de centro (P18): a chapa ocupa A + 75, centrada no motor, e
@@ -113,13 +113,13 @@ de teste para 3 %):
 
 | item | valor |
 |---|---|
-| pilha (tubo 80 + 2×27,5 + chapa 15 + H 250) | 400 |
-| centro do motor com altura 1375 e g = 65 | 910 abaixo da laje |
+| pilha (2×27,5 + chapa 15 + H 250, a partir do topo do tubo) | 320 |
+| centro do motor com altura 1295 (topo; 1375 até o fundo) e g = 65 | 910 abaixo da laje |
 | curso em x (0 a x_max) | 0 – 759,5 |
-| faixa admissível da altura do tubo | 1107,93 – 1562,24 |
-| altura recomendada / menor folga em mm | **1386,96** / 52,68 |
+| faixa admissível da altura do tubo | 1027,93 – 1482,24 |
+| altura recomendada / menor folga em mm | **1306,96** / 52,68 |
 | na recomendada, 0 % → 3 % | g 97,32 → 82,68, x 333,41 → 426,09 (g e x simétricos nos seus cursos) |
-| altura 1375 informada | OK: g 94,40 → 79,97, x 351,90 → 443,23 |
+| altura 1295 informada | OK: g 94,40 → 79,97, x 351,90 → 443,23 |
 
 ### T3: Motor invertido (switch) — feita
 - Switch por projeto (`horizontal.invertido` no .json, desde a T1); só um modo vale de
@@ -128,7 +128,7 @@ de teste para 3 %):
   `y_motor = altura_tubo + 2·27,5 + g + 15 + H`. A espessura do tubo não entra.
 - Com o mesmo raio, o centro do motor recomendado é o mesmo do motor normal; muda a
   altura do tubo. Exemplo 180L, tubo de 2000, R 2310,4 / 2379,7: recomendada **1067,28**
-  invertido × 1827,28 normal.
+  invertido × 1747,28 normal.
 - Tensionar (0 % → 3 %): no normal **g diminui**, porque o motor desce afastando-se de
   O1; no invertido **g aumenta**, e o motor também desce.
 - Interface: dica no switch explicando os dois modos. O cálculo na tela entra na T6.
@@ -142,7 +142,7 @@ Conferência com o desenho do invertido (carcaça 180, H 180):
 | altura do tubo + g | — | 1290 − 55 − 15 = 1220 (ex.: 1155 + 65) |
 
 ### T4: Tensionamento para banco duplo no tubo horizontal — feita
-- Mesmas regras do 45°: O2 fica 500 acima de O1, e R2_min e R2_max são entradas por
+- Mesmas regras do 45°: O2 fica 540 acima de O1, e R2_min e R2_max são entradas por
   caso, independentes de R1. Em cada tensão, o motor fica sobre o arco R1 (distância a O1
   = R1) e precisa ficar a **≤ R2 de O2**. É obrigatório.
 - Núcleo: `EntradaTH(banco2=ConfigBancoDuplo(...))`. A condição entra na escolha de (g, x)
@@ -156,18 +156,20 @@ Conferência (250M, tubo de 2000, R1 1839 / 1894):
 
 | R2_min / R2_max | status | faixa de altura | altura recomendada | folga_R2 0 % / 3 % |
 |---|---|---|---|---|
-| sem banco duplo | OK | 1107,93 – 1562,24 | 1386,96 | — |
-| 2349 / 2420 (R2349 do desenho) | OK | 1107,93 – 1562,24 | 1386,96 | 49,31 / 72,98 |
-| 2300 / 2380 | OK | 1107,93 – 1441,1 | 1386,96 | 0,31 / 32,98 |
-| 2280 / 2340 | OK | 1107,93 – 1349,5 | 1312,82 | 0,00 / 5,39 |
-| 2200 / 2260 | FORA_TENSIONAMENTO | — | 1064,16 | −15,61 / −16,90 |
+| sem banco duplo | OK | 1027,93 – 1482,24 | 1306,96 | — |
+| 2400 / 2470 | OK | 1027,93 – 1482,24 | 1306,96 | 62,76 / 85,92 |
+| 2349 / 2420 (R2349 do desenho) | OK | 1027,93 – 1410,67 | 1306,96 | 11,76 / 35,92 |
+| 2300 / 2380 | OK | 1027,93 – 1199,74 | 1173,43 | 0,00 / 20,02 |
+| 2240 / 2300 | FORA_TENSIONAMENTO | — | 969,14 | −12,56 / −13,85 |
+
+(valores com O2 a 540 e a altura até o topo do tubo, após o teste da 0.6.37)
 
 ### T5: Desenho 2D do tubo horizontal — feita
 - `src/tensorcad/desenho_th.py` (puro), no mesmo formato de primitivas do 45°. Vista do
   CAD com origem em O1; linha de centro em X = 465 e topo da laje em Y = −767.
 - Camadas:
   - construção: O1, arcos R_min/R_max, raios e linha de centro;
-  - tensionamento banco duplo: O2, cota de 500, arcos R2 e raios de O2;
+  - tensionamento banco duplo: O2, cota de 540, arcos R2 e raios de O2;
   - estrutura: laje e tubo (comprimento × espessura);
   - chapa: porcas do tubo e da chapa, barras roscadas a ±(A + 75)/2 e chapa de 15;
   - motor: 0 % e 3 %, normal ou invertido;
@@ -193,6 +195,14 @@ Conferência (250M, tubo de 2000, R1 1839 / 1894):
   repetido entre layouts é recusado.
 - **Conferência:** exportar um projeto com casos dos dois layouts. Depois do merge sai a
   pré-release `0.6.<PR>` para teste, antes do tutorial (T8).
+
+### Ajustes após o teste da pré-release 0.6.37 — feitos
+- **O1 → O2 = 540 mm** nos dois layouts (era 500).
+- **Motor normal:** a altura do tubo vai da laje até o **topo** do tubo, então a espessura do
+  tubo sai da pilha. Com o motor invertido continua até o fundo do tubo.
+- **`.xlsx` do tubo horizontal com gráficos**, como no 45°:
+  - folga mínima (g, x e R2) × altura do tubo, em 0 % e 3 %;
+  - esboço da vista (laje, tubo, chapas, motores, arcos R1/R2, raios, O1 e O2).
 
 ### T7: Release da versão executável 1.0
 - Teste ponta a ponta do .exe no Windows sem Python, com os dois layouts.

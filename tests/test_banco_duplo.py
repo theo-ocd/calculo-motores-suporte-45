@@ -12,7 +12,7 @@ from tensorcad.web import api
 
 DADOS = Path(__file__).resolve().parents[1] / "data"
 REF = {"carcaca": "180", "R_min": 2086, "R_max": 2161, "cota": 1646}
-DIST_O2 = (2563.77, 2636.32)  # |C − O2| sobre os arcos R1 (CH-180, H = 1646)
+DIST_O2 = (2602.35, 2674.73)  # |C − O2| sobre os arcos R1 (CH-180, H = 1646)
 
 
 @pytest.fixture(scope="module")
@@ -32,15 +32,15 @@ def _calc(ctx, r2_min, r2_max, **extra):
 
 
 def test_centro_o2_acima_de_o() -> None:
-    assert bd.ConfigBancoDuplo(1, 2).centro == (0.0, -500.0)  # y+ para baixo
+    assert bd.ConfigBancoDuplo(1, 2).centro == (0.0, -540.0)  # y+ para baixo
 
 
 def test_trecho_entre_arcos_confere_com_distancias(ctx) -> None:
-    r = _calc(ctx, 2600, 2680)
+    r = _calc(ctx, 2640, 2720)
     b = r["banco_duplo"]
     assert b["ok"] and b["avisos"] == [] and b["H"] == 1646
     for q, p, dist in zip(b["posicoes"], r["em_informada"], DIST_O2, strict=True):
-        assert q["dist_O2"] == pytest.approx(math.hypot(p["Cx"], p["Cy"] + 500))
+        assert q["dist_O2"] == pytest.approx(math.hypot(p["Cx"], p["Cy"] + 540))
         assert q["dist_O2"] == pytest.approx(dist, abs=0.01)
         assert q["d_R1"] == pytest.approx(p["d_motor"])
         assert q["curso"] == pytest.approx(q["d_R1"] - q["d_R2"]) and q["curso"] > 0
@@ -55,22 +55,22 @@ def test_trecho_entre_arcos_confere_com_distancias(ctx) -> None:
     cfg = ConfigProjeto()
     for q in b["posicoes"]:
         cx, cy = bd.centro_em(e, cfg, 1646, -q["d_R2"])
-        assert math.hypot(cx, cy + 500) == pytest.approx(q["R2"])
+        assert math.hypot(cx, cy + 540) == pytest.approx(q["R2"])
         assert math.hypot(cx, cy) > q["R1"]
 
 
 def test_sem_trecho_fica_fora_tensionamento(ctx) -> None:
-    r = _calc(ctx, 2560, 2640)
+    r = _calc(ctx, 2600, 2680)
     b = r["banco_duplo"]
     assert not b["ok"] and len(b["avisos"]) == 1 and "a 0 %" in b["avisos"][0]
     q0, q3 = b["posicoes"]
-    assert not q0["dentro"] and q0["folga_R2"] == pytest.approx(-3.77, abs=0.01)
+    assert not q0["dentro"] and q0["folga_R2"] == pytest.approx(-2.35, abs=0.01)
     assert q0["curso"] < 0 and q3["dentro"]
     # obrigatório: nenhuma H atende, o caso fica FORA_TENSIONAMENTO
     assert r["status"] == "FORA_TENSIONAMENTO" and r["faixas_cota"] == []
     assert "tensionamento para banco duplo" in r["mensagem"]
-    assert r["cota_recomendada"] == pytest.approx(1604.70, abs=0.01)
-    assert r["margem_recomendada"] == pytest.approx(-1.90, abs=0.01)
+    assert r["cota_recomendada"] == pytest.approx(1606.33, abs=0.01)
+    assert r["margem_recomendada"] == pytest.approx(-0.23, abs=0.01)
     ids = {p["id"]: p for p in r["desenho"]["primitivas"] if p["camada"] == "banco2"}
     assert ids["raio2-0"]["status"] == "AVISO" and "trecho-0" not in ids
     assert ids["trecho-3"]["status"] == "OK"
@@ -78,8 +78,8 @@ def test_sem_trecho_fica_fora_tensionamento(ctx) -> None:
 
 def test_r2_independente_de_r1(ctx) -> None:
     # mesmos R2 com outros R1: R2 não é derivado de R1
-    r = _calc(ctx, 2600, 2680, R_max=2110)
-    assert (r["banco_duplo"]["R2_min"], r["banco_duplo"]["R2_max"]) == (2600, 2680)
+    r = _calc(ctx, 2640, 2720, R_max=2110)
+    assert (r["banco_duplo"]["R2_min"], r["banco_duplo"]["R2_max"]) == (2640, 2720)
 
 
 def test_desligado_nao_muda_resultado(ctx) -> None:
@@ -91,12 +91,12 @@ def test_desligado_nao_muda_resultado(ctx) -> None:
 
 
 def test_desenho_banco2(ctx) -> None:
-    r = _calc(ctx, 2600, 2680)
+    r = _calc(ctx, 2640, 2720)
     ids = {p["id"]: p for p in r["desenho"]["primitivas"] if p["camada"] == "banco2"}
     assert {"O2", "cota-O2", "arco-R2_min", "arco-R2_max", "raio2-0", "raio2-3"} <= set(ids)
     assert {"trecho-0", "trecho-3"} <= set(ids)
-    assert ids["O2"]["c"] == [0.0, 500.0]  # vista CAD: Y para cima
-    assert ids["arco-R2_min"]["c"] == [0.0, 500.0] and ids["arco-R2_min"]["r"] == 2600
+    assert ids["O2"]["c"] == [0.0, 540.0]  # vista CAD: Y para cima
+    assert ids["arco-R2_min"]["c"] == [0.0, 540.0] and ids["arco-R2_min"]["r"] == 2640
 
 
 def test_sem_altura_e_r2_invertido_no_nucleo(ctx) -> None:
@@ -130,26 +130,26 @@ def test_api_valida_r2(ctx, bruto, esperado) -> None:
 
 
 def test_saude_informa_deslocamento(ctx) -> None:
-    assert api.saude(ctx)["fixos"]["dy_banco2"] == 500
+    assert api.saude(ctx)["fixos"]["dy_banco2"] == 540
 
 
 def test_restricao_muda_h_recomendada_e_faixa(ctx) -> None:
     sem = api.calcular(ctx, {**REF, "cota": None})
     assert sem["cota_recomendada"] == pytest.approx(1634.32, abs=0.01)
     # curso folgado: não muda nada
-    r = _calc(ctx, 2620, 2700, cota=None)
+    r = _calc(ctx, 2660, 2740, cota=None)
     assert r["cota_recomendada"] == pytest.approx(sem["cota_recomendada"], abs=1e-3)
     assert r["faixas_cota"] == sem["faixas_cota"]
     # curso apertado: a H recomendada desce para equilibrar ranhuras e curso
-    r = _calc(ctx, 2570, 2650, cota=None)
+    r = _calc(ctx, 2610, 2690, cota=None)
     assert r["status"] == "OK"
-    assert r["cota_recomendada"] == pytest.approx(1615.24, abs=0.01)
-    assert r["margem_recomendada"] == pytest.approx(8.91, abs=0.01)
-    assert min(q["curso"] for q in r["banco_duplo"]["posicoes"]) == pytest.approx(8.91, abs=0.01)
+    assert r["cota_recomendada"] == pytest.approx(1616.86, abs=0.01)
+    assert r["margem_recomendada"] == pytest.approx(10.57, abs=0.01)
+    assert min(q["curso"] for q in r["banco_duplo"]["posicoes"]) == pytest.approx(10.57, abs=0.01)
     # e a faixa admissível é cortada onde o curso zera
-    r = _calc(ctx, 2563, 2643, cota=None)
+    r = _calc(ctx, 2603, 2683, cota=None)
     ((lo, hi),) = r["faixas_cota"]
-    assert lo == pytest.approx(1606.55, abs=0.01) and hi == pytest.approx(1630.71, abs=0.01)
+    assert lo == pytest.approx(1606.55, abs=0.01) and hi == pytest.approx(1658.19, abs=0.01)
 
 
 def test_faixas_restricao_bordas() -> None:
@@ -194,16 +194,16 @@ def test_exportar_xlsx_com_banco_duplo(ctx, tmp_path: Path) -> None:
                 "carcaca": "180",
                 "R_min": 2086,
                 "R_max": 2161,
-                "R2_min": 2570,
-                "R2_max": 2650,
+                "R2_min": 2610,
+                "R2_max": 2690,
             },
             {
                 "caso_id": "FORA",
                 "carcaca": "180",
                 "R_min": 2086,
                 "R_max": 2161,
-                "R2_min": 2560,
-                "R2_max": 2640,
+                "R2_min": 2600,
+                "R2_max": 2680,
             },
         ],
     }
@@ -222,12 +222,12 @@ def test_exportar_xlsx_com_banco_duplo(ctx, tmp_path: Path) -> None:
         for c in wb["OK1"]["A"]
         if c.value == "H recomendada (máx. folga mínima)"
     )
-    assert rec == pytest.approx(1615.24, abs=0.01)
+    assert rec == pytest.approx(1616.86, abs=0.01)
     # entradas ocultas guardam o banco duplo
     arq = tmp_path / "bd.xlsx"
     arq.write_bytes(dados)
     _, entradas = ler_entradas(arq)
-    assert entradas[0].banco_duplo == {"R2_min": 2570, "R2_max": 2650, "deslocamento_y": 500}
+    assert entradas[0].banco_duplo == {"R2_min": 2610, "R2_max": 2690, "deslocamento_y": 540}
 
     # switch ligado sem R2 num caso: exportação recusada apontando o caso
     projeto["casos"][1].pop("R2_min")

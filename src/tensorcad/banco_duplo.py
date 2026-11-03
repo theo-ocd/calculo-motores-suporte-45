@@ -28,7 +28,7 @@ from tensorcad.projeto import (
     resolver_caso,
 )
 
-DESLOCAMENTO_Y_PADRAO = 500.0
+DESLOCAMENTO_Y_PADRAO = 540.0
 NOME = "tensionamento para banco duplo"
 
 

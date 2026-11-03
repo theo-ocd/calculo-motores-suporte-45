@@ -94,7 +94,7 @@ def test_faixa_do_projeto_reduz_opcoes(ctx) -> None:
     amplo = api.Contexto(ctx.base, ctx.padroes, DADOS, DADOS / "padrao", faixa=(90, 250))
     assert "90" in [c["carcaca"] for c in api.carcacas(amplo)]
     assert api.saude(estreito)["faixa"] == [170, 200]
-    assert api.saude(ctx)["fixos"] == {"y_piso": 767, "x_tubo": 465, "dy_banco2": 500}
+    assert api.saude(ctx)["fixos"] == {"y_piso": 767, "x_tubo": 465, "dy_banco2": 540}
 
 
 def test_planilha_com_erro_marca_so_a_carcaca(tmp_path: Path) -> None:

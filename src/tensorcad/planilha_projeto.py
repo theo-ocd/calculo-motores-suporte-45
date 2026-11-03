@@ -25,6 +25,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 import tensorcad
 from tensorcad import ajustes as ajustes_mod
 from tensorcad import banco_duplo as bd
+from tensorcad import desenho_th
 from tensorcad import tubo_horizontal as th
 from tensorcad.loader import BaseDados, Padroes
 from tensorcad.planilha import CORES_STATUS, FMT_MM, _cor_status
@@ -282,6 +283,14 @@ CORES_SERIES = {
     "motor 0 %": "00B050",
     "motor 3 %": "ED7D31",
     "O (centro dos raios)": "000000",
+    # tubo horizontal
+    "laje": "8B5A2B",
+    "tubo": "2F5597",
+    "linha de centro": "7F7F7F",
+    "O1": "000000",
+    "O2": "2F75B5",
+    "arco R2_min": "9DC3E6",
+    "arco R2_max": "BDD7EE",
 }
 
 
@@ -347,9 +356,9 @@ def _grafico_geometria(
         else:
             s.marker.symbol = "none"
             s.graphicalProperties.line.solidFill = cor
-            grossa = nome == "chapa (topo)" or nome.startswith("limite")
+            grossa = nome in ("chapa (topo)", "tubo") or nome.startswith(("limite", "chapa "))
             s.graphicalProperties.line.width = 30000 if grossa else 15000
-        if nome.startswith(("arco", "raio")) or nome == "piso":
+        if nome.startswith(("arco", "raio")) or nome in ("piso", "laje", "linha de centro"):
             s.graphicalProperties.line.dashStyle = "dash"
         graf.series.append(s)
         col += 3
@@ -629,6 +638,107 @@ def _indice_horizontal(ws: Worksheet, ini: int, resultados: Sequence[th.Resultad
     _cor_status(ws, f"G{ini + 2}:G{ini + 1 + len(resultados)}")
 
 
+# séries do esboço do tubo horizontal: id da primitiva (desenho_th) → nome da série
+SERIES_TH = {
+    "arco-R_min": "arco R_min",
+    "arco-R_max": "arco R_max",
+    "arco-R2_min": "arco R2_min",
+    "arco-R2_max": "arco R2_max",
+    "laje": "laje",
+    "tubo": "tubo",
+    "eixo-centro": "linha de centro",
+    "chapa-0": "chapa 0 %",
+    "chapa-3": "chapa 3 %",
+    "motor-0": "motor 0 %",
+    "motor-3": "motor 3 %",
+    "centro-0": "centro motor 0 %",
+    "centro-3": "centro motor 3 %",
+    "raio-0": "raio motor 0 %",
+    "raio-3": "raio motor 3 %",
+    "O1": "O1",
+    "O2": "O2",
+}
+
+
+def _pontos_primitiva(q: dict[str, Any]) -> list[tuple[float, float]]:
+    """Pontos (X, Y) de uma primitiva do desenho, para série de gráfico."""
+    if q["id"] in ("O1", "O2"):  # centros: um ponto
+        return [tuple(q["c"])]
+    tipo = q["tipo"]
+    if tipo == "linha":
+        return [tuple(q["p0"]), tuple(q["p1"])]
+    if tipo == "ponto":
+        return [tuple(q["p"])]
+    if tipo == "poligono":
+        return [tuple(v) for v in [*q["pts"], q["pts"][0]]]
+    cx, cy = q["c"]
+    if tipo == "circulo":
+        return [
+            (cx + q["r"] * math.cos(k * math.pi / 18), cy + q["r"] * math.sin(k * math.pi / 18))
+            for k in range(37)
+        ]
+    # arco
+    a0, a1 = math.radians(q["a0"]), math.radians(q["a1"])
+    return [
+        (
+            cx + q["r"] * math.cos(a0 + (a1 - a0) * k / 30),
+            cy + q["r"] * math.sin(a0 + (a1 - a0) * k / 30),
+        )
+        for k in range(31)
+    ]
+
+
+def _pontos_geometria_th(r: th.ResultadoTH) -> dict[str, list[tuple[float, float]]]:
+    """Séries do esboço do tubo horizontal (mesma vista do desenho da interface)."""
+    d = desenho_th.gerar(r)
+    if d is None:
+        return {}
+    por_id = {q["id"]: q for q in d["primitivas"]}
+    return {nome: _pontos_primitiva(por_id[i]) for i, nome in SERIES_TH.items() if i in por_id}
+
+
+def _grafico_folgas_th(ws: Worksheet, r: th.ResultadoTH, linha: int) -> int:
+    """Tabela folga mínima (g, x e R2) × altura do tubo, em 0 % e 3 %, e gráfico."""
+    a0 = desenho_th.altura_desenho(r)
+    if a0 is None:
+        return linha
+    e, par = r.entrada, r.parametros
+    b2 = e.banco2
+    tensoes = ((e.R_min, b2 and (b2, b2.R2_min)), (e.R_max, b2 and (b2, b2.R2_max)))
+
+    def folga(R: float, altura: float, b: Any) -> float | None:
+        p = th.posicao(par, e.motor, R, altura, b or None)
+        if p.margem is None:
+            return None
+        return p.margem if p.folga_R2 is None else min(p.margem, p.folga_R2)
+
+    alturas = [round(a0) + k for k in range(-150, 151, 10)]
+    linhas = [[a, *(folga(R, a, b) for R, b in tensoes)] for a in alturas]
+    ws.cell(linha, 1, "Folga mínima × altura do tubo").font = NEGRITO
+    ini = linha + 1
+    ws.cell(ini, 1, "altura do tubo")
+    ws.cell(ini, 2, "folga mín. 0 %")
+    ws.cell(ini, 3, "folga mín. 3 %")
+    for i, lin in enumerate(linhas, start=ini + 1):
+        for j, v in enumerate(lin, start=1):
+            ws.cell(i, j, v).number_format = FMT_MM
+    fim = ini + len(linhas)
+    graf = ScatterChart()
+    graf.title = "Folga mínima (g, x e R2) × altura do tubo"
+    graf.style = 13
+    graf.x_axis.title, graf.y_axis.title = "altura do tubo (mm)", "folga mínima (mm)"
+    graf.x_axis.delete = graf.y_axis.delete = False
+    xs = Reference(ws, min_col=1, min_row=ini + 1, max_row=fim)
+    for j in (2, 3):
+        s = Series(Reference(ws, min_col=j, min_row=ini, max_row=fim), xs, title_from_data=True)
+        s.marker.symbol = "none"
+        s.smooth = False
+        graf.series.append(s)
+    graf.width, graf.height = 16, 8
+    ws.add_chart(graf, f"E{ini}")
+    return fim + 2
+
+
 def escrever_aba_horizontal(ws: Worksheet, r: th.ResultadoTH) -> None:
     """Aba de um caso do layout tubo horizontal."""
     e, par = r.entrada, r.parametros
@@ -735,6 +845,11 @@ def escrever_aba_horizontal(ws: Worksheet, r: th.ResultadoTH) -> None:
                 c.number_format = FMT_MM
     if linhas:
         _cor_status(ws, f"K{lin + 2}:K{lin + 1 + len(linhas)}")
+    lin = lin + 3 + len(linhas)
+    _grafico_folgas_th(ws, r, lin)
+    series = _pontos_geometria_th(r)
+    if series:
+        _grafico_geometria(ws, series, "N3", 40)
     ws.column_dimensions["A"].width = 44
     ws.column_dimensions["B"].width = 22
     for col in "CDEFGHIJK":

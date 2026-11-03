@@ -531,13 +531,13 @@ def test_banco_duplo_no_navegador(url: str) -> None:
             # ligado sem R2: banco 1 continua calculado e pede os raios do banco 2
             pg.click("label[for='banco-duplo']")
             assert pg.locator("#R2_min").is_visible()
-            assert pg.inner_text("#fixo-dy-banco2") == "500"
+            assert pg.inner_text("#fixo-dy-banco2") == "540"
             pg.wait_for_selector("#banco2-mensagem:has-text('preencha R2min e R2max')")
             assert pg.get_attribute("#status", "data-status") == "OK"
 
             # R2 que deixam trecho entre os arcos nas duas tensões
-            pg.fill("#R2_min", "2600")
-            pg.fill("#R2_max", "2680")
+            pg.fill("#R2_min", "2640")
+            pg.fill("#R2_max", "2720")
             pg.wait_for_selector("#el-O2", timeout=10_000)
             pg.wait_for_selector("#banco2-mensagem:has-text('entre os arcos R1 e R2')")
             assert pg.locator("#banco2 tbody tr").count() == 2
@@ -545,7 +545,7 @@ def test_banco_duplo_no_navegador(url: str) -> None:
             assert pg.locator("#el-trecho-0").count() == 1
 
             # sem trecho a 0 %: obrigatório, o caso fica FORA_TENSIONAMENTO
-            pg.fill("#R2_min", "2560")
+            pg.fill("#R2_min", "2600")
             pg.wait_for_selector("#banco2 .ponto[data-status='AVISO']", timeout=10_000)
             assert "não há posição" in pg.inner_text("#banco2-mensagem")
             pg.wait_for_selector("#status[data-status='FORA_TENSIONAMENTO']")
@@ -558,7 +558,7 @@ def test_banco_duplo_no_navegador(url: str) -> None:
             # persiste no projeto (switch no projeto, adicionais por caso)
             dados = pg.evaluate("Projeto.serializar()")
             assert dados["banco_duplo"] is True
-            assert dados["casos"][0]["R2_min"] == 2560
+            assert dados["casos"][0]["R2_min"] == 2600
 
             # desligar esconde e remove o banco 2 do desenho
             pg.click("label[for='banco-duplo']")
@@ -678,7 +678,7 @@ def test_tubo_horizontal_calcula_e_desenha(url: str) -> None:
             pg.wait_for_selector("#el-tubo")
             for el in ("O1", "laje", "eixo-centro", "chapa-0", "motor-3", "cota-g", "cota-altura"):
                 assert pg.locator(f"#el-{el}").count() == 1, el
-            assert "1.386,96" in pg.inner_text("#resumo")
+            assert "1.306,96" in pg.inner_text("#resumo")
             assert "recomendada" in pg.inner_text("#info-desenho")
             # altura informada e banco duplo
             pg.fill("#altura-tubo", "1375")
