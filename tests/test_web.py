@@ -567,3 +567,88 @@ def test_banco_duplo_no_navegador(url: str) -> None:
             assert erros == []
         finally:
             nav.close()
+
+
+def test_opcao_de_layout_no_navegador(url: str, tmp_path: Path) -> None:
+    import json
+
+    sync = pytest.importorskip("playwright.sync_api")
+    with sync.sync_playwright() as p:
+        nav = _navegador(p)
+        try:
+            ctx = nav.new_context(accept_downloads=True, viewport={"width": 1500, "height": 1000})
+            pg = ctx.new_page()
+            erros: list[str] = []
+            pg.on("pageerror", lambda e: erros.append(str(e)))
+            pg.on("dialog", lambda d: d.accept())
+            pg.goto(url)
+            pg.wait_for_selector("#conexao[data-estado='ok']", timeout=10_000)
+            pg.click("#btn-limpar")
+
+            # padrão: 45°, com os campos de sempre
+            assert pg.is_checked("#layout-45")
+            assert pg.locator("#cota").is_visible() and pg.locator("#altura-tubo").is_hidden()
+            pg.fill("#caso_id", "REF")
+            pg.fill("#R_min", "2086")
+            pg.fill("#R_max", "2161")
+            pg.wait_for_selector("#status[data-status='OK']", timeout=10_000)
+
+            # tubo horizontal: campos próprios e lista própria; sem cálculo ainda (T2)
+            pg.check("#layout-horizontal")
+            assert pg.inner_text("#nome-layout") == "tubo horizontal"
+            assert pg.locator("#altura-tubo").is_visible() and pg.locator("#cota").is_hidden()
+            assert pg.locator("#painel-dimensoes").is_hidden()
+            assert pg.locator("#lista-casos li").count() == 1
+            assert pg.input_value("#caso_id") == "th-1"
+            pg.wait_for_selector("#status:has-text('T2')", timeout=10_000)
+            pg.wait_for_timeout(500)  # nenhum cálculo 45° atrasado sobrescreve a tela
+            assert "T2" in pg.inner_text("#status")
+            assert pg.get_attribute("#lista-casos li.ativo .ponto", "data-status") == ""
+            pg.fill("#altura-tubo", "1375")
+            pg.fill("#comprimento-tubo", "2000")
+            pg.click("label[for='motor-invertido']")
+            pg.click("#btn-caso-novo")
+            assert pg.input_value("#caso_id") == "th-2"
+            assert pg.locator("#lista-casos li").count() == 2
+
+            # exportar no horizontal: aviso, sem download
+            pg.click("#btn-exportar")
+            pg.wait_for_selector("#aviso[data-tipo='erro']")
+            assert "T6" in pg.inner_text("#aviso")
+
+            # voltar ao 45°: o caso REF continua lá e calcula
+            pg.check("#layout-45")
+            assert pg.input_value("#caso_id") == "REF"
+            assert pg.locator("#lista-casos li").count() == 1
+            pg.wait_for_selector("#status[data-status='OK']", timeout=10_000)
+
+            # .json guarda as duas opções e a escolhida
+            pg.check("#layout-horizontal")
+            pg.wait_for_timeout(450)
+            with pg.expect_download() as dl:
+                pg.click("#btn-salvar")
+            arq = tmp_path / "p.json"
+            dl.value.save_as(arq)
+            d = json.loads(arq.read_text(encoding="utf-8"))
+            assert d["layout"] == "horizontal"
+            assert [c["caso_id"] for c in d["casos"]] == ["REF"]
+            h = d["horizontal"]
+            assert (h["altura_tubo"], h["comprimento_tubo"], h["invertido"]) == (1375, 2000, True)
+            assert [c["caso_id"] for c in h["casos"]] == ["th-1", "th-2"]
+
+            # recarregar restaura o layout escolhido e o caso ativo de cada um
+            pg.reload()
+            pg.wait_for_selector("#aviso:not([hidden])", timeout=10_000)
+            assert pg.is_checked("#layout-horizontal") and pg.input_value("#caso_id") == "th-2"
+            assert pg.is_checked("#motor-invertido")
+
+            # arquivo antigo (sem layout): abre no 45°
+            antigo = {k: v for k, v in d.items() if k not in ("layout", "horizontal")}
+            arq_antigo = tmp_path / "antigo.json"
+            arq_antigo.write_text(json.dumps(antigo), encoding="utf-8")
+            pg.set_input_files("#arquivo-projeto", str(arq_antigo))
+            pg.wait_for_function("document.querySelector('#layout-45').checked")
+            assert pg.input_value("#caso_id") == "REF"
+            assert erros == []
+        finally:
+            nav.close()

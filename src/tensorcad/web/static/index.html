@@ -34,15 +34,38 @@
     <aside class="painel painel-entradas" aria-label="Entradas">
       <form id="form-caso" autocomplete="off" novalidate>
         <h2>Projeto</h2>
+        <fieldset class="seletor-layout" aria-label="Opção de layout">
+          <legend>Opção de layout</legend>
+          <label><input type="radio" name="layout" value="inclinado_45" id="layout-45" checked> tubo inclinado 45°</label>
+          <label><input type="radio" name="layout" value="horizontal" id="layout-horizontal"> tubo horizontal</label>
+        </fieldset>
         <div class="campo" data-campo="nome-projeto">
           <label for="nome-projeto">Nome do projeto</label>
           <input id="nome-projeto" maxlength="80" value="PROJETO">
         </div>
-        <div class="campo" data-campo="cota">
+        <div class="campo so-45" data-campo="cota">
           <label for="cota">Altura (H) do centro do apoio (mm)</label>
           <input id="cota" name="cota" inputmode="decimal" placeholder="opcional: verificar uma altura">
           <p class="erro-campo"></p>
           <p class="dica">Centro do tubo de apoio → piso do banco de cilindros. Definida no início de cada projeto; vazia: só calcula a faixa admissível.</p>
+        </div>
+        <div class="so-horizontal">
+          <div class="campo" data-campo="altura_tubo">
+            <label for="altura-tubo">Altura do tubo (mm)</label>
+            <input id="altura-tubo" inputmode="decimal" placeholder="opcional: verificar uma altura">
+            <p class="erro-campo"></p>
+            <p class="dica">Topo da laje → ponto mais baixo do tubo de sustentação. Vazia: o cálculo recomenda (a partir da T2).</p>
+          </div>
+          <div class="campo" data-campo="comprimento_tubo">
+            <label for="comprimento-tubo">Comprimento do tubo (mm)</label>
+            <input id="comprimento-tubo" inputmode="decimal" placeholder="curso em x = comprimento / 2">
+            <p class="erro-campo"></p>
+          </div>
+          <label class="switch" for="motor-invertido">
+            <input type="checkbox" id="motor-invertido" role="switch">
+            <span class="trilho" aria-hidden="true"></span>
+            <span>Motor invertido (de cabeça para baixo)</span>
+          </label>
         </div>
         <dl class="fixos">
           <div><dt>Centro dos raios O1 → tubo (x)</dt><dd id="fixo-x-tubo">—</dd></div>
@@ -57,6 +80,7 @@
         <p class="dica so-banco2" hidden>Segundo centro de arcos O2, com raios próprios. Motor único: em cada tensão, o centro deve ficar a ≥ R1 de O1 e ≤ R2 de O2; sem esse trecho, o caso fica FORA_TENSIONAMENTO e a H recomendada passa a respeitar esse trecho.</p>
 
         <h2>Casos em memória <span id="contagem-casos" class="dica"></span></h2>
+        <p class="dica">Lista do <strong id="nome-layout">tubo inclinado 45°</strong>. Cada opção de layout tem a sua.</p>
         <ul id="lista-casos" class="lista-casos" aria-label="Casos do projeto"></ul>
         <div class="botoes-casos">
           <button type="button" id="btn-caso-novo-lista" class="botao-mini">+ novo caso</button>
@@ -106,7 +130,7 @@
           </div>
         </div>
 
-        <details id="painel-dimensoes" class="painel-dimensoes" open>
+        <details id="painel-dimensoes" class="painel-dimensoes so-45" open>
           <summary>
             <span>Dimensões</span>
             <span id="contagem-ajustes" class="contagem" hidden></span>

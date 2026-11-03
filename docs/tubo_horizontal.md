@@ -71,11 +71,21 @@ testes, pendências) para conferência.
 - Diagrama da pilha em `data/padrao/LEIAME.md`.
 - **Conferência:** tabela de conferência acima. P16–P18 respondidas.
 
-### T1: Seletor de layout no projeto (interface + .json)
+### T1: Seletor de layout no projeto (interface + .json) — feita
 - O projeto ganha o campo `layout`: `inclinado_45` (padrão, para arquivos antigos) ou
-  `horizontal`. O seletor aparece no início e troca a aba ou tela de entradas.
-- O layout 45° não muda: os testes atuais continuam passando sem alteração.
+  `horizontal`. O seletor fica no topo do painel Projeto.
+- Cada layout tem a **sua lista de casos**, e trocar de layout não apaga nada. O tubo
+  horizontal tem campos próprios: altura do tubo (opcional), comprimento do tubo e o
+  switch de motor invertido. Os campos só do 45° (H do apoio, dimensões da chapa) ficam
+  ocultos.
+- `.json`: `layout` e o bloco `horizontal` (`altura_tubo`, `comprimento_tubo`, `invertido`,
+  `casos`) são opcionais. Os casos do 45° continuam na raiz do arquivo, como antes.
+- O cálculo, o desenho e a exportação do tubo horizontal ainda não existem: a tela avisa
+  "T2", e o .xlsx segue só com os casos do 45° até a T6.
 - **Conferência:** abrir um .json antigo (vira 45°), trocar de layout e salvar.
+- Pendente para a T2: no tubo horizontal, a lista de carcaças deve depender só do catálogo
+  de motores, e não das chapas do 45°. Hoje a 250 aparece como "a preencher" por falta da
+  chapa 45°.
 
 ### T2: Núcleo geométrico do tubo horizontal (funções puras)
 - Centro do motor em função de (x ao longo do tubo, g entre porcas), da altura do tubo
