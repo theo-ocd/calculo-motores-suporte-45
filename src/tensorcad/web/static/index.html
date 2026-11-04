@@ -14,7 +14,11 @@
       <span class="marca-nome">tensorcad</span>
       <span class="marca-sub">base tensora · posição do motor</span>
     </div>
-    <div class="acoes" role="toolbar" aria-label="Projeto">
+    <nav class="abas" role="tablist" aria-label="Telas">
+      <button type="button" role="tab" id="aba-setups" data-aba="setups" title="Criar e editar setups de transmissão (polias, correia, rpm)">Setups</button>
+      <button type="button" role="tab" id="aba-layout" data-aba="layout" class="ativa" title="Edição do layout e dos casos">Layout</button>
+    </nav>
+    <div class="acoes so-aba-layout" role="toolbar" aria-label="Projeto">
       <button type="button" id="btn-caso-novo" title="Adicionar um caso ao projeto (os outros continuam na memória)">+ novo caso</button>
       <button type="button" id="btn-abrir" title="Abrir um projeto salvo (.json)">abrir…</button>
       <button type="button" id="btn-salvar" title="Salvar o projeto em .json">salvar .json</button>
@@ -30,7 +34,97 @@
   </header>
 
   <div id="aviso" class="aviso" role="status" hidden></div>
-  <main class="layout">
+
+  <main id="tela-setups" class="tela-setups so-aba-setups" aria-label="Setups de transmissão">
+    <aside class="painel" aria-label="Biblioteca de setups">
+      <h2>Biblioteca de setups <span id="contagem-setups" class="dica"></span></h2>
+      <ul id="lista-setups" class="lista-casos" aria-label="Setups salvos"></ul>
+      <div class="botoes-casos">
+        <button type="button" id="btn-setup-novo" class="botao-mini">+ novo setup</button>
+        <button type="button" id="btn-setup-duplicar" class="botao-mini">duplicar</button>
+        <button type="button" id="btn-setup-excluir" class="botao-mini">excluir</button>
+      </div>
+      <p class="dica">A biblioteca fica neste navegador e pode ser salva num arquivo próprio para usar em outros projetos.</p>
+      <div class="botoes-casos">
+        <button type="button" id="btn-biblioteca-salvar" class="botao-mini">salvar biblioteca .json</button>
+        <button type="button" id="btn-biblioteca-abrir" class="botao-mini">abrir biblioteca…</button>
+        <input type="file" id="arquivo-biblioteca" accept=".json,application/json" hidden>
+      </div>
+    </aside>
+
+    <section class="painel form-setup" aria-label="Setup">
+      <h2>Setup</h2>
+      <form id="form-setup" autocomplete="off" novalidate>
+        <div class="campo" data-campo="nome">
+          <label for="setup-nome">Nome do setup</label>
+          <input id="setup-nome" maxlength="24" placeholder="ex.: MDDL-A">
+          <p class="erro-campo"></p>
+          <p class="dica">Vira o início do nome do caso; o sufixo <code>-polia-correia</code> é acrescentado e fica travado.</p>
+        </div>
+        <h3 class="titulo-g">Banco 1 (R1, a partir de O1)</h3>
+        <div class="linha-2">
+          <div class="campo" data-campo="polia_maquina">
+            <label for="setup-polia-maquina">Polia da máquina Ø (mm)</label>
+            <select id="setup-polia-maquina"></select>
+            <p class="erro-campo"></p>
+          </div>
+          <div class="campo" data-campo="polia_motor">
+            <label for="setup-polia-motor">Polia do motor Ø (mm)</label>
+            <select id="setup-polia-motor"></select>
+            <p class="erro-campo"></p>
+          </div>
+        </div>
+        <div class="linha-2">
+          <div class="campo" data-campo="correia">
+            <label for="setup-correia">Correia SPB, comprimento (mm)</label>
+            <input id="setup-correia" inputmode="decimal" placeholder="ex.: 5000">
+            <p class="erro-campo"></p>
+          </div>
+          <div class="campo" data-campo="rpm_motor">
+            <label for="setup-rpm">rpm do motor (WEG 60 Hz)</label>
+            <select id="setup-rpm"></select>
+            <p class="erro-campo"></p>
+          </div>
+        </div>
+        <label class="switch" for="setup-banco2">
+          <input type="checkbox" id="setup-banco2" role="switch">
+          <span class="trilho" aria-hidden="true"></span>
+          <span>Banco duplo: calcular R2 (a partir de O2)</span>
+        </label>
+        <div id="setup-campos-banco2" hidden>
+          <div class="linha-2">
+            <div class="campo" data-campo="banco2.polia_maquina">
+              <label for="setup2-polia-maquina">Polia da máquina Ø, banco 2</label>
+              <select id="setup2-polia-maquina"></select>
+              <p class="erro-campo"></p>
+            </div>
+            <div class="campo" data-campo="banco2.polia_motor">
+              <label for="setup2-polia-motor">Polia do motor Ø, banco 2</label>
+              <select id="setup2-polia-motor"></select>
+              <p class="erro-campo"></p>
+            </div>
+          </div>
+          <div class="campo" data-campo="banco2.correia">
+            <label for="setup2-correia">Correia SPB do banco 2 (mm)</label>
+            <input id="setup2-correia" inputmode="decimal" placeholder="ex.: 6000">
+            <p class="erro-campo"></p>
+          </div>
+        </div>
+        <div class="botoes-casos">
+          <button type="button" id="btn-setup-salvar" class="botao-mini principal">salvar setup</button>
+        </div>
+      </form>
+    </section>
+
+    <aside class="painel" aria-label="Resultado do setup">
+      <h2>Resultado</h2>
+      <div id="setup-status" class="status" data-status="">preencha o setup</div>
+      <dl id="setup-resumo" class="resumo"></dl>
+      <p class="dica">R<sub>min</sub> = distância entre eixos a 0 %; R<sub>max</sub> = a 3 % (correia alongada); 2 % só como referência. Fórmula da planilha de correias (Riemenberechnung).</p>
+    </aside>
+  </main>
+
+  <main class="layout so-aba-layout">
     <aside class="painel painel-entradas" aria-label="Entradas">
       <form id="form-caso" autocomplete="off" novalidate>
         <h2>Projeto</h2>
@@ -90,10 +184,23 @@
         </div>
         <p class="dica">Clique num caso para voltar a ele. Todos os casos ficam na memória e são exportados juntos no .xlsx.</p>
 
+        <h2>Setups <span class="dica">(biblioteca)</span></h2>
+        <ul id="lista-setups-layout" class="lista-setups-layout" aria-label="Setups para criar casos"></ul>
+        <p class="dica">"+ caso" cria um caso neste layout com R e sufixo travados pelo setup. Crie e edite setups na aba <strong>Setups</strong>.</p>
+
         <h2>Caso ativo</h2>
         <div class="campo" data-campo="caso_id">
           <label for="caso_id">Nome do caso</label>
-          <input id="caso_id" name="caso_id" value="caso-1" maxlength="31">
+          <div class="nome-com-sufixo">
+            <input id="caso_id" name="caso_id" value="caso-1" maxlength="31">
+            <span id="caso-sufixo" class="sufixo" title="sufixo travado pelo setup" hidden></span>
+          </div>
+          <p class="erro-campo"></p>
+        </div>
+        <div id="info-setup" class="info-setup" hidden>
+          <p id="info-setup-texto"></p>
+          <p id="aviso-setup" class="aviso-setup" hidden></p>
+          <button type="button" id="btn-atualizar-setup" class="botao-mini" hidden>atualizar do setup</button>
         </div>
         <div class="campo" data-campo="carcaca">
           <label for="carcaca">Carcaça</label>
@@ -230,6 +337,7 @@
   </main>
 
   <script src="desenho.js"></script>
+  <script src="setups.js"></script>
   <script src="projeto.js"></script>
   <script src="app.js"></script>
 </body>

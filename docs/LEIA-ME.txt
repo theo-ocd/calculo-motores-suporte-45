@@ -1,6 +1,7 @@
 TENSORCAD - POSICAO DO MOTOR NA BASE TENSORA
 =============================================
-Leia-me de uso (versao de teste 0.6.x - layouts "tubo inclinado 45" e "tubo horizontal")
+Leia-me de uso (versao de teste 0.6.x - layouts "tubo inclinado 45" e "tubo horizontal",
+setups de transmissao)
 
 Este arquivo fica ao lado do tensorcad.exe.
 
@@ -32,6 +33,7 @@ desenha o conjunto. O resultado pode ser exportado para uma planilha .xlsx.
 
 3. A TELA
 ---------
+  Abas           : Setups (criar setups de transmissao) | Layout (casos e calculo)
   Barra superior : + novo caso | abrir... | salvar .json | exportar .xlsx |
                    limpar memoria | versao | estado da conexao
   Painel esquerdo: projeto, casos em memoria, caso ativo, dimensoes, carcacas
@@ -46,6 +48,21 @@ desenha o conjunto. O resultado pode ser exportado para uma planilha .xlsx.
 
 4. PASSO A PASSO
 ----------------
+4.0 (Opcional) Crie SETUPS de transmissao (aba Setups)
+    - Um setup define a transmissao: polia da maquina (355), polia do motor (125 a
+      280), comprimento da correia SPB (livre) e rpm do motor (WEG 60 Hz: 900, 1200,
+      1800, 3600). Opcional: banco 2 (polias e correia do segundo banco).
+    - O programa calcula a distancia entre eixos (planilha de correias):
+      R_min = 0 %, R_max = 3 % (2 % so como referencia) e o rpm da maquina.
+      Ex.: 355 / 170 / 5000 -> R 2085,61 / 2160,61.
+    - "salvar setup" guarda na biblioteca (fica neste navegador). "salvar biblioteca
+      .json" / "abrir biblioteca..." levam os setups para outros projetos/computadores.
+    - Na aba Layout, a lista "Setups (biblioteca)" tem o botao "+ caso": cria um caso
+      com nome <setup>-<polia>-<correia> (ex.: MDDL-170-5000). R_min/R_max (e R2) e o
+      sufixo ficam TRAVADOS; so o nome antes do sufixo pode ser trocado.
+    - Se o setup for alterado depois, o caso fica como estava e mostra um aviso;
+      "atualizar do setup" copia os dados novos.
+
 4.1 Escolha a OPCAO DE LAYOUT (topo do painel Projeto)
     - "tubo inclinado 45": motor desliza sobre uma chapa inclinada com ranhuras;
     - "tubo horizontal": motor fixo na horizontal sobre a chapa; o conjunto sobe e
@@ -87,6 +104,10 @@ desenha o conjunto. O resultado pode ser exportado para uma planilha .xlsx.
         horizontal: g (distancia entre porcas, 30 a 150), x (da linha de centro,
                     sempre >= 0) e folgas em g, em x e ate o arco R2.
     - Banco duplo: o centro do motor deve ficar a >= R1 de O1 e <= R2 de O2.
+    - Tubo horizontal com a altura do tubo informada: o bloco "Ajuste manual de g"
+      permite mudar g de 0 % e 3 % de 1 em 1 mm (- / +) ou digitando; o motor anda
+      sobre o arco. "auto" volta ao calculado. Clicar na cota g do desenho leva ao
+      ajuste.
 
 4.5 SALVAR, ABRIR, EXPORTAR
     - "salvar .json": guarda o projeto inteiro (os dois layouts). "abrir..." le de
@@ -114,8 +135,9 @@ desenha o conjunto. O resultado pode ser exportado para uma planilha .xlsx.
 6. A PLANILHA .XLSX
 -------------------
   PROJETO        indice com todos os casos (45 e, abaixo, tubo horizontal), status
-                 colorido e link para a aba de cada caso.
-  <caso>         entradas, dimensoes usadas, ajustes, banco duplo, resultado,
+                 colorido e link para a aba de cada caso; tabela dos setups usados.
+  <caso>         entradas, setup de transmissao (se houver), dimensoes usadas,
+                 ajustes, banco duplo, resultado,
                  tabela de posicoes e dois graficos: folga minima x altura e esboco
                  da montagem (vista do desenho).
   _entradas...   abas ocultas usadas pelo programa (nao editar).

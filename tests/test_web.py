@@ -720,3 +720,107 @@ def test_tubo_horizontal_calcula_e_desenha(url: str) -> None:
             assert erros == []
         finally:
             nav.close()
+
+
+def test_setups_no_navegador(url: str, tmp_path: Path) -> None:
+    import json
+
+    sync = pytest.importorskip("playwright.sync_api")
+    with sync.sync_playwright() as p:
+        nav = _navegador(p)
+        try:
+            ctx = nav.new_context(accept_downloads=True, viewport={"width": 1500, "height": 1000})
+            pg = ctx.new_page()
+            erros: list[str] = []
+            pg.on("pageerror", lambda e: erros.append(str(e)))
+            pg.on("dialog", lambda d: d.accept())
+            pg.goto(url)
+            pg.wait_for_selector("#conexao[data-estado='ok']", timeout=10_000)
+            pg.evaluate("localStorage.clear()")
+            pg.reload()
+            pg.wait_for_selector("#conexao[data-estado='ok']", timeout=10_000)
+
+            # aba Setups troca a tela inteira
+            assert pg.locator("#tela-setups").is_hidden()
+            pg.click("#aba-setups")
+            assert pg.locator("#tela-setups").is_visible() and pg.locator("main.layout").is_hidden()
+            assert pg.locator("#setup-polia-motor option").count() == 14
+            pg.fill("#setup-nome", "MDDL")
+            pg.select_option("#setup-polia-motor", "170")
+            pg.fill("#setup-correia", "5000")
+            pg.select_option("#setup-rpm", "1200")
+            pg.wait_for_selector("#setup-status:has-text('MDDL-170-5000')", timeout=10_000)
+            assert "2.085,61" in pg.inner_text("#setup-resumo")
+            assert "2.160,61" in pg.inner_text("#setup-resumo")
+            pg.click("#btn-setup-salvar")
+            pg.wait_for_function("document.querySelectorAll('#lista-setups li').length === 1")
+            # salvar logo após digitar grava os valores novos (sem esperar o cálculo)
+            pg.click("#btn-setup-novo")
+            pg.fill("#setup-nome", "MDDL")
+            pg.fill("#setup-correia", "5500")
+            pg.click("#btn-setup-salvar")
+            pg.wait_for_selector(".campo[data-campo='nome'].invalido")  # nome repetido
+            pg.fill("#setup-nome", "B2")
+            pg.click("#btn-setup-salvar")
+            pg.wait_for_function("document.querySelectorAll('#lista-setups li').length === 2")
+            assert "B2-170-5500" in pg.inner_text("#lista-setups")
+
+            # biblioteca em arquivo próprio
+            with pg.expect_download() as dl:
+                pg.click("#btn-biblioteca-salvar")
+            arq = tmp_path / "setups.json"
+            dl.value.save_as(arq)
+            bib = json.loads(arq.read_text(encoding="utf-8"))
+            assert bib["formato"] == "tensorcad-setups" and len(bib["setups"]) == 2
+
+            # layout: caso a partir do setup, R e sufixo travados
+            pg.click("#aba-layout")
+            pg.click("#btn-limpar")
+            pg.click("#lista-setups-layout li[data-setup] button >> nth=0")
+            assert pg.input_value("#caso_id") == "MDDL"
+            assert pg.inner_text("#caso-sufixo") == "-170-5000"
+            assert pg.input_value("#R_min") == "2085.61" and pg.input_value("#R_max") == "2160.61"
+            assert not pg.is_editable("#R_min") and not pg.is_editable("#R_max")
+            pg.fill("#caso_id", "LINHA1")
+            pg.wait_for_selector("#status[data-status='OK']", timeout=10_000)
+            assert "LINHA1-170-5000" in pg.inner_text("#lista-casos")
+            # duplicar mantém o sufixo no fim
+            pg.click("#btn-caso-duplicar")
+            assert pg.input_value("#caso_id") == "LINHA1-copia"
+            assert pg.inner_text("#caso-sufixo") == "-170-5000"
+            pg.click("#lista-casos li[data-indice='1']")
+
+            # setup alterado: aviso e botão para atualizar
+            pg.click("#aba-setups")
+            pg.click("#lista-setups li[data-indice='0']")
+            pg.fill("#setup-correia", "5300")
+            pg.click("#btn-setup-salvar")
+            pg.wait_for_function(
+                "document.querySelector('#lista-setups').innerText.includes('MDDL-170-5300')"
+            )
+            pg.click("#aba-layout")
+            pg.wait_for_selector("#aviso-setup:not([hidden])")
+            assert "mudou" in pg.inner_text("#aviso-setup")
+            assert pg.input_value("#R_min") == "2085.61"  # fica como estava
+            pg.click("#btn-atualizar-setup")
+            assert pg.inner_text("#caso-sufixo") == "-170-5300"
+            assert pg.input_value("#R_min") != "2085.61"
+            assert pg.locator("#aviso-setup").is_hidden()
+
+            # .json do projeto guarda a cópia do setup no caso
+            dados = pg.evaluate("Projeto.serializar()")
+            c = next(x for x in dados["casos"] if x["caso_id"] == "LINHA1-170-5300")
+            assert c["setup"]["correia"] == 5300 and c["setup"]["sufixo"] == "-170-5300"
+
+            # biblioteca reaberta (outro projeto/computador) é recalculada e mesclada
+            pg.evaluate("localStorage.removeItem('tensorcad.setups.v1')")
+            pg.reload()
+            pg.wait_for_selector("#conexao[data-estado='ok']", timeout=10_000)
+            assert pg.locator("#lista-setups-layout li[data-setup]").count() == 0
+            pg.wait_for_selector("#aviso-setup:not([hidden])")  # setup fora da biblioteca
+            pg.click("#aba-setups")
+            pg.set_input_files("#arquivo-biblioteca", str(arq))
+            pg.wait_for_function("document.querySelectorAll('#lista-setups li').length === 2")
+            assert erros == []
+        finally:
+            nav.close()

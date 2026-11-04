@@ -70,13 +70,19 @@ const Projeto = (() => {
     p.horizontal.comprimento_tubo = $("comprimento-tubo").value.trim();
     p.horizontal.invertido = $("motor-invertido").checked;
     const c = ativo();
-    c.caso_id = $("caso_id").value.trim();
     c.carcaca = $("carcaca").value;
     c.motor_id = $("motor_id").value || null;
-    c.R_min = $("R_min").value.trim();
-    c.R_max = $("R_max").value.trim();
-    c.R2_min = $("R2_min").value.trim();
-    c.R2_max = $("R2_max").value.trim();
+    if (c.setup) {
+      // caso de um setup: sufixo e raios travados (só o nome antes do sufixo é editável)
+      c.caso_id = $("caso_id").value.trim() + c.setup.sufixo;
+      aplicarRaiosDoSetup(c);
+    } else {
+      c.caso_id = $("caso_id").value.trim();
+      c.R_min = $("R_min").value.trim();
+      c.R_max = $("R_max").value.trim();
+      c.R2_min = $("R2_min").value.trim();
+      c.R2_max = $("R2_max").value.trim();
+    }
     c.ajustes = copia(estado.ajustes);
     renderLista();
     agendarRascunho();
@@ -93,7 +99,8 @@ const Projeto = (() => {
     $("comprimento-tubo").value = texto(p.horizontal.comprimento_tubo);
     $("motor-invertido").checked = Boolean(p.horizontal.invertido);
     const c = ativo();
-    $("caso_id").value = c.caso_id;
+    $("caso_id").value = c.setup ? baseDoNome(c) : c.caso_id;
+    aplicarTravas(c);
     $("R_min").value = texto(c.R_min);
     $("R_max").value = texto(c.R_max);
     $("R2_min").value = texto(c.R2_min);
@@ -106,6 +113,85 @@ const Projeto = (() => {
     lerFormulario();
     agendarCalculo();
     renderLista();
+  }
+
+  // ---------------------------------------------------------------- casos de setups (S4)
+  const r2 = (v) => (typeof v === "number" ? v.toFixed(2) : "");
+  const baseDoNome = (c) =>
+    c.setup && c.caso_id.endsWith(c.setup.sufixo) ? c.caso_id.slice(0, -c.setup.sufixo.length) : c.caso_id;
+  function aplicarRaiosDoSetup(c) {
+    c.R_min = r2(c.setup.R_min);
+    c.R_max = r2(c.setup.R_max);
+    if (c.setup.banco2) {
+      c.R2_min = r2(c.setup.banco2.R2_min);
+      c.R2_max = r2(c.setup.banco2.R2_max);
+    }
+  }
+  function aplicarTravas(c) {
+    const s = c.setup;
+    const suf = $("caso-sufixo");
+    suf.hidden = !s;
+    suf.textContent = s ? s.sufixo : "";
+    $("caso_id").maxLength = 31 - (s ? s.sufixo.length : 0);
+    for (const id of ["R_min", "R_max"]) $(id).readOnly = Boolean(s);
+    for (const id of ["R2_min", "R2_max"]) $(id).readOnly = Boolean(s && s.banco2);
+    $("info-setup").hidden = !s;
+    if (s) {
+      $("info-setup-texto").textContent =
+        `Setup ${s.nome}${s.sufixo}: polias ${s.polia_maquina}/${s.polia_motor}, correia ${s.correia}, ` +
+        `${s.rpm_motor} rpm${s.banco2 ? `; banco 2: ${s.banco2.polia_maquina}/${s.banco2.polia_motor}, correia ${s.banco2.correia}` : ""}. ` +
+        "R e sufixo travados.";
+    }
+    verificarSetup();
+  }
+  // campos que definem o setup (o que muda o cálculo ou o sufixo)
+  const CHAVES_SETUP = ["nome", "polia_maquina", "polia_motor", "correia", "rpm_motor"];
+  function mudou(a, b) {
+    if (CHAVES_SETUP.some((k) => String(a[k]) !== String(b[k]))) return true;
+    if (Boolean(a.banco2) !== Boolean(b.banco2)) return true;
+    return Boolean(a.banco2) && ["polia_maquina", "polia_motor", "correia"].some((k) => String(a.banco2[k]) !== String(b.banco2[k]));
+  }
+  function verificarSetup() {
+    if (!p) return;
+    const c = ativo();
+    const av = $("aviso-setup");
+    const bt = $("btn-atualizar-setup");
+    av.hidden = bt.hidden = true;
+    if (!c.setup || typeof Setups === "undefined") return;
+    const atual = Setups.porId(c.setup.id);
+    if (!atual) {
+      av.hidden = false;
+      av.textContent = "Este setup não está na biblioteca deste navegador; o caso mantém os valores gravados.";
+    } else if (mudou(c.setup, atual)) {
+      av.hidden = bt.hidden = false;
+      av.textContent = `O setup "${atual.nome}" mudou desde que este caso foi criado (agora ${atual.nome}${atual.sufixo}, R ${fmt(atual.R_min)}/${fmt(atual.R_max)}).`;
+    }
+    renderLista();
+  }
+  function atualizarDoSetup() {
+    const c = ativo();
+    const atual = c.setup && Setups.porId(c.setup.id);
+    if (!atual) return;
+    const base = baseDoNome(c);
+    c.setup = copia(atual);
+    c.caso_id = base + atual.sufixo;
+    aplicarRaiosDoSetup(c);
+    carregarNoFormulario();
+    aviso(`caso atualizado do setup ${atual.nome}${atual.sufixo}`);
+  }
+  function casoDeSetup(setup) {
+    lerFormulario();
+    const usados = new Set(L().casos.map((c) => c.caso_id.toLowerCase()));
+    let base = setup.nome;
+    for (let k = 2; usados.has(`${base}${setup.sufixo}`.toLowerCase()); k++) base = `${setup.nome}-${k}`;
+    const c = casoVazio(base + setup.sufixo);
+    c.carcaca = ativo().carcaca || c.carcaca;
+    c.setup = copia(setup);
+    aplicarRaiosDoSetup(c);
+    L().casos.push(c);
+    L().ativo = L().casos.length - 1;
+    carregarNoFormulario();
+    aviso(`caso ${c.caso_id} criado do setup (R ${c.R_min} / ${c.R_max} travados)`);
   }
 
   function errosLocais() {
@@ -136,6 +222,13 @@ const Projeto = (() => {
       const nome = document.createElement("span");
       nome.className = "nome-caso";
       nome.textContent = c.caso_id || "(sem nome)";
+      if (c.setup) {
+        const m = document.createElement("span");
+        m.className = "marca-setup";
+        m.textContent = " ⚙";
+        m.title = `caso do setup ${c.setup.nome}${c.setup.sufixo}`;
+        nome.append(m);
+      }
       const info = document.createElement("span");
       info.className = "info-caso";
       info.textContent = `${c.carcaca || "—"} · ${c.R_min || "?"}/${c.R_max || "?"}`;
@@ -168,7 +261,15 @@ const Projeto = (() => {
   function duplicar() {
     lerFormulario();
     const c = copia(ativo());
-    c.caso_id = nomeLivre(`${c.caso_id || "caso"}-copia`);
+    if (c.setup) {
+      // mantém o sufixo travado no fim do nome
+      const usados = new Set(L().casos.map((x) => x.caso_id.toLowerCase()));
+      let base = `${baseDoNome(c)}-copia`;
+      for (let k = 2; usados.has(`${base}${c.setup.sufixo}`.toLowerCase()); k++) base = `${baseDoNome(c)}-copia-${k}`;
+      c.caso_id = base + c.setup.sufixo;
+    } else {
+      c.caso_id = nomeLivre(`${c.caso_id || "caso"}-copia`);
+    }
     L().casos.splice(L().ativo + 1, 0, c);
     L().ativo += 1;
     carregarNoFormulario();
@@ -200,6 +301,7 @@ const Projeto = (() => {
       R2_max: num(c.R2_max),
       ajustes: { chapa: grupo(c.ajustes?.chapa), motor: grupo(c.ajustes?.motor) },
       g_manual: Array.isArray(c.g_manual) && c.g_manual.some((v) => v !== null) ? c.g_manual : null,
+      setup: c.setup || null,
     }));
   }
   function serializar() {
@@ -234,6 +336,7 @@ const Projeto = (() => {
       g_manual: Array.isArray(c.g_manual)
         ? [0, 1].map((k) => (c.g_manual[k] === null || c.g_manual[k] === undefined ? null : Number(c.g_manual[k])))
         : null,
+      setup: c.setup && typeof c.setup === "object" && c.setup.sufixo ? c.setup : null,
       _status: "",
     }));
   }
@@ -411,6 +514,7 @@ const Projeto = (() => {
     $("btn-caso-novo-lista").addEventListener("click", novoCaso);
     $("btn-caso-duplicar").addEventListener("click", duplicar);
     $("btn-caso-excluir").addEventListener("click", excluir);
+    $("btn-atualizar-setup").addEventListener("click", atualizarDoSetup);
     for (const r of document.querySelectorAll("input[name='layout']")) {
       r.addEventListener("change", () => r.checked && trocarLayout(r.value));
     }
@@ -437,6 +541,8 @@ const Projeto = (() => {
   return {
     iniciar,
     aviso,
+    casoDeSetup,
+    verificarSetup,
     gManual,
     definirGManual,
     lerFormulario,

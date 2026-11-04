@@ -663,6 +663,8 @@ async function iniciar() {
     estado.campos = await obter("/api/campos");
     preencherCarcacas(await obter("/api/carcacas"));
     Projeto.iniciar();
+    await Setups.iniciar();
+    Projeto.verificarSetup();
   } catch (e) {
     definirConexao("erro", "sem conexão");
     mostrarVazio(`Erro: ${e.message}`);

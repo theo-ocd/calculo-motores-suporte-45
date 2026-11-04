@@ -424,3 +424,25 @@ def carregar_parametros_th(diretorio: Path | str) -> dict[str, float]:
             raise ValueError(f"{caminho.name}: {nome} não pode ser negativo")
         out[nome] = x
     return out
+
+
+# --------------------------------------------------------------------------- transmissão (setups)
+
+ARQ_TRANSMISSAO = "transmissao.csv"
+GRUPOS_TRANSMISSAO = ("polia_maquina", "polia_motor", "rpm_motor")
+
+
+def carregar_transmissao(diretorio: Path | str) -> dict[str, list[float]]:
+    """Listas de polias e rpm (data/padrao/transmissao.csv), em ordem crescente."""
+    caminho = Path(diretorio) / ARQ_TRANSMISSAO
+    out: dict[str, list[float]] = {g: [] for g in GRUPOS_TRANSMISSAO}
+    with caminho.open(encoding="utf-8", newline="") as f:
+        for r in csv.DictReader(f, delimiter=";"):
+            grupo = r["grupo"].strip()
+            if grupo not in out:
+                continue
+            try:
+                out[grupo].append(float(r["valor"].replace(",", ".")))
+            except ValueError as exc:
+                raise ValueError(f"{caminho.name}: {grupo} = {r['valor']!r} não é número") from exc
+    return {g: sorted(set(v)) for g, v in out.items()}

@@ -42,42 +42,66 @@ Valores que aparecem na planilha (a confirmar como listas, S0):
 
 ## Entregas
 
-### S0: Definições e dados (só documentação e tabelas, sem código de interface)
-- Confirmar o que é lista fixa e o que é entrada livre, o significado do sufixo, os
-  setups com banco duplo e onde os setups ficam salvos (perguntas abaixo).
-- `data/padrao/transmissao.csv` com as listas confirmadas (polias, correias e perfil).
-- **Conferência:** tabela de conferência com a planilha.
+S0 foi feita no PR #43. S1 a S5 foram feitas de uma vez (pedido do usuário), na branch
+`feature/st-setups`, para avaliação antes do merge.
 
-### S1: Núcleo do cálculo da correia (funções puras)
-- `src/tensorcad/correia.py`: distância entre eixos (0 %, 2 % e 3 %) e rpm da máquina,
-  com validação (raiz negativa = correia curta demais para as polias).
-- Testes contra os valores da planilha (L 5000 e 5500, todas as polias do motor).
-- **Conferência:** tabela calculada × planilha.
+### S1: Núcleo do cálculo da correia — feita
+- `src/tensorcad/correia.py` (puro): `distancia_eixos(Correia, alongamento)`, `raios`
+  (0 % / 2 % / 3 %), `rpm_maquina` e `sufixo` (`-<polia do motor>-<correia>`). Correia
+  curta demais para as polias dá erro.
+- Conferido com a planilha nas 14 polias × L 5000 e 5500 × 0 %, 2 % e 3 % (84 valores) e
+  no rpm a 1200.
 
-### S2: Modelo de setup, API e .json
-- Setup = nome, polia da máquina, polia do motor, correia, rpm do motor, R_min/R_max
-  calculados e sufixo, mais os dados do banco 2, se confirmados.
-- API `POST /api/setup` (calcula e valida). O projeto `.json` ganha a lista `setups`, que
-  é opcional, para arquivos antigos continuarem abrindo.
-- **Conferência:** salvar e abrir um .json com setups.
+### S2: Setup, API e biblioteca — feita
+- `GET /api/transmissao`: listas de `data/padrao/transmissao.csv` (polia da máquina 355,
+  14 polias do motor, rpm WEG 60 Hz).
+- `POST /api/setup`: valida (listas, correia livre > 0 e compatível) e calcula R_min,
+  R_info (2 %), R_max, rpm da máquina e sufixo. O banco 2 é opcional (polias e correia;
+  mesmo rpm) e dá R2_min / R2_info / R2_max.
+- `POST /api/biblioteca`: confere e **recalcula** um arquivo `tensorcad-setups` v1, sem
+  nomes repetidos.
+- A biblioteca fica no navegador (`tensorcad.setups.v1`, separada do projeto) e pode ser
+  salva e aberta como arquivo próprio (`setups.json`). Ao abrir, os setups são **mesclados**:
+  os de mesmo nome ou id são substituídos.
 
-### S3: Tela "Setups" (nova aba, antes do layout)
-- Navegação no topo: **Setups | Layout**. A aba Setups troca a tela inteira: formulário
-  com as listas, resultado do cálculo (R 0 %, 2 % e 3 %, rpm) e botão salvar.
-- Os setups salvos aparecem no menu lateral (renomear, duplicar, excluir).
-- **Conferência:** prints e teste de navegador.
+### S3: Tela "Setups" — feita
+- Abas **Setups | Layout** na barra superior. A aba Setups troca a página inteira:
+  - biblioteca à esquerda: novo, duplicar, excluir, salvar e abrir arquivo;
+  - formulário no centro: nome, polia da máquina, polia do motor, correia, rpm e switch
+    do banco 2;
+  - resultado à direita: sufixo, R 0 % / 2 % / 3 %, rpm da máquina e banco 2.
+- "salvar setup" recalcula na hora, sem gravar valores antigos se o usuário salvar logo
+  após digitar.
+- Na aba Layout, a lista **Setups (biblioteca)** fica no painel lateral, cada setup com
+  o botão **"+ caso"**.
 
-### S4: Usar um setup na edição de layout
-- No layout (45° ou horizontal), "novo caso a partir de um setup": R_min/R_max e o sufixo
-  ficam **travados** (somente leitura, com indicação do setup de origem). O nome do caso
-  continua editável. "Novo caso" do zero continua como hoje.
-- Mudar o setup atualiza os casos ligados a ele (a confirmar).
-- **Conferência:** caso criado de um setup, com o cálculo igual ao feito à mão.
+### S4: Casos a partir de setups — feita
+- "+ caso" cria um caso no layout ativo (45° ou tubo horizontal):
+  - o nome é `<nome do setup><sufixo>` (com `-2`, `-3`… se repetir);
+  - **R_min / R_max travados** (somente leitura), e R2 também, se o setup tiver banco 2;
+  - o **sufixo travado** aparece ao lado do nome, e só a parte antes dele é editável;
+  - o caso marca ⚙ na lista e mostra o setup de origem.
+- O caso guarda uma **cópia** do setup (`setup` no .json). Se o setup da biblioteca mudar,
+  o caso **fica como estava** e mostra um aviso. O botão **"atualizar do setup"** copia os
+  dados novos (R e sufixo). Se o setup não estiver na biblioteca deste navegador, também
+  há aviso.
+- "duplicar" um caso de setup mantém o sufixo no fim. "+ novo caso" do zero continua igual.
 
-### S5: Saídas
-- `.xlsx`: dados do setup na aba do caso (polias, correia, rpm do motor e da máquina, R) e
-  tabela de setups no índice.
-- **Conferência:** exportar um projeto com casos de setups nos dois layouts.
+### S5: Saídas — feita
+- `.xlsx`: bloco **"Setup de transmissão"** na aba do caso (nome + sufixo, polias,
+  correia, rpm do motor e da máquina, R 0 / 2 / 3 % e banco 2), nos dois layouts.
+- Tabela **"Setups de transmissão"** no índice PROJETO, com os casos de cada setup.
+- `_entradas` e `_entradas_horizontal` guardam o setup. A exportação recalcula o setup
+  gravado e aponta erro no caso se ele for inválido.
+
+### Decisões de implementação (para conferência)
+- Aba inicial ao abrir o programa: **Layout**, como antes. A aba Setups vem primeiro na
+  barra.
+- Os R travados ficam arredondados a 0,01 mm no caso (o cálculo usa o valor completo do
+  setup).
+- Excluir um setup da biblioteca não mexe nos casos já criados; eles mostram o aviso.
+- O switch de banco duplo continua sendo do projeto. Se o setup tem banco 2, o R2 do caso
+  vem travado do setup, mas só entra no cálculo com o switch ligado.
 
 Depois: **T8** (tutorial, incluindo a aba Setups) e **T7** (release 1.0 com LEIA-ME).
 
@@ -104,6 +128,5 @@ Depois: **T8** (tutorial, incluindo a aba Setups) e **T7** (release 1.0 com LEIA
 - **Banco duplo:** o setup tem uma transmissão do banco 2 opcional; sem ela, R2 continua
   digitado no caso.
 
-### Pendente de confirmação (S0)
-- rpm WEG: valores síncronos de 60 Hz (3600 / 1800 / 1200 / 900) ou nominais do catálogo
-  (por exemplo 1770 para IV polos)? Entra 50 Hz?
+### Confirmado depois da S0
+- rpm WEG: **síncrono 60 Hz** (3600 / 1800 / 1200 / 900).

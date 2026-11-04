@@ -335,3 +335,26 @@ body:not([data-layout="horizontal"]) .so-horizontal { display: none !important; 
 #mundo .alvo { stroke: transparent; stroke-width: 12; fill: none; pointer-events: stroke; }
 #mundo .alvo[data-id='cota-g'] { cursor: pointer; }
 #mundo text { pointer-events: none; }
+
+/* abas Setups | Layout (S3) */
+.abas { display: flex; gap: 2px; margin: 0 16px; }
+.abas button { background: transparent; color: var(--txt-2); border: 1px solid var(--borda); padding: 4px 14px; border-radius: var(--raio) var(--raio) 0 0; cursor: pointer; font: inherit; }
+.abas button.ativa { color: var(--acento); border-color: var(--acento); background: var(--painel-2); }
+body[data-aba="setups"] .so-aba-layout { display: none !important; }
+body:not([data-aba="setups"]) .so-aba-setups { display: none !important; }
+.tela-setups { flex: 1; min-height: 0; display: grid; grid-template-columns: 300px minmax(360px, 560px) 1fr; gap: 0; }
+.form-setup { border-left: 1px solid var(--borda); border-right: 1px solid var(--borda); }
+@media (max-width: 1000px) { .tela-setups { grid-template-columns: 1fr; } }
+.lista-setups-layout { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.lista-setups-layout li { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px; font-size: 12px; }
+.lista-setups-layout .info-caso { color: var(--txt-2); font: 11px var(--mono); }
+.nome-com-sufixo { display: flex; align-items: center; gap: 4px; }
+.nome-com-sufixo input { flex: 1; min-width: 0; }
+.sufixo { font: 13px var(--mono); color: var(--acento); white-space: nowrap; }
+input[readonly] { opacity: .75; cursor: not-allowed; border-style: dashed; }
+.info-setup { border: 1px solid var(--borda); border-radius: var(--raio); padding: 6px 8px; margin: 4px 0 10px; font-size: 12px; }
+.info-setup p { margin: 0 0 4px; }
+.aviso-setup { color: var(--alerta); }
+.lista-casos .marca-setup { color: var(--acento); font-size: 11px; }
+#lista-setups li { grid-template-columns: 10px 1fr; row-gap: 0; }
+#lista-setups li .info-caso { grid-column: 2; }

@@ -10,9 +10,9 @@ from typing import Any
 
 import tensorcad
 from tensorcad import ajustes as ajustes_mod
-from tensorcad import banco_duplo, desenho, desenho_th
+from tensorcad import banco_duplo, correia, desenho, desenho_th
 from tensorcad import tubo_horizontal as th
-from tensorcad.loader import BaseDados, Padroes, carregar_parametros_th
+from tensorcad.loader import BaseDados, Padroes, carregar_parametros_th, carregar_transmissao
 from tensorcad.models import Origem
 from tensorcad.projeto import (
     X_TUBO_PADRAO,
@@ -463,6 +463,148 @@ def calcular_horizontal(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# --------------------------------------------------------------------------- setups (S2)
+
+FORMATO_SETUPS = "tensorcad-setups"
+VERSAO_SETUPS = 1
+# padrão se a tabela não estiver disponível (data/padrao/transmissao.csv)
+TRANSMISSAO_PADRAO = {
+    "polia_maquina": [355.0],
+    "polia_motor": [
+        125.0,
+        132.0,
+        140.0,
+        150.0,
+        160.0,
+        170.0,
+        180.0,
+        190.0,
+        200.0,
+        212.0,
+        224.0,
+        236.0,
+        250.0,
+        280.0,
+    ],
+    "rpm_motor": [900.0, 1200.0, 1800.0, 3600.0],
+}
+
+
+def transmissao(ctx: Contexto) -> dict[str, list[float]]:
+    """Listas da tela de setups: polias da máquina e do motor e rpm do motor (WEG 60 Hz)."""
+    try:
+        return carregar_transmissao(ctx.dir_padroes)
+    except FileNotFoundError:
+        return TRANSMISSAO_PADRAO
+
+
+def _correia(
+    bruto: dict[str, Any], listas: dict[str, list[float]], erros: dict[str, str], pre: str = ""
+) -> correia.Correia | None:
+    sub: dict[str, str] = {}
+    D = _num(bruto, "polia_maquina", sub, obrigatorio=True, positivo=True)
+    d = _num(bruto, "polia_motor", sub, obrigatorio=True, positivo=True)
+    L = _num(bruto, "correia", sub, obrigatorio=True, positivo=True)
+    if D is not None and D not in listas["polia_maquina"]:
+        sub["polia_maquina"] = "fora da lista de polias da máquina"
+    if d is not None and d not in listas["polia_motor"]:
+        sub["polia_motor"] = "fora da lista de polias do motor"
+    c = None
+    if not sub:
+        assert D is not None and d is not None and L is not None
+        c = correia.Correia(D, d, L)
+        try:
+            correia.distancia_eixos(c)
+        except ValueError as exc:
+            sub["correia"] = str(exc)
+            c = None
+    erros.update({f"{pre}{k}": v for k, v in sub.items()})
+    return c
+
+
+def setup(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
+    """Valida e calcula um setup: R_min (0 %), R_info (2 %), R_max (3 %), rpm e sufixo.
+
+    Entradas: id, nome, polia_maquina, polia_motor, correia, rpm_motor e, opcional,
+    banco2 {polia_maquina, polia_motor, correia} (mesmo rpm do motor)."""
+    if not isinstance(corpo, dict):
+        raise ErroEntrada({"(corpo)": "esperado um objeto JSON"})
+    listas = transmissao(ctx)
+    erros: dict[str, str] = {}
+    nome = str(corpo.get("nome") or "").strip()
+    if not nome:
+        erros["nome"] = "o setup precisa de um nome"
+    rpm = _num(corpo, "rpm_motor", erros, obrigatorio=True, positivo=True)
+    if rpm is not None and rpm not in listas["rpm_motor"]:
+        erros["rpm_motor"] = "fora da lista de rpm (WEG 60 Hz)"
+    c1 = _correia(corpo, listas, erros)
+    b2 = corpo.get("banco2")
+    c2 = None
+    if b2 is not None:
+        if not isinstance(b2, dict):
+            erros["banco2"] = "esperado um objeto"
+        else:
+            c2 = _correia(b2, listas, erros, "banco2.")
+    if erros:
+        raise ErroEntrada(erros)
+    assert c1 is not None and rpm is not None
+    r1 = correia.raios(c1)
+    out: dict[str, Any] = {
+        "id": str(corpo.get("id") or "").strip() or None,
+        "nome": nome,
+        "polia_maquina": c1.polia_maquina,
+        "polia_motor": c1.polia_motor,
+        "correia": c1.comprimento,
+        "rpm_motor": rpm,
+        "rpm_maquina": correia.rpm_maquina(rpm, c1),
+        "sufixo": correia.sufixo(c1),
+        "R_min": r1.R_min,
+        "R_info": r1.R_info,
+        "R_max": r1.R_max,
+        "banco2": None,
+    }
+    if c2 is not None:
+        r2 = correia.raios(c2)
+        out["banco2"] = {
+            "polia_maquina": c2.polia_maquina,
+            "polia_motor": c2.polia_motor,
+            "correia": c2.comprimento,
+            "rpm_maquina": correia.rpm_maquina(rpm, c2),
+            "R2_min": r2.R_min,
+            "R2_info": r2.R_info,
+            "R2_max": r2.R_max,
+        }
+    return out
+
+
+def biblioteca(ctx: Contexto, corpo: Any) -> dict[str, Any]:
+    """Confere e recalcula uma biblioteca de setups (arquivo tensorcad-setups)."""
+    if not isinstance(corpo, dict):
+        raise ErroEntrada({"(biblioteca)": "esperado um objeto JSON"})
+    erros: dict[str, str] = {}
+    if corpo.get("formato") != FORMATO_SETUPS:
+        erros["formato"] = f"esperado '{FORMATO_SETUPS}'"
+    if corpo.get("versao") != VERSAO_SETUPS:
+        erros["versao"] = f"versão suportada: {VERSAO_SETUPS}"
+    lista = corpo.get("setups")
+    if not isinstance(lista, list):
+        erros["setups"] = "esperada uma lista de setups"
+    if erros:
+        raise ErroEntrada(erros)
+    out = []
+    for i, s in enumerate(lista):
+        try:
+            out.append(setup(ctx, s))
+        except ErroEntrada as exc:
+            erros.update({f"setups[{i}].{k}": v for k, v in exc.erros.items()})
+    nomes = [s["nome"].lower() for s in out]
+    if not erros and len(set(nomes)) != len(nomes):
+        erros["setups"] = "nomes de setup repetidos"
+    if erros:
+        raise ErroEntrada(erros)
+    return {"formato": FORMATO_SETUPS, "versao": VERSAO_SETUPS, "setups": out}
+
+
 # --------------------------------------------------------------------------- projeto (W4)
 
 FORMATO_PROJETO = "tensorcad-projeto"
@@ -498,6 +640,20 @@ def validar_projeto(corpo: Any) -> dict[str, Any]:
     if erros:
         raise ErroEntrada(erros)
     return corpo
+
+
+def _setup_do_caso(
+    ctx: Contexto, caso: dict[str, Any], erros: dict[str, str], onde: str
+) -> dict[str, Any] | None:
+    """Setup de origem do caso, recalculado (confere os dados gravados no projeto)."""
+    st = caso.get("setup")
+    if not st:
+        return None
+    try:
+        return setup(ctx, st)
+    except ErroEntrada as exc:
+        erros.update({f"{onde}.setup.{k}": v for k, v in exc.erros.items()})
+        return None
 
 
 def _vazio(caso: Any) -> bool:
@@ -537,6 +693,7 @@ def exportar(ctx: Contexto, corpo: Any) -> tuple[bytes, str]:
             erros.update({f"casos[{i}].{k}": v for k, v in exc.erros.items()})
             continue
         aj = r["ajustes_aplicados"]
+        st = _setup_do_caso(ctx, caso, erros, f"casos[{i}]")
         entradas.append(
             EntradaPlanilha(
                 caso_id=str(caso["caso_id"]).strip(),
@@ -552,6 +709,7 @@ def exportar(ctx: Contexto, corpo: Any) -> tuple[bytes, str]:
                     "R2_max": r["banco_duplo"]["R2_max"],
                     "deslocamento_y": r["banco_duplo"]["deslocamento_y"],
                 },
+                setup=st,
             )
         )
     horizontais = []
@@ -586,6 +744,7 @@ def exportar(ctx: Contexto, corpo: Any) -> tuple[bytes, str]:
                 invertido=r["invertido"],
                 banco_duplo=r["banco_duplo"],
                 g_manual=r["g_manual"],
+                setup=_setup_do_caso(ctx, caso, erros, f"horizontal.casos[{i}]"),
             )
         )
     if not erros and not entradas and not horizontais:
