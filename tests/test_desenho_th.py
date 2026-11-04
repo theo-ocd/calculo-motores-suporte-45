@@ -106,3 +106,24 @@ def test_carcacas_status_horizontal(ctx) -> None:
     lista = {c["carcaca"]: c for c in api.carcacas(ctx)}
     assert lista["250"]["calculavel"] is False and lista["250"]["calculavel_horizontal"] is True
     assert lista["250"]["status_horizontal"] == "ok"
+
+
+def test_api_g_manual(ctx) -> None:
+    corpo = {
+        "carcaca": "250",
+        "R_min": 1839,
+        "R_max": 1894,
+        "comprimento_tubo": 2000,
+        "altura_tubo": 1295,
+        "g_manual": [65, None],
+    }
+    r = api.calcular_horizontal(ctx, corpo)
+    assert r["g_manual"] == [65, None] and r["em_informada"][0]["g"] == 65
+    with pytest.raises(api.ErroEntrada) as exc:
+        api.calcular_horizontal(ctx, {**corpo, "altura_tubo": None})
+    assert "altura do tubo" in exc.value.erros["g_manual"]
+    with pytest.raises(api.ErroEntrada) as exc:
+        api.calcular_horizontal(ctx, {**corpo, "g_manual": ["x", None]})
+    assert "número" in exc.value.erros["g_manual"]
+    # lista vazia/nulos = sem ajuste
+    assert api.calcular_horizontal(ctx, {**corpo, "g_manual": [None, None]})["g_manual"] is None

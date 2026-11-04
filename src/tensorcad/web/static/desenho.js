@@ -145,6 +145,8 @@ const Desenho = (() => {
       case "cota": {
         const [x1, y1] = P(p.p0);
         const [x2, y2] = P(p.p1);
+        // área de clique/hover mais larga que o traço (invisível)
+        el("line", { class: "alvo", "data-id": p.id, x1, y1, x2, y2 }, g);
         e = el("line", { ...comum, x1, y1, x2, y2 }, g);
         const ang = Math.atan2(y2 - y1, x2 - x1);
         for (const [x, y, a] of [[x2, y2, ang], [x1, y1, ang + Math.PI]]) {
@@ -182,7 +184,9 @@ const Desenho = (() => {
 
   // -------------------------------------------------------------- interação
   function mostrarDica(ev) {
-    const alvo = ev.target.closest("[data-id]");
+    let alvo = ev.target.closest("[data-id]");
+    // área de clique larga das cotas: usa o elemento desenhado (rótulo e valores)
+    if (alvo && alvo.classList.contains("alvo")) alvo = document.getElementById(`el-${alvo.dataset.id}`);
     if (!alvo || arrasto) {
       dica.hidden = true;
       return;

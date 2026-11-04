@@ -319,3 +319,19 @@ body:not([data-layout="horizontal"]) .so-horizontal { display: none !important; 
 #mundo .chapa .el[data-status="FORA_PORCAS"], #mundo .chapa .el[data-status="FORA_TENSIONAMENTO"] { stroke: var(--alerta); }
 #posicoes-th { font-size: 12px; }
 #posicoes-th td, #posicoes-th th { padding-left: 3px; padding-right: 3px; }
+
+/* ajuste manual de g (tubo horizontal) */
+.ajuste-g { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 10px; }
+.celula-g { white-space: nowrap; display: flex; align-items: center; gap: 2px; }
+.rotulo-g { width: 34px; color: var(--txt-2); font: 12px var(--mono); }
+.titulo-g { margin: 10px 0 2px; font-size: 12px; color: var(--acento); }
+.botao-g { padding: 0 5px; min-width: 18px; font: 12px var(--mono); line-height: 18px; background: var(--painel-2);
+  color: var(--txt); border: 1px solid var(--borda); border-radius: 3px; cursor: pointer; }
+.botao-g:hover { border-color: var(--acento); color: var(--acento); }
+.botao-g.auto { margin-left: 2px; color: var(--txt-2); }
+.campo-g { width: 64px; padding: 0 3px; margin: 0 2px; font: 12px var(--mono); text-align: right; }
+#posicoes-th tr.manual td { color: var(--acento-2); }
+#mundo #el-cota-g { cursor: pointer; }
+#mundo .alvo { stroke: transparent; stroke-width: 12; fill: none; pointer-events: stroke; }
+#mundo .alvo[data-id='cota-g'] { cursor: pointer; }
+#mundo text { pointer-events: none; }

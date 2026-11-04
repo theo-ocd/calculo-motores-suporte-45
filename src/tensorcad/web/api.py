@@ -374,6 +374,26 @@ def _par_th(par: tuple[th.PosicaoTH, th.PosicaoTH] | None) -> list[dict[str, Any
     return None if par is None else [_posicao_th(p) for p in par]
 
 
+def _ler_g_manual(
+    bruto: Any, altura: float | None, erros: dict[str, str]
+) -> tuple[float | None, float | None] | None:
+    """[g 0 %, g 3 %] (cada um número ou null). Só vale com a altura do tubo informada."""
+    if bruto is None or (isinstance(bruto, list) and all(v in (None, "") for v in bruto)):
+        return None
+    if not isinstance(bruto, list) or len(bruto) != 2:
+        erros["g_manual"] = "esperado [g 0 %, g 3 %]"
+        return None
+    if altura is None:
+        erros["g_manual"] = "o ajuste manual de g exige a altura do tubo informada"
+        return None
+    sub: dict[str, str] = {}
+    vals = tuple(_num({"g": v}, "g", sub, obrigatorio=False) for v in bruto)
+    if sub:
+        erros["g_manual"] = "g deve ser número"
+        return None
+    return vals[0], vals[1]
+
+
 def calcular_horizontal(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
     """Layout tubo horizontal. Entradas: carcaca, motor_id (opcional), R_min, R_max,
     comprimento_tubo, altura_tubo (opcional), invertido, banco_duplo (opcional), caso_id."""
@@ -392,6 +412,7 @@ def calcular_horizontal(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
         erros["R_max"] = "R_max deve ser maior ou igual a R_min"
     comp = _num(corpo, "comprimento_tubo", erros, obrigatorio=True, positivo=True)
     altura = _num(corpo, "altura_tubo", erros, obrigatorio=False)
+    g_manual = _ler_g_manual(corpo.get("g_manual"), altura, erros)
     bd = _ler_banco_duplo(ctx, corpo.get("banco_duplo"), erros)
     motor = None
     if info is not None and info["calculavel_horizontal"]:
@@ -415,7 +436,7 @@ def calcular_horizontal(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
         y_laje=ctx.y_piso,
         **fixos,
     )
-    e = th.EntradaTH(str(corpo.get("caso_id") or "caso"), motor, r_min, r_max, altura, bd)
+    e = th.EntradaTH(str(corpo.get("caso_id") or "caso"), motor, r_min, r_max, altura, bd, g_manual)
     r = th.resolver(par, e)
     return {
         "layout": "horizontal",
@@ -429,6 +450,7 @@ def calcular_horizontal(ctx: Contexto, corpo: dict[str, Any]) -> dict[str, Any]:
         "R_min": r_min,
         "R_max": r_max,
         "altura_informada": altura,
+        "g_manual": None if g_manual is None else list(g_manual),
         "faixas_altura": [list(f) for f in r.faixas_altura],
         "altura_recomendada": r.altura_recomendada,
         "margem_recomendada": r.margem_recomendada,
@@ -563,6 +585,7 @@ def exportar(ctx: Contexto, corpo: Any) -> tuple[bytes, str]:
                 altura_informada=r["altura_informada"],
                 invertido=r["invertido"],
                 banco_duplo=r["banco_duplo"],
+                g_manual=r["g_manual"],
             )
         )
     if not erros and not entradas and not horizontais:
