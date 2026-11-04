@@ -81,19 +81,29 @@ Valores que aparecem na planilha (a confirmar como listas, S0):
 
 Depois: **T8** (tutorial, incluindo a aba Setups) e **T7** (release 1.0 com LEIA-ME).
 
-## Perguntas para a S0 (antes de qualquer código)
+## Definições (S0, respostas do usuário)
 
-1. **Listas ou entrada livre?** Polia da máquina (só 355 ou outras?), polias do motor
-   (as 14 da planilha?), correias (só SPB 5000 / 5300 / 5500 / 6000?) e rpm do motor
-   (livre ou lista, por exemplo 900 / 1200 / 1800?).
-2. **Sufixo do caso:** o que ele indica? Proposta: a combinação da transmissão, por
-   exemplo `-170-SPB5000`. O nome do caso fica `<nome>-<sufixo>`, e só a parte do nome é
-   editável.
-3. **Banco duplo:** o setup define também o banco 2, com a polia e a correia do banco 2
-   calculando R2_min e R2_max, ou o banco 2 continua digitado no caso?
-4. **Onde ficam os setups:** no próprio projeto (.json), junto com os casos, ou numa
-   biblioteca separada, reaproveitável entre projetos?
-5. **0 % e 3 %:** confirmar R_min = 0 % e R_max = 3 %. O valor de 2 % só aparece como
-   informação?
-6. **Setup alterado depois:** os casos já criados a partir dele são atualizados ou ficam
-   como estavam?
+| item | definição |
+|---|---|
+| polia da máquina | só **355** por enquanto (lista em `data/padrao/transmissao.csv`) |
+| polia do motor | lista das **14** da planilha: 125, 132, 140, 150, 160, 170, 180, 190, 200, 212, 224, 236, 250, 280 |
+| correia (comprimento L) | **entrada livre** (mm) |
+| rpm do motor | **lista padrão WEG**. Proposta: 60 Hz síncrono, II/IV/VI/VIII polos = 3600 / 1800 / 1200 / 900 (a planilha usa 900 e 1200). Confirmar se é síncrono ou nominal e se entra 50 Hz |
+| sufixo do caso | **`-<polia do motor>-<correia>`**, sem o perfil (ex.: `-170-5000`). Fica travado; só o nome antes dele é editável |
+| tensionamento | R_min = **0 %**; R_max = **3 %**; o 2 % é só informação |
+| banco duplo | R2 escolhido **da mesma forma que R1**: o setup pode ter a transmissão do banco 2 (polia da máquina, polia do motor e correia), que calcula R2_min e R2_max, também travados |
+| onde ficam | **biblioteca de setups exportável à parte** (arquivo próprio, reaproveitável entre projetos). Os casos guardam uma cópia dos valores e a referência ao setup |
+| setup alterado | os casos criados antes **ficam como estavam**, mas mostram um **aviso**; um botão **atualiza** os dados do caso a partir do setup |
+| interface | abas **Setups \| Layout** na barra superior; a aba Setups ocupa a página inteira e a lista de setups salvos fica no painel lateral |
+
+### Consequências no roteiro
+- **S2:** além do `.json` do projeto, há um arquivo de biblioteca (`tensorcad-setups`,
+  versão 1) para salvar e abrir. A biblioteca também fica no navegador entre sessões.
+- **S4:** o caso criado de um setup guarda `setup_id` e uma cópia dos dados. Se o setup
+  mudar (mesmo id, dados diferentes), o caso mostra o aviso e o botão "atualizar do setup".
+- **Banco duplo:** o setup tem uma transmissão do banco 2 opcional; sem ela, R2 continua
+  digitado no caso.
+
+### Pendente de confirmação (S0)
+- rpm WEG: valores síncronos de 60 Hz (3600 / 1800 / 1200 / 900) ou nominais do catálogo
+  (por exemplo 1770 para IV polos)? Entra 50 Hz?
