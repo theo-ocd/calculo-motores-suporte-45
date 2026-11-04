@@ -358,3 +358,20 @@ input[readonly] { opacity: .75; cursor: not-allowed; border-style: dashed; }
 .lista-casos .marca-setup { color: var(--acento); font-size: 11px; }
 #lista-setups li { grid-template-columns: 10px 1fr; row-gap: 0; }
 #lista-setups li .info-caso { grid-column: 2; }
+
+/* tutorial (T8): camada por cima da página, só ilustrativa */
+.botao-tutorial { background: transparent; color: var(--acento); border: 1px solid var(--acento); border-radius: var(--raio);
+  padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+#tutorial { position: fixed; inset: 0; z-index: 1000; }
+.tutorial-destaque { position: fixed; border: 2px solid var(--acento); border-radius: var(--raio);
+  box-shadow: 0 0 0 9999px rgba(5, 10, 12, .68); pointer-events: none; transition: all .18s ease; }
+.tutorial-legenda { position: fixed; background: var(--painel-2); border: 1px solid var(--acento); border-radius: var(--raio);
+  padding: 10px 12px; box-shadow: 0 6px 24px rgba(0, 0, 0, .5); color: var(--txt); }
+.tutorial-passo { margin: 0; color: var(--txt-2); font: 11px var(--mono); }
+.tutorial-titulo { margin: 2px 0 6px; color: var(--acento); font-size: 15px; }
+.tutorial-texto { margin: 0 0 10px; font-size: 13px; line-height: 1.45; }
+.tutorial-botoes { display: flex; gap: 6px; justify-content: flex-end; }
+.tutorial-botoes button { background: var(--painel); color: var(--txt); border: 1px solid var(--borda); border-radius: 4px;
+  padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+.tutorial-botoes button.principal { border-color: var(--acento); color: var(--acento); }
+.tutorial-botoes button:disabled { opacity: .4; cursor: default; }

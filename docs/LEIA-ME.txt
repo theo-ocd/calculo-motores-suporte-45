@@ -34,6 +34,8 @@ desenha o conjunto. O resultado pode ser exportado para uma planilha .xlsx.
 3. A TELA
 ---------
   Abas           : Setups (criar setups de transmissao) | Layout (casos e calculo)
+  Botao tutorial : passo a passo ilustrado da tela (destaca cada parte com uma
+                   explicacao; nao altera nada). Setas navegam, Esc sai.
   Barra superior : + novo caso | abrir... | salvar .json | exportar .xlsx |
                    limpar memoria | versao | estado da conexao
   Painel esquerdo: projeto, casos em memoria, caso ativo, dimensoes, carcacas
