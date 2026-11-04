@@ -72,6 +72,8 @@ class EntradaTH:
     R_max: float
     altura_informada: float | None = None
     banco2: ConfigBancoDuplo | None = None  # tensionamento para banco duplo (opcional)
+    # ajuste manual de g (0 %, 3 %) com a altura informada; None = posição calculada
+    g_manual: tuple[float | None, float | None] | None = None
 
 
 @dataclass(frozen=True)
@@ -247,9 +249,20 @@ def posicao(
     g, m = _maximo(lambda gg: _rel_em(par, motor, R, altura, gg, b2), lo, hi, passo=2.0)
     if m == -math.inf:
         return PosicaoTH(R, altura, Status.SEM_SOLUCAO, mensagens=("arco R fora do alcance",))
+    return posicao_em_g(par, motor, R, altura, g, b2)
+
+
+def posicao_em_g(
+    par: ParametrosTH, motor: Motor, R: float, altura: float, g: float, b2: Banco2 = None
+) -> PosicaoTH:
+    """Posição com g dado (ajuste manual): o motor fica sobre o arco R e o x sai do arco.
+
+    Mesmos limites e status da posição recomendada (g, x e banco duplo)."""
     y = y_motor(par, motor, altura, g)
     x = x_no_arco(par, R, y)
-    assert x is not None
+    if x is None:
+        msg = f"com g = {g:.2f} o arco R = {R:g} não cruza a altura do motor"
+        return PosicaoTH(R, altura, Status.SEM_SOLUCAO, g=g, y_motor=y, mensagens=(msg,))
     folga_g, folga_x, rel = _folgas(par, motor, g, x)
     R2 = dist = folga_r2 = None
     if b2 is not None:
@@ -319,7 +332,17 @@ def resolver(par: ParametrosTH, e: EntradaTH) -> ResultadoTH:
         (r0, b0), (r3, b3) = _tensoes(e)
         return posicao(par, e.motor, r0, altura, b0), posicao(par, e.motor, r3, altura, b3)
 
-    informada = nas(e.altura_informada)
+    def manual(altura: float | None) -> tuple[PosicaoTH, PosicaoTH] | None:
+        """Na altura informada, g dado pelo usuário onde houver; senão, o calculado."""
+        auto = nas(altura)
+        if auto is None or not e.g_manual:
+            return auto
+        out = []
+        for p, (R, b), g in zip(auto, _tensoes(e), e.g_manual, strict=True):
+            out.append(p if g is None else posicao_em_g(par, e.motor, R, p.altura_tubo, g, b))
+        return out[0], out[1]
+
+    informada = manual(e.altura_informada)
     if xm <= 0:
         msg = (
             f"a chapa (A {e.motor.A:g} + {par.acrescimo_furacao:g}) não cabe no curso do tubo "

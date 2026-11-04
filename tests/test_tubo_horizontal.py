@@ -208,3 +208,41 @@ def test_o2_fica_540_acima_de_o1(motores) -> None:
     par = th.ParametrosTH(comprimento_tubo=2000)
     # motor na vertical de O1 a 1000 abaixo dele: 1540 de O2 (540 acima de O1)
     assert th.raio_o2(par, ConfigBancoDuplo(1, 1), -465, 1000 - 767) == pytest.approx(1540)
+
+
+# --------------------------------------------------------------------------- g manual
+
+
+def test_posicao_em_g_anda_sobre_o_arco(par, motores) -> None:
+    m = motores["IEC-250M-4P"]
+    p = th.posicao_em_g(par, m, 1839, 1295, 65)
+    assert p.status is Status.OK and p.g == 65
+    assert p.y_motor == 910 and th.raio(par, p.x, p.y_motor) == pytest.approx(1839)
+    assert p.x == pytest.approx(289.71, abs=0.01)
+    # +1 mm em g sobe o motor 1 mm e o arco empurra x para fora
+    q = th.posicao_em_g(par, m, 1839, 1295, 66)
+    assert q.y_motor == 909 and q.x > p.x
+    # g fora do curso: FORA_PORCAS
+    f = th.posicao_em_g(par, m, 1839, 1295, 160)
+    assert f.status is Status.FORA_PORCAS and "fora de 30–150" in f.mensagens[0]
+
+
+def test_g_manual_vale_so_na_altura_informada(par, motores) -> None:
+    m = motores["IEC-250M-4P"]
+    r = th.resolver(par, th.EntradaTH("C", m, 1839, 1894, 1295, g_manual=(65, None)))
+    auto = th.resolver(par, th.EntradaTH("C", m, 1839, 1894, 1295))
+    i0, i3 = r.em_informada
+    assert i0.g == 65 and i3.g == pytest.approx(auto.em_informada[1].g)
+    # recomendada, faixa e status do caso não mudam
+    assert r.altura_recomendada == pytest.approx(auto.altura_recomendada)
+    assert r.em_recomendada[0].g == pytest.approx(auto.em_recomendada[0].g)
+    assert r.status is auto.status
+    # banco duplo também é conferido no ajuste manual
+    from tensorcad.banco_duplo import ConfigBancoDuplo
+
+    b = th.resolver(
+        par, th.EntradaTH("C", m, 1839, 1894, 1295, ConfigBancoDuplo(2300, 2380), (65, None))
+    )
+    assert b.em_informada[0].folga_R2 == pytest.approx(
+        2300 - th.raio_o2(par, b.entrada.banco2, b.em_informada[0].x, 910)
+    )

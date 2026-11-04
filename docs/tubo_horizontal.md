@@ -204,6 +204,16 @@ Conferência (250M, tubo de 2000, R1 1839 / 1894):
   - folga mínima (g, x e R2) × altura do tubo, em 0 % e 3 %;
   - esboço da vista (laje, tubo, chapas, motores, arcos R1/R2, raios, O1 e O2).
 
+### Ajuste manual de g com a altura do tubo fixa — feito
+- Com a **altura do tubo informada**, o g de cada tensão (0 % e 3 %) pode ser ajustado à
+  mão: botões − / + de 1 em 1 mm, valor digitado ou "auto" para voltar ao calculado. O
+  motor anda sobre o arco da tensão e o x sai do arco, com os mesmos limites e status
+  (g 30–150, x no curso, banco duplo).
+- Clicar na cota g do desenho leva ao campo de g de 0 %.
+- O ajuste fica no caso (`g_manual` no .json) e vai para o .xlsx (linhas "informada" e o
+  campo "g manual" nas entradas). Não muda a altura recomendada nem a faixa admissível.
+- Núcleo: `tubo_horizontal.posicao_em_g` e `EntradaTH.g_manual`.
+
 ### T7: Release da versão executável 1.0
 - Teste ponta a ponta do .exe no Windows sem Python, com os dois layouts.
 - **Release `v1.0`** (não pré-release): tag `v1.0`, com o `tensorcad.exe` e um
