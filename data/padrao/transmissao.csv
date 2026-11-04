@@ -14,10 +14,10 @@ polia_motor;224;mm;MEDIDO;planilha de correias
 polia_motor;236;mm;MEDIDO;planilha de correias
 polia_motor;250;mm;MEDIDO;planilha de correias
 polia_motor;280;mm;MEDIDO;planilha de correias
-rpm_motor;3600;rpm;HIPOTESE;WEG 60 Hz, II polos (rotação síncrona) — a confirmar
-rpm_motor;1800;rpm;HIPOTESE;WEG 60 Hz, IV polos (rotação síncrona) — a confirmar
-rpm_motor;1200;rpm;HIPOTESE;WEG 60 Hz, VI polos (rotação síncrona; exemplo da planilha)
-rpm_motor;900;rpm;HIPOTESE;WEG 60 Hz, VIII polos (rotação síncrona; exemplo da planilha)
+rpm_motor;3600;rpm;MEDIDO;WEG 60 Hz, II polos (rotação síncrona, confirmada pelo usuário)
+rpm_motor;1800;rpm;MEDIDO;WEG 60 Hz, IV polos (rotação síncrona, confirmada pelo usuário)
+rpm_motor;1200;rpm;MEDIDO;WEG 60 Hz, VI polos (rotação síncrona, confirmada pelo usuário)
+rpm_motor;900;rpm;MEDIDO;WEG 60 Hz, VIII polos (rotação síncrona, confirmada pelo usuário)
 tensionamento_min;0;%;MEDIDO;R_min = distância entre eixos com a correia sem alongamento
 tensionamento_max;3;%;MEDIDO;R_max = a0 + L·0,03/2
 tensionamento_info;2;%;MEDIDO;só informativo

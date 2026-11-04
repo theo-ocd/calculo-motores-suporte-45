@@ -374,7 +374,60 @@ function camposHorizontal() {
     altura_tubo: $("altura-tubo").value.trim() || null,
     comprimento_tubo: $("comprimento-tubo").value.trim(),
     invertido: $("motor-invertido").checked,
+    // ajuste manual de g: só com a altura do tubo informada
+    g_manual: $("altura-tubo").value.trim() ? Projeto.gManual() : null,
   };
+}
+
+// ajuste manual de g (altura do tubo fixa): ±1 mm, valor digitado ou "auto"
+function definirG(i, valor) {
+  const g = Projeto.gManual();
+  g[i] = valor === null || Number.isNaN(valor) ? null : Math.round(valor * 10) / 10;
+  Projeto.definirGManual(g);
+  agendarCalculo();
+}
+
+function celulaG(p, i, manual) {
+  const td = document.createElement("div");
+  td.className = "celula-g";
+  const rot = document.createElement("span");
+  rot.className = "rotulo-g";
+  rot.textContent = i === 0 ? "0 %" : "3 %";
+  td.append(rot);
+  const menos = document.createElement("button");
+  menos.type = "button";
+  menos.className = "botao-g";
+  menos.textContent = "−";
+  menos.title = "g − 1 mm";
+  menos.dataset.g = `${i}-menos`;
+  menos.addEventListener("click", () => definirG(i, p.g - 1));
+  const campo = document.createElement("input");
+  campo.className = "campo-g";
+  campo.inputMode = "decimal";
+  campo.value = fmt(p.g, 1);
+  campo.title = "distância entre porcas (mm); Enter para aplicar";
+  campo.id = `g-manual-${i}`;
+  campo.addEventListener("change", () => definirG(i, numero(campo.value)));
+  const mais = document.createElement("button");
+  mais.type = "button";
+  mais.className = "botao-g";
+  mais.textContent = "+";
+  mais.title = "g + 1 mm";
+  mais.dataset.g = `${i}-mais`;
+  mais.addEventListener("click", () => definirG(i, p.g + 1));
+  td.append(menos, campo, mais);
+  if (manual) {
+    const auto = document.createElement("button");
+    auto.type = "button";
+    auto.className = "botao-g auto";
+    auto.textContent = "auto";
+    auto.title = "manual — voltar à posição calculada";
+    auto.title = "voltar à posição calculada";
+    auto.dataset.g = `${i}-auto`;
+    auto.addEventListener("click", () => definirG(i, null));
+    td.append(auto);
+  }
+  return td;
 }
 
 async function calcularHorizontal() {
@@ -456,6 +509,7 @@ function mostrarResultadoHorizontal(r) {
         }
         const v = [null, null, null, null, p.folga_g, p.folga_x, p.folga_R2][j];
         if (typeof v === "number" && v < 0) td.classList.add("neg");
+        if (rotulo === "inf") tr.classList.toggle("manual", Boolean(r.g_manual && r.g_manual[i] !== null));
         tr.append(td);
       });
       const td = document.createElement("td");
@@ -466,6 +520,14 @@ function mostrarResultadoHorizontal(r) {
       td.append(ponto);
       tr.append(td);
       tbody.append(tr);
+    });
+  }
+  const bloco = $("ajuste-g");
+  bloco.replaceChildren();
+  bloco.hidden = !r.em_informada;
+  if (r.em_informada) {
+    r.em_informada.forEach((p, i) => {
+      if (p.g !== null) bloco.append(celulaG(p, i, Boolean(r.g_manual && r.g_manual[i] !== null)));
     });
   }
   $("posicoes").querySelector("tbody").replaceChildren();
@@ -485,6 +547,7 @@ function mostrarVazio(texto) {
   $("chapa-info").replaceChildren();
   $("posicoes").querySelector("tbody").replaceChildren();
   $("posicoes-th").querySelector("tbody").replaceChildren();
+  $("ajuste-g").replaceChildren();
   mostrarBanco2(null);
 }
 
@@ -558,6 +621,20 @@ function mostrarResultado(r) {
 
 async function iniciar() {
   Desenho.iniciar();
+  // clique na cota g do desenho (tubo horizontal): vai para o ajuste manual de g a 0 %
+  $("desenho").addEventListener("click", (ev) => {
+    // o arraste do desenho captura o ponteiro: o alvo real é o elemento sob o cursor
+    const sob = document.elementFromPoint(ev.clientX, ev.clientY) || ev.target;
+    const alvo = sob.closest("[data-id='cota-g']");
+    if (!alvo) return;
+    const campo = $("g-manual-0");
+    if (campo) {
+      campo.focus();
+      campo.select();
+    } else {
+      Projeto.aviso("Informe a altura do tubo para ajustar g manualmente.");
+    }
+  });
   for (const id of ["cota", "caso_id", "R_min", "R_max", "nome-projeto", "R2_min", "R2_max"]) {
     $(id).addEventListener("input", agendarCalculo);
   }
@@ -586,6 +663,8 @@ async function iniciar() {
     estado.campos = await obter("/api/campos");
     preencherCarcacas(await obter("/api/carcacas"));
     Projeto.iniciar();
+    await Setups.iniciar();
+    Projeto.verificarSetup();
   } catch (e) {
     definirConexao("erro", "sem conexão");
     mostrarVazio(`Erro: ${e.message}`);

@@ -262,3 +262,27 @@ def test_adicionar_caso_preserva_horizontais(ctx, tmp_path: Path) -> None:
     arq.write_bytes(api.exportar(ctx, _proj_com_horizontal())[0])
     adicionar_caso(arq, EntradaPlanilha("NOVO", "IEC-180L-4P", 2086, 2161), ctx.base, ctx.padroes)
     assert [e.caso_id for e in ler_entradas_horizontais(arq)] == ["TH"]
+
+
+def test_exportar_g_manual(ctx, tmp_path: Path) -> None:
+    import io
+
+    from openpyxl import load_workbook
+
+    from tensorcad.planilha_projeto import ler_entradas_horizontais
+
+    proj = _proj_com_horizontal(altura_tubo=1295)
+    proj["horizontal"]["casos"][0]["g_manual"] = [65, None]
+    dados, _ = api.exportar(ctx, proj)
+    ws = load_workbook(io.BytesIO(dados))["TH"]
+    pares = {ws.cell(r, 1).value: ws.cell(r, 2).value for r in range(1, ws.max_row + 1)}
+    assert pares["g manual (0 % / 3 %)"] == "65 / auto"
+    linhas = [
+        [ws.cell(r, c).value for c in range(1, 6)]
+        for r in range(1, ws.max_row + 1)
+        if ws.cell(r, 1).value == "informada"
+    ]
+    assert linhas[0][1] == "0 %" and linhas[0][4] == 65
+    arq = tmp_path / "p.xlsx"
+    arq.write_bytes(dados)
+    assert ler_entradas_horizontais(arq)[0].g_manual == [65, None]

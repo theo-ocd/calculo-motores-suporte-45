@@ -59,6 +59,8 @@ class EntradaPlanilha:
     ajustes: dict[str, Any] | None = None
     # tensionamento para banco duplo {"R2_min": ..., "R2_max": ...} (opcional)
     banco_duplo: dict[str, Any] | None = None
+    # setup de transmissão de origem (cópia dos dados; R e sufixo travados) — opcional
+    setup: dict[str, Any] | None = None
 
 
 CAMPOS_ENTRADA = tuple(EntradaPlanilha.__dataclass_fields__)
@@ -77,6 +79,10 @@ class EntradaHorizontal:
     invertido: bool = False
     # tensionamento para banco duplo {"R2_min", "R2_max", "deslocamento_y"} (opcional)
     banco_duplo: dict[str, Any] | None = None
+    # ajuste manual de g [0 %, 3 %] com a altura informada (cada um número ou None)
+    g_manual: list[float | None] | None = None
+    # setup de transmissão de origem (cópia dos dados) — opcional
+    setup: dict[str, Any] | None = None
 
 
 def resolver_horizontal(
@@ -101,8 +107,15 @@ def resolver_horizontal(
             float(ent.banco_duplo["R2_max"]),
             float(ent.banco_duplo.get("deslocamento_y", bd.DESLOCAMENTO_Y_PADRAO)),
         )
+    g_manual = None if not ent.g_manual else (ent.g_manual[0], ent.g_manual[1])
     e = th.EntradaTH(
-        ent.caso_id, base.motores[ent.motor_id], ent.R_min, ent.R_max, ent.altura_informada, b2
+        ent.caso_id,
+        base.motores[ent.motor_id],
+        ent.R_min,
+        ent.R_max,
+        ent.altura_informada,
+        b2,
+        g_manual,
     )
     return th.resolver(par, e)
 
@@ -168,6 +181,92 @@ def resolver_entrada(
         float(ent.banco_duplo.get("deslocamento_y", bd.DESLOCAMENTO_Y_PADRAO)),
     )
     return bd.resolver(cfg_bd, e, cfg)
+
+
+def _bloco_setup(ws: Worksheet, lin: int, st: dict[str, Any]) -> int:
+    """Bloco "Setup de transmissão" (caso criado de um setup)."""
+    pares: list[tuple[str, Any]] = [
+        ("setup", f"{st.get('nome', '')}{st.get('sufixo', '')}"),
+        ("polia da máquina Ø", st.get("polia_maquina")),
+        ("polia do motor Ø", st.get("polia_motor")),
+        ("correia SPB (comprimento)", st.get("correia")),
+        (
+            "rpm do motor / da máquina",
+            f"{st.get('rpm_motor', 0):g} / {st.get('rpm_maquina', 0):.1f}",
+        ),
+        (
+            "R 0 % / 2 % / 3 %",
+            "{:.2f} / {:.2f} / {:.2f}".format(
+                st.get("R_min", 0), st.get("R_info", 0), st.get("R_max", 0)
+            ),
+        ),
+    ]
+    b2 = st.get("banco2")
+    if b2:
+        pares += [
+            (
+                "banco 2: polias Ø / correia",
+                f"{b2['polia_maquina']:g} / {b2['polia_motor']:g} / {b2['correia']:g}",
+            ),
+            (
+                "banco 2: R2 0 % / 2 % / 3 %",
+                "{:.2f} / {:.2f} / {:.2f}".format(b2["R2_min"], b2["R2_info"], b2["R2_max"]),
+            ),
+        ]
+    return _bloco(ws, lin, "Setup de transmissão (R e sufixo travados)", pares)
+
+
+def _setups_usados(*listas: Sequence[Any]) -> list[tuple[dict[str, Any], list[str]]]:
+    """Setups distintos (por id e dados) dos casos, com os casos de cada um."""
+    vistos: dict[str, tuple[dict[str, Any], list[str]]] = {}
+    for lst in listas:
+        for e in lst:
+            st = getattr(e, "setup", None)
+            if not st:
+                continue
+            chave = json.dumps(st, sort_keys=True, default=str)
+            vistos.setdefault(chave, (st, []))[1].append(e.caso_id)
+    return list(vistos.values())
+
+
+def _indice_setups(ws: Worksheet, ini: int, usados: list[tuple[dict[str, Any], list[str]]]) -> None:
+    ws.cell(ini, 1, "Setups de transmissão").font = NEGRITO
+    cols = [
+        "setup",
+        "polia máquina",
+        "polia motor",
+        "correia",
+        "rpm motor",
+        "rpm máquina",
+        "R 0 %",
+        "R 2 %",
+        "R 3 %",
+        "R2 0 %",
+        "R2 3 %",
+        "casos",
+    ]
+    for j, c in enumerate(cols, start=1):
+        ws.cell(ini + 1, j, c).font = NEGRITO
+    for i, (st, casos) in enumerate(usados, start=ini + 2):
+        b2 = st.get("banco2") or {}
+        lin = [
+            f"{st.get('nome', '')}{st.get('sufixo', '')}",
+            st.get("polia_maquina"),
+            st.get("polia_motor"),
+            st.get("correia"),
+            st.get("rpm_motor"),
+            st.get("rpm_maquina"),
+            st.get("R_min"),
+            st.get("R_info"),
+            st.get("R_max"),
+            b2.get("R2_min"),
+            b2.get("R2_max"),
+            ", ".join(casos),
+        ]
+        for j, v in enumerate(lin, start=1):
+            c = ws.cell(i, j, v)
+            if isinstance(v, float):
+                c.number_format = FMT_MM
 
 
 def _bloco(ws: Worksheet, linha: int, titulo: str, pares: Sequence[tuple[str, Any]]) -> int:
@@ -409,6 +508,7 @@ def escrever_aba_caso(
     cfg: ConfigProjeto,
     ajustes: dict[str, Any] | None = None,
     banco: bd.AvaliacaoBancoDuplo | None = None,
+    setup: dict[str, Any] | None = None,
 ) -> None:
     e = r.entrada
     ws["A1"] = f"Caso {e.caso_id}"
@@ -451,6 +551,8 @@ def escrever_aba_caso(
             "Ajustes de dimensões (diferentes do padrão)",
             [(rot, "vazio" if v is None else float(v)) for rot, v in pares],
         )
+    if setup:
+        lin = _bloco_setup(ws, lin, setup)
     if banco is not None:
         pares: list[tuple[str, Any]] = [
             ("O1 → O2 (acima)", banco.config.deslocamento_y),
@@ -528,6 +630,7 @@ def _aba_projeto(
     cfg: ConfigProjeto,
     resultados: Sequence[ResultadoProjeto],
     horizontais: Sequence[th.ResultadoTH] = (),
+    setups: list[tuple[dict[str, Any], list[str]]] | None = None,
 ) -> None:
     ws["A1"] = f"Projeto {cfg.nome}"
     ws["A1"].font = TITULO
@@ -581,8 +684,12 @@ def _aba_projeto(
                 c.font = Font(color="0563C1", underline="single")
     if tab:
         _cor_status(ws, f"G{ini + 1}:G{ini + n}")
+    prox = ini + n + 3
     if horizontais:
-        _indice_horizontal(ws, ini + n + 3, horizontais)
+        _indice_horizontal(ws, prox, horizontais)
+        prox += len(horizontais) + 4
+    if setups:
+        _indice_setups(ws, prox, setups)
     ws.column_dimensions["A"].width = 44
     for col in "BCDEFGHIJ":
         ws.column_dimensions[col].width = 16
@@ -739,7 +846,9 @@ def _grafico_folgas_th(ws: Worksheet, r: th.ResultadoTH, linha: int) -> int:
     return fim + 2
 
 
-def escrever_aba_horizontal(ws: Worksheet, r: th.ResultadoTH) -> None:
+def escrever_aba_horizontal(
+    ws: Worksheet, r: th.ResultadoTH, setup: dict[str, Any] | None = None
+) -> None:
     """Aba de um caso do layout tubo horizontal."""
     e, par = r.entrada, r.parametros
     ws["A1"] = f"Caso {e.caso_id} — layout tubo horizontal"
@@ -757,6 +866,12 @@ def escrever_aba_horizontal(ws: Worksheet, r: th.ResultadoTH) -> None:
             ("R_max (3 %)", e.R_max),
             ("comprimento do tubo", par.comprimento_tubo),
             ("altura do tubo informada", e.altura_informada),
+            (
+                "g manual (0 % / 3 %)",
+                "—"
+                if not e.g_manual
+                else " / ".join("auto" if v is None else f"{v:g}" for v in e.g_manual),
+            ),
         ],
     )
     lin = _bloco(
@@ -775,6 +890,8 @@ def escrever_aba_horizontal(ws: Worksheet, r: th.ResultadoTH) -> None:
             ("O1 → linha de centro (x) / → laje (y)", f"{par.x_linha:g} / {par.y_laje:g}"),
         ],
     )
+    if setup:
+        lin = _bloco_setup(ws, lin, setup)
     if e.banco2 is not None:
         lin = _bloco(
             ws,
@@ -888,6 +1005,7 @@ def ler_entradas(caminho: Path) -> tuple[ConfigProjeto, list[EntradaPlanilha]]:
                 chapa_id=None if d.get("chapa_id") in (None, "") else str(d["chapa_id"]),
                 ajustes=json.loads(d["ajustes"]) if d.get("ajustes") else None,
                 banco_duplo=json.loads(d["banco_duplo"]) if d.get("banco_duplo") else None,
+                setup=json.loads(d["setup"]) if d.get("setup") else None,
             )
         )
     return cfg, entradas
@@ -913,13 +1031,13 @@ def gerar_projeto(
     resultados = [r for r, _ in resolvidos]
     res_th = [resolver_horizontal(e, base, cfg, fixos_th) for e in horizontais]
     wb = Workbook()
-    _aba_projeto(wb.active, cfg, resultados, res_th)
+    _aba_projeto(wb.active, cfg, resultados, res_th, _setups_usados(entradas, horizontais))
     wb.active.title = ABA_PROJETO
     for e, (r, banco) in zip(entradas, resolvidos, strict=True):
         aba = wb.create_sheet(nome_aba(r.entrada.caso_id))
-        escrever_aba_caso(aba, r, cfg, e.ajustes, banco)
-    for rt in res_th:
-        escrever_aba_horizontal(wb.create_sheet(nome_aba(rt.entrada.caso_id)), rt)
+        escrever_aba_caso(aba, r, cfg, e.ajustes, banco, e.setup)
+    for e, rt in zip(horizontais, res_th, strict=True):
+        escrever_aba_horizontal(wb.create_sheet(nome_aba(rt.entrada.caso_id)), rt, e.setup)
     we = wb.create_sheet(ABA_ENTRADAS)
     we.append(["config", "nome", cfg.nome, "y_piso", cfg.y_piso, "x_tubo", cfg.x_tubo])
     we.append(list(CAMPOS_ENTRADA))
@@ -927,6 +1045,7 @@ def gerar_projeto(
         d = asdict(e)
         d["ajustes"] = json.dumps(e.ajustes, ensure_ascii=False) if e.ajustes else None
         d["banco_duplo"] = json.dumps(e.banco_duplo) if e.banco_duplo else None
+        d["setup"] = json.dumps(e.setup, ensure_ascii=False) if e.setup else None
         we.append([d[c] for c in CAMPOS_ENTRADA])
     we.sheet_state = "hidden"
     if horizontais:
