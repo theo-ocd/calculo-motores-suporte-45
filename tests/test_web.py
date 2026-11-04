@@ -824,3 +824,66 @@ def test_setups_no_navegador(url: str, tmp_path: Path) -> None:
             assert erros == []
         finally:
             nav.close()
+
+
+def test_tutorial_so_ilustrativo(url: str) -> None:
+    """T8: o tutorial percorre as etapas sem alterar dados, sem chamar a API e volta à aba."""
+    sync = pytest.importorskip("playwright.sync_api")
+    with sync.sync_playwright() as p:
+        nav = _navegador(p)
+        try:
+            pg = nav.new_page(viewport={"width": 1500, "height": 1000})
+            erros: list[str] = []
+            pg.on("pageerror", lambda e: erros.append(str(e)))
+            pg.on("dialog", lambda d: d.accept())
+            pg.goto(url)
+            pg.wait_for_selector("#conexao[data-estado='ok']", timeout=10_000)
+            pg.fill("#R_min", "2086")
+            pg.fill("#R_max", "2161")
+            pg.wait_for_selector("#status[data-status='OK']", timeout=10_000)
+            pg.wait_for_timeout(600)
+            antes = pg.evaluate(
+                "JSON.stringify([Projeto.serializar(),"
+                " localStorage.getItem('tensorcad.setups.v1'),"
+                " document.querySelector('#status').textContent,"
+                " document.querySelector('#resumo').innerText])"
+            )
+            pedidos: list[str] = []
+            pg.on("request", lambda r: pedidos.append(r.url) if "/api/" in r.url else None)
+
+            pg.click("#btn-tutorial")
+            pg.wait_for_selector("#tutorial")
+            etapas = pg.evaluate("Tutorial.etapas()")
+            # 45° ativo: etapas do tubo horizontal ficam de fora; as de Setups entram
+            assert "Tubo horizontal" not in etapas and "Dimensões (45°)" in etapas
+            assert "Biblioteca de setups" in etapas and len(etapas) >= 12
+            vistas = set()
+            for k in range(len(etapas)):
+                assert pg.inner_text(".tutorial-passo") == f"{k + 1} de {len(etapas)}"
+                vistas.add(pg.inner_text(".tutorial-titulo"))
+                caixa = pg.locator(".tutorial-destaque").bounding_box()
+                assert caixa and caixa["width"] > 0 and caixa["height"] > 0
+                # cliques e teclas não chegam à página
+                pg.mouse.click(5, 990)
+                pg.keyboard.type("9")
+                if k == 1:
+                    assert pg.evaluate("document.body.dataset.aba") == "setups"
+                pg.click("[data-t='proximo']")
+            assert not pg.evaluate("Tutorial.aberto()") and vistas == set(etapas)
+            assert pg.evaluate("document.body.dataset.aba") == "layout"  # volta à aba original
+            # Esc fecha; setas navegam
+            pg.click("#btn-tutorial")
+            pg.keyboard.press("ArrowRight")
+            assert pg.inner_text(".tutorial-passo").startswith("2 de")
+            pg.keyboard.press("Escape")
+            assert pg.locator("#tutorial").count() == 0
+
+            depois = pg.evaluate(
+                "JSON.stringify([Projeto.serializar(),"
+                " localStorage.getItem('tensorcad.setups.v1'),"
+                " document.querySelector('#status').textContent,"
+                " document.querySelector('#resumo').innerText])"
+            )
+            assert depois == antes and pedidos == [] and erros == []
+        finally:
+            nav.close()

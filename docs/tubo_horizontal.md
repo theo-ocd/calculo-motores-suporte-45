@@ -227,20 +227,23 @@ Conferência (250M, tubo de 2000, R1 1839 / 1894):
   - onde ficam os dados (tabelas) e como avisar problemas.
 - **Conferência:** .exe e LEIA-ME enviados no chat; release publicada.
 
-### T8: Botão de tutorial interativo
-- Botão **tutorial** na barra superior. Ele inicia um passo a passo na própria página:
-  um retângulo de destaque ("highlight") sobre cada etapa, com uma legenda explicativa e
-  os botões anterior / próximo / sair.
-- Etapas propostas: opção de layout → projeto (altura ou H) → casos em memória → caso
-  ativo (carcaça, motor, R) → dimensões ou parâmetros do tubo → banco duplo → desenho
-  (camadas, zoom, dica ao passar o mouse) → resultado → salvar / exportar / limpar.
-- As etapas mudam conforme o layout ativo e pulam elementos ocultos. O progresso não é
-  salvo; o tutorial pode ser reaberto a qualquer momento.
-- Sem bibliotecas externas (HTML/CSS/JS puro, como o resto da interface).
-- **Conferência:** prints de cada etapa e teste de navegador percorrendo o tutorial.
+### T8: Botão de tutorial interativo — feita
+- Botão **tutorial** na barra superior, nas duas abas. Abre um passo a passo por cima da
+  página: retângulo de destaque, legenda com título e explicação, botões anterior /
+  próximo (concluir) / sair, ← → para navegar e Esc para sair.
+- **Só ilustrativo** (pedido do usuário): `tutorial.js` é isolado.
+  - Não chama funções do programa nem a API, e não altera dados.
+  - A camada bloqueia cliques, rolagem e teclas na página enquanto está aberta.
+  - O único efeito é mostrar a tela da etapa (Setups ou Layout) e voltar à aba original
+    ao sair.
+- 16 etapas (aba Setups, layout, projeto, banco duplo, casos, setups, caso ativo,
+  dimensões, desenho, resultado, posições, salvar e exportar). As etapas de elementos
+  ocultos são puladas (ex.: campos do outro layout).
+- Teste de navegador: percorre todas as etapas e confere que projeto, biblioteca e
+  resultado ficam idênticos, que nenhuma chamada à API é feita e que a aba é restaurada.
 
 ## Ordem
 
-`T0 → T1 → T2 → T3 → T4 → T5 → T6 → pré-release 0.6.PR → T8 → T7 (v1.0)`. Decisão do
+`T0 → T1 → T2 → T3 → T4 → T5 → T6 → pré-release 0.6.37 → setups (S0–S5) → T8 → T7 (v1.0)`. Decisão do
 usuário: o tutorial (T8) entra antes da release 1.0, e as pré-releases para teste levam a
 versão `0.<T>.<PR>` (ex.: 0.8.36).
